@@ -5,8 +5,8 @@ This is the recommended path if you want live Obsidian vault sync, Ollama,
 Agent Gateway, or any other localhost integration — the cloud server cannot
 reach `127.0.0.1` on your machine.
 
-> **Beta:** Image tag `v2.35.0-beta.2` is live on GHCR. Stable `v1.0` coming
-> soon. Subscribe to releases on this repo to be notified.
+> **Beta `v2.35.0-beta.2`** — GHCR image is now public. No GitHub login required.
+> Stable `v1.0` coming soon. Subscribe to [releases](https://github.com/0Reliance/glassy-selfhost/releases) to be notified.
 
 [![GitHub release](https://img.shields.io/github/v/release/0Reliance/glassy-selfhost?include_prereleases&style=flat-square&label=latest)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![Docker](https://img.shields.io/badge/ghcr.io-0reliance%2Fglassy--dash-2496ED?style=flat-square&logo=docker)](https://ghcr.io/0reliance/glassy-dash)
