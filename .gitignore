@@ -1,0 +1,7 @@
+# Never commit your secrets
+.env
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.swp
