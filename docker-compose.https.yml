@@ -1,0 +1,32 @@
+# Optional overlay: put Glassy behind Caddy for automatic HTTPS (Let's Encrypt).
+# Use this when you expose Glassy on a real domain you control (A/AAAA record
+# pointing at this host, ports 80 + 443 reachable from the internet).
+#
+#   # in .env, set your hostname and matching app URLs:
+#   #   GLASSY_DOMAIN=glassy.example.com
+#   #   APP_URL=https://glassy.example.com
+#   #   CORS_ORIGINS=https://glassy.example.com
+#
+#   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+#
+# Caddy fetches and renews a trusted certificate automatically. For a private
+# network without a public domain, prefer Tailscale (see README) instead.
+name: glassy-selfhost
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: glassy-caddy
+    restart: unless-stopped
+    ports: ['80:80', '443:443']
+    environment:
+      - GLASSY_DOMAIN=${GLASSY_DOMAIN:?set GLASSY_DOMAIN to your public hostname in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - glassy
+
+volumes:
+  caddy-data: {}
+  caddy-config: {}
