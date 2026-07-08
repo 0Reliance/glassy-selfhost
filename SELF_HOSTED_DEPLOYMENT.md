@@ -101,6 +101,85 @@ If you miss the initial log output or are locked out, see [Account recovery](#5-
 
 The seed only runs when no `users` row exists with `is_admin=1`. On subsequent boots it is a no-op — your admin account (and any changes you made to it) is preserved.
 
+### How authentication works (and what the cloud sees)
+
+Glassy self-host is a **single-owner appliance** — the appliance and the cloud
+are two separate systems that share only one thing: your email address. Here's
+the full flow:
+
+**1. Membership verification (boot, every 30 days).** The appliance sends a
+server-to-server POST to `https://app.glassy.fyi/api/verify-selfhost` with
+body `{ "email": "you@example.com" }`. **No password, no token, no session
+data is ever sent.** The cloud looks up the email in its own user database and
+returns one of:
+
+- `{ valid: true, tier: "clear_lifetime" }` — active membership found
+- `{ valid: false, reason: "no_account" }` — no Glassy account with that email
+- `{ valid: false, reason: "no_active_membership" }` — account exists but no active subscription
+
+The endpoint is rate-limited (10 requests per IP per 15 minutes) and returns
+nothing beyond a boolean + tier — no user details, no password hints, no
+account data. The result is cached to `.membership_cache.json` in the data
+volume for 30 days. If the cloud is unreachable, the appliance falls back to
+the cache (even if expired) and warns in the logs. If no cache exists, the
+container exits with code 1.
+
+**2. Admin account creation (first boot only).** If the `users` table is empty,
+the appliance creates a local admin account:
+
+- **Email** = your `GLASSY_MEMBER_EMAIL` (so you can log in with your real address)
+- **Password** = a 22-character random string generated with `crypto.randomBytes(16)`,
+  bcrypt-hashed (cost 12) and stored as a hash. The plaintext is printed to
+  stdout **once** and never stored anywhere.
+- **Tier** = `clear_lifetime` — unlocks all premium features via the existing
+  `isClearMember()` entitlement path. No commerce flow, no credit ledger.
+
+You retrieve the password with `docker compose logs glassy | grep -A2 "Default
+admin created"`, sign in, and set a permanent password in Settings → Account.
+After that, the generated password is irrelevant — only your new password's
+hash matters.
+
+**3. Ongoing authentication (every login).** Entirely local. You POST
+`{ email, password }` to `/api/login`; the server looks up the email in the
+local SQLite `users` table, compares the bcrypt hash, and issues a JWT signed
+with your `JWT_SECRET`. No cloud call, no network dependency. The cloud never
+sees your password, your JWT, or any of your note content — it only confirmed
+your membership once at boot.
+
+```
+Your .env: GLASSY_MEMBER_EMAIL=you@example.com
+        │
+        ▼
+  ┌─────────────────────────────────┐
+  │ Boot (every 30 days)            │
+  │ POST /api/verify-selfhost        │  ← email only, no password
+  │ Cloud checks: membership active? │
+  └────────────┬────────────────────┘
+               │ valid: true, tier: clear_lifetime
+               ▼
+  ┌─────────────────────────────────┐
+  │ First boot only                  │
+  │ Create local admin account       │  ← random password printed once
+  │ email = GLASSY_MEMBER_EMAIL      │     bcrypt hash in local SQLite
+  │ tier  = clear_lifetime           │     no plaintext stored
+  └────────────┬────────────────────┘
+               │
+               ▼
+  ┌─────────────────────────────────┐
+  │ Every login after that          │
+  │ POST /api/login (local only)     │  ← 100% offline, JWT auth
+  │ bcrypt compare → JWT signed       │     no cloud, no phone-home
+  └─────────────────────────────────┘
+```
+
+**Security notes:**
+
+- The cloud endpoint cannot leak your password — it never receives one.
+- The `JWT_SECRET` in your `.env` is the only signing key. Rotate it by
+  editing `.env` and restarting (this invalidates all existing sessions).
+- The membership cache file (`.membership_cache.json`) contains only your
+  email, the tier string, and a timestamp — no secrets.
+
 ---
 
 ## 4. Account management (sub-accounts)
@@ -179,9 +258,9 @@ Ollama is already reachable via `host.docker.internal` without any configuration
 
 1. Install Ollama on the host: https://ollama.com
 2. Pull a model: `ollama pull llama3.2` (or any supported model)
-3. In Glassy: Settings → AI → **Ollama** — Glassy auto-detects models from `http://localhost:11434`
+3. In Glassy: Settings → AI → **Ollama** — Glassy auto-detects models from `http://host.docker.internal:11434`
 
-The `OLLAMA_BASE_URL` env var defaults to `http://localhost:11434` (mapped to `host.docker.internal:11434` inside the container). Override in `.env` if Ollama runs on a different port or host.
+The `OLLAMA_BASE_URL` env var defaults to `http://host.docker.internal:11434` (reaches Ollama running on the host via Docker's host gateway). If you're using the bundled sidecar overlay, use `http://ollama:11434` instead. Override in `.env` if Ollama runs on a different port or host.
 
 **No Ollama installed?** Use the bundled sidecar overlay so there's nothing extra to install on the host:
 
@@ -326,16 +405,33 @@ docker compose logs glassy
 
 Common causes:
 - `JWT_SECRET` or `API_KEY_ENCRYPTION_KEY` not set → look for `set JWT_SECRET` / `set API_KEY_ENCRYPTION_KEY` in the log.
-- Port 3000 already in use → change the host port in `docker-compose.yml` (`"3001:8080"`) and update `APP_URL` + `CORS_ORIGINS`.
+- Port 3000 already in use → set `APP_PORT=3001` in `.env` and update `APP_URL` + `CORS_ORIGINS` to match (e.g. `http://localhost:3001`).
 
 ### Login page says "registration disabled"
 
 This is expected. Registration is permanently disabled on the self-hosted appliance. Log in with the admin account (see [First boot](#3-first-boot--admin-account)).
 
+### Checking health from outside the container
+
+The container exposes two JSON health endpoints:
+
+```bash
+# Quick ready check (returns JSON):
+curl http://localhost:3000/ready
+
+# Detailed monitoring (used by Docker healthcheck):
+curl http://localhost:3000/api/monitoring/ready
+```
+
+Both return `"status":"ready"` when healthy. If you get HTML instead of JSON,
+the SPA catch-all is responding — the container may still be starting up.
+Wait a few seconds and retry. The runtime image includes `curl` for
+in-container network diagnostics (`docker compose exec glassy curl …`).
+
 ### AI features not working
 
 1. **BYOK path:** Settings → AI → API Keys — verify your key is saved and the correct provider is selected.
-2. **Ollama path:** run `ollama list` on the host to verify a model is installed. Check `OLLAMA_BASE_URL` in `.env` (default `http://localhost:11434`).
+2. **Ollama path:** run `ollama list` on the host to verify a model is installed. Check `OLLAMA_BASE_URL` in `.env` (default `http://host.docker.internal:11434`).
 3. **No provider configured:** the app returns a clear error: "No AI provider configured. Add your own API key in Settings → API Keys, or run a local Ollama model."
 
 ### Obsidian sync not connecting

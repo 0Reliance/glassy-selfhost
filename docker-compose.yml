@@ -7,7 +7,7 @@ services:
     image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:-latest}
     container_name: glassy
     restart: unless-stopped
-    ports: ['3000:8080']
+    ports: ['${APP_PORT:-3000}:8080']
     env_file: [.env]
     environment:
       - NODE_ENV=production
