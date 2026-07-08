@@ -44,7 +44,9 @@ cloud fundamentally cannot help — because the server cannot reach your machine
 
 ## Quick start
 
-Three commands. One owner. Everything unlocked.
+> **Self-hosting requires an active Glassy membership** (Clear or Pro).
+> Sign up at [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.fyi](https://glassy.fyi)
+> before continuing — the appliance will not start without your membership email.
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
@@ -52,9 +54,12 @@ cd glassy-selfhost
 cp .env.example .env
 ```
 
-Open `.env` and set two secrets — the only required configuration:
+Open `.env` and fill in the **three required fields**:
 
 ```env
+# Your Glassy account email (Clear or Pro membership)
+GLASSY_MEMBER_EMAIL=your@glassy-account-email
+
 # Generate each one with: openssl rand -hex 32
 JWT_SECRET=
 API_KEY_ENCRYPTION_KEY=
@@ -66,14 +71,16 @@ Then:
 docker compose up -d
 ```
 
-On first boot Glassy seeds an admin account and prints the generated password
-to the container log **once**:
+On first boot the appliance verifies your membership against the cloud, creates
+your local account using your membership email, and prints the initial password
+**once**:
 
 ```bash
 docker compose logs glassy | grep -A2 "Default admin created"
 ```
 
-Log in at **http://localhost:3000**, change the password in Settings, and you're done.
+Sign in at **http://localhost:3000** with your membership email and that password,
+then set a permanent password in **Settings → Account**.
 Registration is permanently disabled — this is a single-owner appliance.
 All premium features are unlocked automatically.
 
@@ -261,12 +268,13 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 
 | Variable | Default | |
 | --- | --- | --- |
+| `GLASSY_MEMBER_EMAIL` | **required** | Your Clear or Pro membership email |
 | `JWT_SECRET` | **required** | `openssl rand -hex 32` |
 | `API_KEY_ENCRYPTION_KEY` | **required** | `openssl rand -hex 32` |
 | `APP_URL` | `http://localhost:3000` | Set for Tailscale / domain access |
 | `CORS_ORIGINS` | `http://localhost:3000` | Must include every origin you use |
 | `GLASSY_TAG` | `latest` | Pin a version for reproducibility |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Override if Ollama is elsewhere |
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); use `http://ollama:11434` with the sidecar overlay |
 | `OLLAMA_MODEL` | `llama3.2` | Default model when none is selected in-app |
 | `BACKUP_ENCRYPTION_KEY` | — | AES-256-GCM; `openssl rand -hex 32` |
 | `CLUSTER_WORKERS` | `min(2, CPUs−1)` | Raise on multi-core hosts |
