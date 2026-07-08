@@ -13,6 +13,8 @@
 name: glassy-selfhost
 services:
   glassy:
+    # Point Glassy at the sidecar instead of the host. `ollama` resolves on the
+    # compose network; no loopback rewrite needed.
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
@@ -22,6 +24,7 @@ services:
     image: ollama/ollama:latest
     container_name: glassy-ollama
     restart: unless-stopped
+    # Expose on the host too, so other tools can share the same model store.
     ports: ['11434:11434']
     volumes: ['ollama-models:/root/.ollama']
     # --- NVIDIA GPU (optional) — requires NVIDIA Container Toolkit on the host.

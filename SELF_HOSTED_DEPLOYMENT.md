@@ -1,7 +1,7 @@
 # Self-Hosted Deployment Guide
 
 **Audience:** Self-hosters running `INSTANCE_ID=self_hosted` on their own machine.  
-**Quick start:** [README.md](README.md) — start there.  
+**Quick start:** [`deploy/selfhost/README.md`](../deploy/selfhost/README.md) — start there.  
 **This document:** Operational deep-dive: account management, backups, AI configuration, Obsidian, and troubleshooting.
 
 ---
@@ -10,7 +10,7 @@
 
 1. [Capability matrix](#1-capability-matrix)
 2. [Instance identity & gating summary](#2-instance-identity--gating-summary)
-3. [First boot & admin account](#3-first-boot--admin-account)
+3. [First boot & account setup](#3-first-boot--account-setup)
 4. [Account management (sub-accounts)](#4-account-management-sub-accounts)
 5. [Account recovery (lost password)](#5-account-recovery-lost-password)
 6. [AI providers (BYOK + Ollama)](#6-ai-providers-byok--ollama)
@@ -74,9 +74,11 @@ The seeded admin is automatically granted `clear_lifetime` tier, which unlocks e
 
 ---
 
-## 3. First boot & admin account
+## 3. First boot & account setup
 
-On first boot the server seeds one admin account and prints the generated credentials to the container log **once**:
+On first boot the appliance verifies your membership with the cloud, then
+creates your local account using your `GLASSY_MEMBER_EMAIL` and prints the
+initial password once:
 
 ```bash
 docker compose logs glassy | grep -A2 "Default admin created"
@@ -85,12 +87,15 @@ docker compose logs glassy | grep -A2 "Default admin created"
 You will see something like:
 
 ```
-Default admin created — username: admin  password: <generated>
+Default admin created — username: you@example.com  password: <generated>
 ```
 
-**Change the password immediately** in Settings → Account. The generated password is not stored anywhere after it is displayed.
+Sign in at http://localhost:3000 with your membership email and that password,
+then go to **Settings → Account** and set a permanent password.
 
-If you miss the initial log output, see [Account recovery](#5-account-recovery-lost-password).
+The initial generated password is not stored anywhere after it is displayed.
+
+If you miss the initial log output or are locked out, see [Account recovery](#5-account-recovery-lost-password).
 
 ### Admin seeding behaviour
 
@@ -140,8 +145,8 @@ If the admin account itself is inaccessible, stop the container and edit the dat
 
 ```bash
 docker compose down
-# Default volume path on Linux:
-# /var/lib/docker/volumes/glassy-selfhost_glassy-data/_data/notes.db
+# The volume is at: docker volume inspect glassy-selfhost_glassy-data
+# Default path on Linux: /var/lib/docker/volumes/glassy-selfhost_glassy-data/_data/notes.db
 sqlite3 /var/lib/docker/volumes/glassy-selfhost_glassy-data/_data/notes.db \
   "UPDATE users SET password_hash = '\$(python3 -c \"import bcrypt; print(bcrypt.hashpw(b'Temp1234!', bcrypt.gensalt(12)).decode())\")'
    WHERE username = 'admin';"
@@ -185,7 +190,7 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml exec ollama ollama pull llama3.2
 ```
 
-The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`docker-compose.ollama.yml`](docker-compose.ollama.yml)).
+The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`deploy/selfhost/docker-compose.ollama.yml`](../deploy/selfhost/docker-compose.ollama.yml)).
 
 ---
 
@@ -195,8 +200,8 @@ Live Obsidian vault sync is the primary reason to self-host. The cloud server ca
 
 ### Setup
 
-1. Install the **Glassy Companion** browser extension (see [glassy-companion](https://github.com/0Reliance/glassy-companion) or the Firefox/Chrome store listing).
-2. In Companion settings, set the **Server URL** to `http://localhost:3000` (or your Tailscale / LAN URL — see [multi-device access](README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)).
+1. Install the **Glassy Companion** browser extension (see `glassy-companion/` in the repo or the Firefox/Chrome store listing).
+2. In Companion settings, set the **Server URL** to `http://localhost:3000` (or your Tailscale / LAN URL — see [multi-device access](../deploy/selfhost/README.md)).
 3. In Glassy: Settings → **Obsidian** → enable sync and point it at your vault path.
 
 The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which rewrites `127.0.0.1` references so the container can reach the Obsidian desktop app running on the host. No extra configuration is needed for a single-machine setup.
@@ -204,7 +209,7 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 ### Troubleshooting Obsidian connectivity
 
 - **Container can't reach Obsidian plugin:** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically.
-- **`APP_URL` mismatch:** if you access Glassy from a hostname other than `localhost`, set `APP_URL` and `CORS_ORIGINS` accordingly (see [multi-device access](README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)).
+- **`APP_URL` mismatch:** if you access Glassy from a hostname other than `localhost`, set `APP_URL` and `CORS_ORIGINS` accordingly (see [multi-device access](../deploy/selfhost/README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)).
 
 ---
 
@@ -212,15 +217,22 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 
 All persistent data lives in the `glassy-data` Docker volume (the `notes.db` SQLite file).
 
-> **Built-in automatic backups.** Glassy already takes a daily SQLite backup at 02:00 into `/app/data/backups` (inside the volume, ~7 days retained) — no setup needed. For encrypted, off-machine copies use the backup CLI (`node server/utils/backup.js`, controlled by `BACKUP_ENCRYPTION_KEY` / `BACKUP_RETENTION_DAYS`). See [README.md § Data persistence, backups & restore](README.md). The full-volume snapshot below is the simplest way to capture everything (DB, uploads, and generated backups) in one archive.
+> **Built-in automatic backups.** Glassy already takes a daily SQLite backup at 02:00 into `/app/data/backups` (inside the volume, ~7 days retained) — no setup needed. For encrypted, off-machine copies use the backup CLI (`node server/utils/backup.js`, controlled by `BACKUP_ENCRYPTION_KEY` / `BACKUP_RETENTION_DAYS`). See [`deploy/selfhost/README.md` § Data persistence, backups & restore](../deploy/selfhost/README.md). The full-volume snapshot below is the simplest way to capture everything (DB, uploads, and generated backups) in one archive.
 
 ### Backup
 
 ```bash
+# Creates glassy-backup-YYYYMMDD.tar.gz in the current directory
 docker run --rm \
   -v glassy-selfhost_glassy-data:/data \
   -v "$(pwd)":/backup \
   alpine tar czf /backup/glassy-backup-$(date +%Y%m%d).tar.gz -C /data .
+```
+
+Schedule this with cron for automated daily backups:
+
+```cron
+0 3 * * * docker run --rm -v glassy-selfhost_glassy-data:/data -v /path/to/backups:/backup alpine tar czf /path/to/backups/glassy-backup-$(date +\%Y\%m\%d).tar.gz -C /data .
 ```
 
 ### Restore
@@ -243,12 +255,12 @@ docker compose up -d
 ## 9. Upgrading
 
 ```bash
-cd glassy-selfhost
+cd glassy/deploy/selfhost
 docker compose pull
 docker compose up -d
 ```
 
-Database migrations apply automatically on start.
+Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 To pin a specific version instead of tracking `latest`, set `GLASSY_TAG=v2.35.0` in `.env`.
 
@@ -264,56 +276,91 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 GLASSY_TAG=v2.34.2 docker compose up -d
 ```
 
+Or set `GLASSY_TAG=v2.34.2` in `.env` and re-run `docker compose up -d`.
+
 ---
 
 ## 10. Security hardening
 
 ### Secrets
 
-- `JWT_SECRET` and `API_KEY_ENCRYPTION_KEY` are **required**. Generate with `openssl rand -hex 32`. Store them in `.env`, which is excluded from version control by `.gitignore`.
+- `JWT_SECRET` and `API_KEY_ENCRYPTION_KEY` are **required**. Generate with `openssl rand -hex 32`. Store them in `.env`, which is excluded from version control.
 - Rotate `JWT_SECRET` by updating `.env` and restarting the container. All existing sessions are invalidated.
 - Do not set `SENTRY_DSN` — telemetry is not appropriate for a private appliance, and the server ignores it on `self_hosted` regardless.
 
 ### Network exposure
 
 - By default Glassy binds to `0.0.0.0:3000` on the host. On a single-user machine, use a firewall to restrict access to `127.0.0.1:3000` unless you need LAN/Tailscale access.
-- Do not expose port 3000 directly to the public internet without TLS in front (use the Caddy overlay or Cloudflare Tunnel — see [README.md](README.md)).
-- If running behind a reverse proxy, set `TRUST_PROXY=1` in `.env`.
+- Do not expose port 3000 directly to the public internet without TLS in front (Cloudflare Tunnel or a local nginx reverse proxy).
 
-### Backup key
+### TLS (optional)
 
-- If you set `BACKUP_ENCRYPTION_KEY`, store it somewhere safe **off the machine** — a password manager, printed paper, or a separate encrypted drive. Without it, encrypted backups cannot be restored.
+For a public hostname, run Cloudflare Tunnel or add nginx in front:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name glassy.example.com;
+    ssl_certificate     /etc/letsencrypt/live/glassy.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/glassy.example.com/privkey.pem;
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Set `TRUST_PROXY=1` in `.env` when behind a reverse proxy.
 
 ---
 
 ## 11. Troubleshooting
 
-### Container exits immediately
+### Container won't start
 
 ```bash
 docker compose logs glassy
 ```
 
 Common causes:
-- `JWT_SECRET` or `API_KEY_ENCRYPTION_KEY` not set in `.env`
-- `.env` file missing — run `cp .env.example .env` and fill in the secrets
+- `JWT_SECRET` or `API_KEY_ENCRYPTION_KEY` not set → look for `set JWT_SECRET` / `set API_KEY_ENCRYPTION_KEY` in the log.
+- Port 3000 already in use → change the host port in `docker-compose.yml` (`"3001:8080"`) and update `APP_URL` + `CORS_ORIGINS`.
 
-### Can't reach http://localhost:3000
+### Login page says "registration disabled"
 
-- Verify the container is running: `docker compose ps`
-- Check the port is mapped: `docker compose port glassy 8080`
-- On Linux, verify no firewall is blocking port 3000
+This is expected. Registration is permanently disabled on the self-hosted appliance. Log in with the admin account (see [First boot](#3-first-boot--admin-account)).
 
-### Obsidian sync not working
+### AI features not working
 
-See [\u00a77 Obsidian live sync](#7-obsidian-live-sync) and the troubleshooting steps there.
+1. **BYOK path:** Settings → AI → API Keys — verify your key is saved and the correct provider is selected.
+2. **Ollama path:** run `ollama list` on the host to verify a model is installed. Check `OLLAMA_BASE_URL` in `.env` (default `http://localhost:11434`).
+3. **No provider configured:** the app returns a clear error: "No AI provider configured. Add your own API key in Settings → API Keys, or run a local Ollama model."
 
-### AI not working
+### Obsidian sync not connecting
 
-- Local AI (WebGPU): runs in the browser, no server config needed.
-- Ollama: verify Ollama is running on the host (`ollama list`), then reload Settings → AI.
-- Cloud AI: add your key in Settings → API Keys (not in `.env`).
+See [Obsidian live sync § Troubleshooting](#troubleshooting-obsidian-connectivity).
 
-### Lost admin password
+### "Store" or "Upgrade" redirect to Settings
 
-See [\u00a75 Account recovery](#5-account-recovery-lost-password).
+Expected. Commerce surfaces are not available on the self-hosted appliance — all premium features are already unlocked.
+
+### Container healthy but app shows errors
+
+```bash
+# Check database integrity
+docker exec glassy sqlite3 /app/data/notes.db "PRAGMA integrity_check;"
+# Should print: ok
+```
+
+### Reset everything (nuclear option)
+
+```bash
+docker compose down
+docker volume rm glassy-selfhost_glassy-data
+docker compose up -d
+# A fresh admin account will be seeded on first boot.
+```
+
+> **This is irreversible if you have no backup.** See [Backup & restore](#8-backup--restore).

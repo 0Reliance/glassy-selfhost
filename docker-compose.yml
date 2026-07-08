@@ -16,14 +16,21 @@ services:
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:?set API_KEY_ENCRYPTION_KEY}
       - APP_URL=${APP_URL:-http://localhost:3000}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      # Membership gate: your Glassy account email (Clear or Pro).
+      # The appliance verifies this against the cloud on first boot and
+      # caches the result for 30 days. Required — container will not start
+      # without a verified membership.
+      - GLASSY_MEMBER_EMAIL=${GLASSY_MEMBER_EMAIL:?set GLASSY_MEMBER_EMAIL to your Glassy membership email}
       # Identity: activates single-user gating (no registration, no commerce,
-      # owner auto-unlocked). Do not change.
+      # owner auto-unlocked). Fixed on purpose — this is what makes the
+      # instance private and single-user. Do not override via .env.
       - INSTANCE_ID=self_hosted
       - INSTANCE_ACCESS_MODE_DEFAULT=private
-      - DEPLOYMENT_LOCALITY=local
-      - ENABLE_MCP_SERVER=true
-      - ENABLE_AGENT_GATEWAY=true
-      - OBSIDIAN_HOST_OVERRIDE=host.docker.internal
+      # Operational flags — safe to override in .env:
+      - DEPLOYMENT_LOCALITY=${DEPLOYMENT_LOCALITY:-local}
+      - ENABLE_MCP_SERVER=${ENABLE_MCP_SERVER:-true}
+      - ENABLE_AGENT_GATEWAY=${ENABLE_AGENT_GATEWAY:-true}
+      - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
     extra_hosts: ['host.docker.internal:host-gateway']
     volumes: ['glassy-data:/app/data']
 volumes: { glassy-data: {} }

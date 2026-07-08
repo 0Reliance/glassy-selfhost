@@ -15,11 +15,15 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
+      # Poll daily (in seconds). Raise/lower to taste.
       - WATCHTOWER_POLL_INTERVAL=86400
+      # Remove old images after updating to reclaim disk.
       - WATCHTOWER_CLEANUP=true
+      # Only manage containers in this compose project (label-scoped).
       - WATCHTOWER_LABEL_ENABLE=true
     command: []
 
   glassy:
+    # Opt this container in to Watchtower management.
     labels:
       - com.centurylinklabs.watchtower.enable=true
