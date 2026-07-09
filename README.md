@@ -274,6 +274,7 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 | `APP_URL` | `http://localhost:3000` | Set for Tailscale / domain access |
 | `CORS_ORIGINS` | `http://localhost:3000` | Must include every origin you use |
 | `GLASSY_TAG` | `latest` | Pin a version for reproducibility |
+| `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); use `http://ollama:11434` with the sidecar overlay |
 | `OLLAMA_MODEL` | `llama3.2` | Default model when none is selected in-app |
 | `BACKUP_ENCRYPTION_KEY` | — | AES-256-GCM; `openssl rand -hex 32` |
@@ -300,6 +301,71 @@ environment variables or admin settings:
 - **AI credit metering off.** BYOK calls go directly to your provider.
 
 `.env` is excluded from version control by `.gitignore`. Never commit it.
+
+---
+
+## Troubleshooting
+
+### Port 3000 already in use
+
+If another service is using port 3000 (common for dev tools), set a
+different port in `.env`:
+
+```env
+APP_PORT=3001
+APP_URL=http://localhost:3001
+CORS_ORIGINS=http://localhost:3001
+```
+
+Then `docker compose up -d`. The container always listens on 8080 internally;
+`APP_PORT` only changes the host-side mapping.
+
+### Checking container health
+
+To verify the container is healthy from the host:
+
+```bash
+# External health endpoint (returns JSON):
+curl http://localhost:3000/ready
+
+# Internal monitoring endpoint (more detailed, used by Docker healthcheck):
+curl http://localhost:3000/api/monitoring/ready
+```
+
+Both return JSON with `"status":"ready"` when healthy. If you get HTML
+instead, the container may still be starting up — wait a few seconds and
+retry.
+
+### Debugging from inside the container
+
+The runtime image includes `curl` for network diagnostics:
+
+```bash
+# Enter the container:
+docker compose exec glassy sh
+
+# Test Ollama connectivity from inside the container:
+curl -s http://host.docker.internal:11434/api/tags | head -c 200
+
+# Test membership-verification endpoint reachability:
+curl -s -o /dev/null -w "%{http_code}" https://app.glassy.fyi/api/verify-selfhost
+```
+
+### Container logs
+
+```bash
+# Full logs:
+docker compose logs glassy
+
+# Follow logs:
+docker compose logs -f glassy
+
+# Check for membership verification status:
+docker compose logs glassy | grep -i "membership"
+
+# Check for Agent Gateway mount status:
+docker compose logs glassy | grep -i "Agent Gateway"
+```
 
 ---
 
