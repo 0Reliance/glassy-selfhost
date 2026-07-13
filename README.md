@@ -12,7 +12,7 @@ and local AI — on one page. Your data stays on your machine.**
 [![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-0f172a?style=flat-square)](https://docs.docker.com/get-started/)
 
-[Cloud app](https://app.glassy.fyi) · [Docs](https://docs.glassy.today) · [Companion extension](https://github.com/0Reliance/glassy-companion) · [Release notes](https://github.com/0Reliance/glassy-selfhost/releases)
+[Cloud app](https://app.glassy.fyi) · [Docs](https://docs.glassy.fyi) · [Companion extension](https://github.com/0Reliance/glassy-companion) · [Release notes](https://github.com/0Reliance/glassy-selfhost/releases)
 
 </div>
 
@@ -275,7 +275,7 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 | `CORS_ORIGINS` | `http://localhost:3000` | Must include every origin you use |
 | `GLASSY_TAG` | `latest` | Pin a version for reproducibility |
 | `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
-| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); use `http://ollama:11434` with the sidecar overlay |
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); the server auto-appends `/v1` if missing. Use `http://ollama:11434` with the sidecar overlay |
 | `OLLAMA_MODEL` | `llama3.2` | Default model when none is selected in-app |
 | `BACKUP_ENCRYPTION_KEY` | — | AES-256-GCM; `openssl rand -hex 32` |
 | `CLUSTER_WORKERS` | `min(2, CPUs−1)` | Raise on multi-core hosts |
@@ -320,16 +320,18 @@ CORS_ORIGINS=http://localhost:3001
 Then `docker compose up -d`. The container always listens on 8080 internally;
 `APP_PORT` only changes the host-side mapping.
 
+> **⚠️ If you change `APP_PORT`, you must also update `APP_URL` and `CORS_ORIGINS` to the same port.** All three must agree, or login and API calls will fail with CORS errors.
+
 ### Checking container health
 
 To verify the container is healthy from the host:
 
 ```bash
-# External health endpoint (returns JSON):
-curl http://localhost:3000/ready
-
-# Internal monitoring endpoint (more detailed, used by Docker healthcheck):
+# Canonical health endpoint (used by Docker healthcheck):
 curl http://localhost:3000/api/monitoring/ready
+
+# Convenience alias:
+curl http://localhost:3000/ready
 ```
 
 Both return JSON with `"status":"ready"` when healthy. If you get HTML
@@ -375,9 +377,9 @@ docker compose logs glassy | grep -i "Agent Gateway"
 | --- | --- |
 | **[app.glassy.fyi](https://app.glassy.fyi)** | Cloud-hosted — zero setup, accessible from anywhere |
 | **[glassy-companion](https://github.com/0Reliance/glassy-companion)** | Browser extension — one-keystroke capture, Obsidian sync |
-| **[docs.glassy.today](https://docs.glassy.today)** | Documentation |
-| **[learn.glassy.today](https://learn.glassy.today)** | Guides and video lessons |
-| **[glassy.today](https://glassy.today)** | Marketing site and Clear community |
+| **[docs.glassy.fyi](https://docs.glassy.fyi)** | Documentation |
+| **[learn.glassy.fyi](https://learn.glassy.fyi)** | Guides and video lessons |
+| **[glassy.fyi](https://glassy.fyi)** | Marketing site and Clear community |
 
 ---
 

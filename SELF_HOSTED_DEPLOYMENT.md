@@ -211,26 +211,42 @@ docker exec -it glassy node -e "
 const db = require('./server/db');
 const bcrypt = require('bcryptjs');
 const hash = bcrypt.hashSync('NewPassword123!', 12);
-db.prepare('UPDATE users SET password_hash = ? WHERE username = ?').run(hash, 'TARGET_USERNAME');
+db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(hash, 'target@example.com');
 console.log('Done');
 "
 ```
 
-Replace `TARGET_USERNAME` and `NewPassword123!` with the target username and a new temporary password, then have the user change it in Settings.
+Replace `target@example.com` with the sub-account's email and `NewPassword123!` with a new temporary password, then have the user change it in Settings.
 
-### Option B — SQLite direct (admin locked out)
+> **The `users` table uses `email`, not `username`.** The admin account's email is your `GLASSY_MEMBER_EMAIL`, not `admin`.
 
-If the admin account itself is inaccessible, stop the container and edit the database directly:
+### Option B — Docker exec (admin locked out)
+
+If the admin account itself is inaccessible, use `docker exec` to reset the password directly in the database. The runtime image already includes `bcryptjs`, so no host-side tools are needed:
 
 ```bash
+# Stop the container first to avoid write conflicts:
 docker compose down
-# The volume is at: docker volume inspect glassy-selfhost_glassy-data
-# Default path on Linux: /var/lib/docker/volumes/glassy-selfhost_glassy-data/_data/notes.db
-sqlite3 /var/lib/docker/volumes/glassy-selfhost_glassy-data/_data/notes.db \
-  "UPDATE users SET password_hash = '\$(python3 -c \"import bcrypt; print(bcrypt.hashpw(b'Temp1234!', bcrypt.gensalt(12)).decode())\")'
-   WHERE username = 'admin';"
+
+# Reset the admin password (replace TempPass123! with your new password
+# and your GLASSY_MEMBER_EMAIL with the actual admin email):
+docker run --rm -v glassy-selfhost_glassy-data:/app/data \
+  --entrypoint node ghcr.io/0reliance/glassy-dash:latest -e "
+const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
+const db = new Database('/app/data/notes.db');
+const hash = bcrypt.hashSync('TempPass123!', 12);
+db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(hash, 'your.member@email.com');
+console.log('Password reset for your.member@email.com');
+db.close();
+"
+
 docker compose up -d
 ```
+
+> **The volume path differs by Docker backend.** On Docker Desktop (WSL2/macOS), the volume is inside the Docker VM — don't try to access it via `/var/lib/docker/volumes` on the host. The `docker run` command above works on all platforms because it mounts the named volume directly.
+>
+> **The `users` table has an `email` column, not `username`.** The admin email is your `GLASSY_MEMBER_EMAIL`.
 
 ### Option C — Secret recovery key
 
@@ -260,7 +276,7 @@ Ollama is already reachable via `host.docker.internal` without any configuration
 2. Pull a model: `ollama pull llama3.2` (or any supported model)
 3. In Glassy: Settings → AI → **Ollama** — Glassy auto-detects models from `http://host.docker.internal:11434`
 
-The `OLLAMA_BASE_URL` env var defaults to `http://host.docker.internal:11434` (reaches Ollama running on the host via Docker's host gateway). If you're using the bundled sidecar overlay, use `http://ollama:11434` instead. Override in `.env` if Ollama runs on a different port or host.
+The `OLLAMA_BASE_URL` env var defaults to `http://host.docker.internal:11434` (reaches Ollama running on the host via Docker's host gateway). The server automatically appends `/v1` if it's missing, so both `http://host.docker.internal:11434` and `http://host.docker.internal:11434/v1` work. If you're using the bundled sidecar overlay, use `http://ollama:11434` instead. Override in `.env` if Ollama runs on a different port or host.
 
 **No Ollama installed?** Use the bundled sidecar overlay so there's nothing extra to install on the host:
 
@@ -283,11 +299,15 @@ Live Obsidian vault sync is the primary reason to self-host. The cloud server ca
 2. In Companion settings, set the **Server URL** to `http://localhost:3000` (or your Tailscale / LAN URL — see [multi-device access](../deploy/selfhost/README.md)).
 3. In Glassy: Settings → **Obsidian** → enable sync and point it at your vault path.
 
-The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which rewrites `127.0.0.1` references so the container can reach the Obsidian desktop app running on the host. No extra configuration is needed for a single-machine setup.
+The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which rewrites `127.0.0.1` references so the container can reach the Obsidian desktop app running on the host. This works out of the box on **native Linux and macOS**.
+
+> **⚠️ Windows + WSL2 users:** `host.docker.internal` inside the container resolves to the **WSL2 VM**, not the Windows host. The container cannot reach Obsidian running on Windows `127.0.0.1` this way. Use the **browser extension bridge** instead — it proxies Obsidian requests through your browser and requires no network exposure. See [`deploy/selfhost/README.md` § Obsidian vault sync](../deploy/selfhost/README.md#obsidian-vault-sync) for the full WSL2 setup guide.
 
 ### Troubleshooting Obsidian connectivity
 
 - **Container can't reach Obsidian plugin:** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically.
+- **WSL2 (`host.docker.internal` → WSL VM, not Windows):** install the Glassy Companion browser extension and enable the **Obsidian Bridge** in its settings. The extension proxies requests from the server through your browser, bypassing the WSL2 networking gap entirely. See [`deploy/selfhost/README.md` § Browser Extension Bridge](../deploy/selfhost/README.md#1-browser-extension-bridge-recommended-for-windowswsl2).
+- **Obsidian on a different machine (LAN/Tailscale):** set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname in `.env`. The plugin must bind to `0.0.0.0` instead of `127.0.0.1` (see [`deploy/selfhost/README.md` § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups)).
 - **`APP_URL` mismatch:** if you access Glassy from a hostname other than `localhost`, set `APP_URL` and `CORS_ORIGINS` accordingly (see [multi-device access](../deploy/selfhost/README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)).
 
 ---
@@ -352,10 +372,10 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.34.2 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.6 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.34.2` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.6` in `.env` and re-run `docker compose up -d`.
 
 ---
 
@@ -405,7 +425,9 @@ docker compose logs glassy
 
 Common causes:
 - `JWT_SECRET` or `API_KEY_ENCRYPTION_KEY` not set → look for `set JWT_SECRET` / `set API_KEY_ENCRYPTION_KEY` in the log.
-- Port 3000 already in use → set `APP_PORT=3001` in `.env` and update `APP_URL` + `CORS_ORIGINS` to match (e.g. `http://localhost:3001`).
+- Port 3000 already in use → set `APP_PORT=3001` in `.env` **and** update `APP_URL` and `CORS_ORIGINS` to match (e.g. `http://localhost:3001`).
+
+> **⚠️ If you change `APP_PORT`, you must also update `APP_URL` and `CORS_ORIGINS` to the same port.** Leaving them at `http://localhost:3000` while `APP_PORT=3005` will cause CORS failures and broken login redirects.
 
 ### Login page says "registration disabled"
 
@@ -413,20 +435,22 @@ This is expected. Registration is permanently disabled on the self-hosted applia
 
 ### Checking health from outside the container
 
-The container exposes two JSON health endpoints:
+The container exposes a JSON health endpoint. The **canonical endpoint** (used by the Docker healthcheck) is:
 
 ```bash
-# Quick ready check (returns JSON):
-curl http://localhost:3000/ready
-
-# Detailed monitoring (used by Docker healthcheck):
 curl http://localhost:3000/api/monitoring/ready
 ```
 
-Both return `"status":"ready"` when healthy. If you get HTML instead of JSON,
-the SPA catch-all is responding — the container may still be starting up.
-Wait a few seconds and retry. The runtime image includes `curl` for
-in-container network diagnostics (`docker compose exec glassy curl …`).
+Returns `{"status":"ready", ...}` when healthy. There is also a convenience alias:
+
+```bash
+curl http://localhost:3000/ready
+```
+
+Both return JSON when the server is up. If you get HTML instead of JSON, the
+SPA catch-all is responding — the container may still be starting up. Wait a
+few seconds and retry. The runtime image includes `curl` for in-container
+network diagnostics (`docker compose exec glassy curl …`).
 
 ### AI features not working
 
