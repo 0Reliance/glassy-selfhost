@@ -54,11 +54,16 @@ cd glassy-selfhost
 cp .env.example .env
 ```
 
-Open `.env` and fill in the **three required fields**:
+Open `.env` and fill in the **four required fields**:
 
 ```env
 # Your Glassy account email (Clear or Pro membership)
 GLASSY_MEMBER_EMAIL=your@glassy-account-email
+
+# Pairing token — generate in app.glassy.fyi → Settings → Self-hosting.
+# Prevents anyone who knows your email from spinning up an unlocked
+# instance using your membership.
+GLASSY_SELFHOST_TOKEN=<paste-your-token-here>
 
 # Generate each one with: openssl rand -hex 32
 JWT_SECRET=
@@ -71,16 +76,23 @@ Then:
 docker compose up -d
 ```
 
-On first boot the appliance verifies your membership against the cloud, creates
-your local account using your membership email, and prints the initial password
-**once**:
+On first boot the appliance verifies your membership **and pairing token**
+against the cloud, creates your local account using your membership email, and
+persists the initial password to a file you can recover even if the Docker log
+buffer has rotated:
 
 ```bash
+# Preferred — survives container recreation, deleted on first password change:
+docker exec glassy cat /app/data/.initial_admin_password
+
+# Also printed to stdout on the true first boot (only fires when the
+# database is empty):
 docker compose logs glassy | grep -A2 "Default admin created"
 ```
 
-Sign in at **http://localhost:3000** with your membership email and that password,
-then set a permanent password in **Settings → Account**.
+Sign in at **http://localhost:3000** with your membership email and that password.
+You will be **immediately prompted to set a permanent password** before you can
+use the workspace — the random one is discarded after that.
 Registration is permanently disabled — this is a single-owner appliance.
 All premium features are unlocked automatically.
 
@@ -269,6 +281,7 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 | Variable | Default | |
 | --- | --- | --- |
 | `GLASSY_MEMBER_EMAIL` | **required** | Your Clear or Pro membership email |
+| `GLASSY_SELFHOST_TOKEN` | **required** | Pairing token from Settings → Self-hosting on app.glassy.fyi. Prevents unauthorized use of your membership by someone who merely knows your email. |
 | `JWT_SECRET` | **required** | `openssl rand -hex 32` |
 | `API_KEY_ENCRYPTION_KEY` | **required** | `openssl rand -hex 32` |
 | `APP_URL` | `http://localhost:3000` | Set for Tailscale / domain access |

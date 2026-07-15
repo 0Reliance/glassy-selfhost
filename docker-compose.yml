@@ -21,6 +21,11 @@ services:
       # caches the result for 30 days. Required — container will not start
       # without a verified membership.
       - GLASSY_MEMBER_EMAIL=${GLASSY_MEMBER_EMAIL:?set GLASSY_MEMBER_EMAIL to your Glassy membership email}
+      # Pairing token: prevents anyone who knows your email from spinning up
+      # an unlocked instance using your membership. Generate in Settings →
+      # Self-hosting on app.glassy.fyi. Required — container will not start
+      # without it.
+      - GLASSY_SELFHOST_TOKEN=${GLASSY_SELFHOST_TOKEN:?set GLASSY_SELFHOST_TOKEN to your pairing token from app.glassy.fyi Settings}
       # Identity: activates single-user gating (no registration, no commerce,
       # owner auto-unlocked). Fixed on purpose — this is what makes the
       # instance private and single-user. Do not override via .env.
