@@ -78,24 +78,43 @@ The seeded admin is automatically granted `clear_lifetime` tier, which unlocks e
 
 On first boot the appliance verifies your membership with the cloud, then
 creates your local account using your `GLASSY_MEMBER_EMAIL` and prints the
-initial password once:
+initial password once. The password is **also written to a file** so you can
+recover it even if the Docker log buffer has rolled:
 
 ```bash
+# Option A — grep the logs (first boot ONLY — see warning below):
 docker compose logs glassy | grep -A2 "Default admin created"
+
+# Option B — read the credentials file (survives container recreation,
+# deleted automatically after your first password change):
+docker exec glassy cat /app/data/.initial_admin_password
 ```
 
 You will see something like:
 
 ```
-Default admin created — username: you@example.com  password: <generated>
+⚠️  Default admin created. Credentials (change immediately):
+   Username: you@example.com
+   Password: <22-char-base64url>
 ```
 
-Sign in at http://localhost:3000 with your membership email and that password,
-then go to **Settings → Account** and set a permanent password.
+> ⚠️ **The password line only appears on the true first boot** — when the
+> `users` table is completely empty. If the `glassy-data` volume persisted
+> from a previous run (e.g. you ran `docker compose down` without `-v`), no
+> new password is printed and your existing admin password is unchanged.
+> Use the file fallback above, or to start completely fresh see
+> [Reset everything](#reset-everything-nuclear-option).
 
-The initial generated password is not stored anywhere after it is displayed.
+Sign in at http://localhost:3000 with your membership email and that password.
+You will be **immediately forced to set a permanent password** before you can
+use the workspace — the random one is discarded after that, and the
+`/app/data/.initial_admin_password` file is deleted on first successful
+change.
 
-If you miss the initial log output or are locked out, see [Account recovery](#5-account-recovery-lost-password).
+The initial generated password is not stored in plaintext anywhere after it
+is displayed — only its bcrypt hash lives in the local database.
+
+If you are locked out and the file fallback is gone, see [Account recovery](#5-account-recovery-lost-password).
 
 ### Admin seeding behaviour
 
@@ -104,64 +123,86 @@ The seed only runs when no `users` row exists with `is_admin=1`. On subsequent b
 ### How authentication works (and what the cloud sees)
 
 Glassy self-host is a **single-owner appliance** — the appliance and the cloud
-are two separate systems that share only one thing: your email address. Here's
-the full flow:
+are two separate systems that share only two things: your email address and a
+pairing token you control. Here's the full flow:
 
-**1. Membership verification (boot, every 30 days).** The appliance sends a
-server-to-server POST to `https://app.glassy.fyi/api/verify-selfhost` with
-body `{ "email": "you@example.com" }`. **No password, no token, no session
-data is ever sent.** The cloud looks up the email in its own user database and
-returns one of:
+**1. Membership + pairing-token verification (boot, every 30 days).** The
+appliance sends a server-to-server POST to `https://app.glassy.fyi/api/verify-selfhost`
+with body `{ "email": "you@example.com", "selfhostToken": "<your pairing token>" }`.
+**No password, no session data, no note content is ever sent.** The cloud looks
+up the email, confirms the membership is active, and verifies the token matches
+the one stored hashed in your account. It returns one of:
 
-- `{ valid: true, tier: "clear_lifetime" }` — active membership found
-- `{ valid: false, reason: "no_account" }` — no Glassy account with that email
-- `{ valid: false, reason: "no_active_membership" }` — account exists but no active subscription
+- `{ valid: true, tier: "clear_lifetime", ts, nonce, signature }` — active
+  membership + token match. `signature` is an HMAC over `(email|tier|ts|nonce)`
+  so the cached result cannot be forged on your disk.
+- `{ valid: false }` — any failure (no account, no membership, missing/mismatched
+  token). The endpoint deliberately does **not** distinguish reasons to prevent
+  email + membership enumeration. The specific reason is logged server-side only.
 
-The endpoint is rate-limited (10 requests per IP per 15 minutes) and returns
-nothing beyond a boolean + tier — no user details, no password hints, no
-account data. The result is cached to `.membership_cache.json` in the data
-volume for 30 days. If the cloud is unreachable, the appliance falls back to
-the cache (even if expired) and warns in the logs. If no cache exists, the
-container exits with code 1.
+Generate the pairing token in your Glassy account on the cloud:
+**Settings → Self-hosting → Generate token**. Paste it into `GLASSY_SELFHOST_TOKEN`
+in `.env`. Rotate it any time from the same page (the old token stops working on
+the next 30-day re-verification, or immediately if you destroy the cache).
 
-**2. Admin account creation (first boot only).** If the `users` table is empty,
+The endpoint is rate-limited (10 requests per IP per 15 minutes). The result is
+cached to `.membership_cache.json` in the data volume for 30 days when signed,
+or 24 hours when unsigned. If the cloud is unreachable, the appliance falls back
+to the cache (signed caches accepted indefinitely offline; unsigned caches up to
+7 days past expiry as a degraded-mode safety net) and warns in the logs. If no
+usable cache exists, the container exits with code 1.
+
+**2. Admin account created (first boot only).** If the `users` table is empty,
 the appliance creates a local admin account:
 
 - **Email** = your `GLASSY_MEMBER_EMAIL` (so you can log in with your real address)
 - **Password** = a 22-character random string generated with `crypto.randomBytes(16)`,
   bcrypt-hashed (cost 12) and stored as a hash. The plaintext is printed to
-  stdout **once** and never stored anywhere.
+  stdout **once** and written to `/app/data/.initial_admin_password` (chmod 600)
+  so you can recover it if the log buffer rolls. The file is deleted on your
+  first successful password change.
 - **Tier** = `clear_lifetime` — unlocks all premium features via the existing
   `isClearMember()` entitlement path. No commerce flow, no credit ledger.
+- **`password_must_change=1`** — forces a one-time password change on first
+  login so you set a permanent password regardless of how you discovered the
+  random one.
 
-You retrieve the password with `docker compose logs glassy | grep -A2 "Default
-admin created"`, sign in, and set a permanent password in Settings → Account.
-After that, the generated password is irrelevant — only your new password's
-hash matters.
+You retrieve the password with `docker exec glassy cat /app/data/.initial_admin_password`
+(or grep the logs on the very first boot), sign in, and set a permanent password
+when prompted. After that, the generated password is irrelevant — only your new
+password's hash matters.
 
 **3. Ongoing authentication (every login).** Entirely local. You POST
 `{ email, password }` to `/api/login`; the server looks up the email in the
 local SQLite `users` table, compares the bcrypt hash, and issues a JWT signed
 with your `JWT_SECRET`. No cloud call, no network dependency. The cloud never
 sees your password, your JWT, or any of your note content — it only confirmed
-your membership once at boot.
+your membership and token once at boot.
 
 ```
 Your .env: GLASSY_MEMBER_EMAIL=you@example.com
+          GLASSY_SELFHOST_TOKEN=<pairing token>
         │
         ▼
   ┌─────────────────────────────────┐
   │ Boot (every 30 days)            │
-  │ POST /api/verify-selfhost        │  ← email only, no password
-  │ Cloud checks: membership active? │
+  │ POST /api/verify-selfhost        │  ← email + pairing token, no password
+  │ Cloud checks: membership + token │
   └────────────┬────────────────────┘
-               │ valid: true, tier: clear_lifetime
+               │ valid: true, tier, signed cache
                ▼
   ┌─────────────────────────────────┐
   │ First boot only                  │
-  │ Create local admin account       │  ← random password printed once
-  │ email = GLASSY_MEMBER_EMAIL      │     bcrypt hash in local SQLite
-  │ tier  = clear_lifetime           │     no plaintext stored
+  │ Create local admin account       │  ← random password printed + saved to
+  │ email = GLASSY_MEMBER_EMAIL      │     /app/data/.initial_admin_password
+  │ tier  = clear_lifetime           │     bcrypt hash in local SQLite
+  │ must_change = 1                  │     forced change on first login
+  └────────────┬────────────────────┘
+               │
+               ▼
+  ┌─────────────────────────────────┐
+  │ First login                      │
+  │ Forced password-change screen    │  ← set permanent password, file deleted
   └────────────┬────────────────────┘
                │
                ▼
@@ -175,10 +216,17 @@ Your .env: GLASSY_MEMBER_EMAIL=you@example.com
 **Security notes:**
 
 - The cloud endpoint cannot leak your password — it never receives one.
-- The `JWT_SECRET` in your `.env` is the only signing key. Rotate it by
-  editing `.env` and restarting (this invalidates all existing sessions).
-- The membership cache file (`.membership_cache.json`) contains only your
-  email, the tier string, and a timestamp — no secrets.
+- The pairing token prevents anyone who merely knows your email from spinning
+  up an unlocked instance using your membership. Keep it private; rotate it if
+  it leaks.
+- The membership cache is HMAC-signed by the cloud; a forged cache file on your
+  disk will fail signature verification and degrade to a 24h TTL (or be rejected
+  if unsigned and older than 7 days past expiry).
+- The `JWT_SECRET` in your `.env` is the only signing key for session tokens.
+  Rotate it by editing `.env` and restarting (this invalidates all existing sessions).
+- The membership cache file (`.membership_cache.json`) contains your email, the
+  tier string, a timestamp, a nonce, and an HMAC signature — no passwords, no
+  tokens, no secrets beyond the signature itself.
 
 ---
 
@@ -477,10 +525,17 @@ docker exec glassy sqlite3 /app/data/notes.db "PRAGMA integrity_check;"
 ### Reset everything (nuclear option)
 
 ```bash
-docker compose down
-docker volume rm glassy-selfhost_glassy-data
+# -v removes the named volume too (without it, your account persists and the
+# admin password line will NOT be re-printed on the next boot):
+docker compose down -v
 docker compose up -d
 # A fresh admin account will be seeded on first boot.
 ```
+
+> **`docker compose down` without `-v` keeps the `glassy-data` volume.** That
+> is usually what you want (it preserves your account and notes), but if your
+> goal is a true reset you MUST add `-v` — otherwise the admin seeding block
+> sees a non-empty `users` table and skips, so no password is printed and your
+> old admin password is the only way in.
 
 > **This is irreversible if you have no backup.** See [Backup & restore](#8-backup--restore).
