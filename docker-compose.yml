@@ -1,6 +1,7 @@
 # Glassy — self-hosted (local machine). Obsidian + local services reachable.
-# Copy .env.example to .env and fill in JWT_SECRET + API_KEY_ENCRYPTION_KEY,
-# then `docker compose up -d`. See README.md for the full quick start.
+# Copy .env.example to .env and fill in the required fields (membership email,
+# pairing token, secrets). Clear members also set GLASSY_VERIFY_CLOUD_URL.
+# Then `docker compose up -d`. See README.md for the full quick start.
 name: glassy-selfhost
 services:
   glassy:
@@ -22,10 +23,16 @@ services:
       # without a verified membership.
       - GLASSY_MEMBER_EMAIL=${GLASSY_MEMBER_EMAIL:?set GLASSY_MEMBER_EMAIL to your Glassy membership email}
       # Self-host pairing token (required). Generate one in your Glassy
-      # account at https://app.glassy.fyi (Settings → Self-hosting) and
-      # paste it here. Prevents anyone who merely knows your email from
-      # spinning up an unlocked instance using your membership.
+      # account under Settings → Self-hosting and paste it here.
+      #   • Public/Pro: https://app.glassy.fyi/#/settings?g=account&s=selfhost
+      #   • Clear members: https://clear.glassy.fyi/#/settings?g=account&s=selfhost
+      # Prevents anyone who merely knows your email from spinning up an
+      # unlocked instance using your membership.
       - GLASSY_SELFHOST_TOKEN=${GLASSY_SELFHOST_TOKEN:?set GLASSY_SELFHOST_TOKEN — generate one in your Glassy account under Settings → Self-hosting}
+      # Cloud verification URL. Defaults to the public SaaS (app.glassy.fyi).
+      # Clear members must set this to https://clear.glassy.fyi so the
+      # appliance verifies against the cloud where their account lives.
+      - GLASSY_VERIFY_CLOUD_URL=${GLASSY_VERIFY_CLOUD_URL:-https://app.glassy.fyi}
       # Identity: activates single-user gating (no registration, no commerce,
       # owner auto-unlocked). Hardcoded here (not a ${VAR} substitution) so
       # it cannot be overridden via .env. Even if someone runs the public GHCR

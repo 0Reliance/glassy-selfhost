@@ -127,8 +127,10 @@ are two separate systems that share only two things: your email address and a
 pairing token you control. Here's the full flow:
 
 **1. Membership + pairing-token verification (boot, every 30 days).** The
-appliance sends a server-to-server POST to `https://app.glassy.fyi/api/verify-selfhost`
-with body `{ "email": "you@example.com", "selfhostToken": "<your pairing token>" }`.
+appliance sends a server-to-server POST to `<GLASSY_VERIFY_CLOUD_URL>/api/verify-selfhost`
+(default `https://app.glassy.fyi/api/verify-selfhost`; Clear members should set
+it to `https://clear.glassy.fyi/api/verify-selfhost`) with body
+`{ "email": "you@example.com", "selfhostToken": "<your pairing token>" }`.
 **No password, no session data, no note content is ever sent.** The cloud looks
 up the email, confirms the membership is active, and verifies the token matches
 the one stored hashed in your account. It returns one of:
@@ -141,9 +143,14 @@ the one stored hashed in your account. It returns one of:
   email + membership enumeration. The specific reason is logged server-side only.
 
 Generate the pairing token in your Glassy account on the cloud:
-**Settings → Self-hosting → Generate token**. Paste it into `GLASSY_SELFHOST_TOKEN`
-in `.env`. Rotate it any time from the same page (the old token stops working on
-the next 30-day re-verification, or immediately if you destroy the cache).
+**Settings → Self-hosting → Generate token**.
+  • Public / Pro members: https://app.glassy.fyi/#/settings?g=account&s=selfhost
+  • Clear members:        https://clear.glassy.fyi/#/settings?g=account&s=selfhost
+Paste it into `GLASSY_SELFHOST_TOKEN` in `.env`. If you generated the token on
+Clear, also set `GLASSY_VERIFY_CLOUD_URL=https://clear.glassy.fyi` so the
+appliance verifies against the correct cloud instance. Rotate the token any time
+from the same page (the old token stops working on the next 30-day re-verification,
+or immediately if you destroy the cache).
 
 The endpoint is rate-limited (10 requests per IP per 15 minutes). The result is
 cached to `.membership_cache.json` in the data volume for 30 days when signed,
@@ -182,11 +189,13 @@ your membership and token once at boot.
 ```
 Your .env: GLASSY_MEMBER_EMAIL=you@example.com
           GLASSY_SELFHOST_TOKEN=<pairing token>
+          GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (or https://clear.glassy.fyi)
         │
         ▼
   ┌─────────────────────────────────┐
   │ Boot (every 30 days)            │
   │ POST /api/verify-selfhost        │  ← email + pairing token, no password
+  │ → GLASSY_VERIFY_CLOUD_URL        │
   │ Cloud checks: membership + token │
   └────────────┬────────────────────┘
                │ valid: true, tier, signed cache

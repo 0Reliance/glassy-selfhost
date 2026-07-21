@@ -54,16 +54,21 @@ cd glassy-selfhost
 cp .env.example .env
 ```
 
-Open `.env` and fill in the **four required fields**:
+Open `.env` and fill in the **required fields**:
 
 ```env
 # Your Glassy account email (Clear or Pro membership)
 GLASSY_MEMBER_EMAIL=your@glassy-account-email
 
-# Pairing token — generate in app.glassy.fyi → Settings → Self-hosting.
-# Prevents anyone who knows your email from spinning up an unlocked
-# instance using your membership.
+# Pairing token — generate in your Glassy account under
+# Settings → Self-hosting.
+#   • Public/Pro: https://app.glassy.fyi/#/settings?g=account&s=selfhost
+#   • Clear:     https://clear.glassy.fyi/#/settings?g=account&s=selfhost
 GLASSY_SELFHOST_TOKEN=<paste-your-token-here>
+
+# Clear members only — set this to your Clear cloud URL.
+# Public/Pro members can leave the default (https://app.glassy.fyi).
+GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi
 
 # Generate each one with: openssl rand -hex 32
 JWT_SECRET=
@@ -281,7 +286,8 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 | Variable | Default | |
 | --- | --- | --- |
 | `GLASSY_MEMBER_EMAIL` | **required** | Your Clear or Pro membership email |
-| `GLASSY_SELFHOST_TOKEN` | **required** | Pairing token from Settings → Self-hosting on app.glassy.fyi. Prevents unauthorized use of your membership by someone who merely knows your email. |
+| `GLASSY_SELFHOST_TOKEN` | **required** | Pairing token from Settings → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
+| `GLASSY_VERIFY_CLOUD_URL` | `https://app.glassy.fyi` | Cloud instance that verifies your membership. Clear members must set `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | **required** | `openssl rand -hex 32` |
 | `API_KEY_ENCRYPTION_KEY` | **required** | `openssl rand -hex 32` |
 | `APP_URL` | `http://localhost:3000` | Set for Tailscale / domain access |
@@ -363,6 +369,7 @@ docker compose exec glassy sh
 curl -s http://host.docker.internal:11434/api/tags | head -c 200
 
 # Test membership-verification endpoint reachability:
+# (use https://clear.glassy.fyi if you are a Clear member)
 curl -s -o /dev/null -w "%{http_code}" https://app.glassy.fyi/api/verify-selfhost
 ```
 
