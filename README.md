@@ -16,6 +16,11 @@ and local AI — on one page. Your data stays on your machine.**
 
 </div>
 
+<!-- MAINTAINERS: See MAINTAINING.md for the sync process between this
+     repo and glassy/deploy/selfhost/ in the main glassy repo. Any change
+     to .env.example or docker-compose*.yml here MUST also be made in
+     glassy/deploy/selfhost/ (or vice versa) and the two kept identical. -->
+
 ---
 
 ![Glassy — Today dashboard](screenshots/today.png)

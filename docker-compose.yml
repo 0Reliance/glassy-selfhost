@@ -2,6 +2,9 @@
 # Copy .env.example to .env and fill in the required fields (membership email,
 # pairing token, secrets). Clear members also set GLASSY_VERIFY_CLOUD_URL.
 # Then `docker compose up -d`. See README.md for the full quick start.
+#
+# MAINTAINERS: The source of truth is glassy/deploy/selfhost/docker-compose.yml.
+# See MAINTAINING.md for the sync process.
 name: glassy-selfhost
 services:
   glassy:
