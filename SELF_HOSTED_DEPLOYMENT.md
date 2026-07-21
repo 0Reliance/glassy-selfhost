@@ -189,13 +189,11 @@ your membership and token once at boot.
 ```
 Your .env: GLASSY_MEMBER_EMAIL=you@example.com
           GLASSY_SELFHOST_TOKEN=<pairing token>
-          GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (or https://clear.glassy.fyi)
         │
         ▼
   ┌─────────────────────────────────┐
   │ Boot (every 30 days)            │
   │ POST /api/verify-selfhost        │  ← email + pairing token, no password
-  │ → GLASSY_VERIFY_CLOUD_URL        │
   │ Cloud checks: membership + token │
   └────────────┬────────────────────┘
                │ valid: true, tier, signed cache
