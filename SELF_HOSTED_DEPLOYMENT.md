@@ -175,10 +175,9 @@ the appliance creates a local admin account:
   random one.
 
 You retrieve the password with `docker exec glassy cat /app/data/.initial_admin_password`
-(or grep the logs on the very first boot). The file contains two lines: the first
-line is your email/username, and the second line is the password. Sign in and
-set a permanent password when prompted. After that, the generated password is
-irrelevant — only your new password's hash matters.
+(or grep the logs on the very first boot), sign in, and set a permanent password
+when prompted. After that, the generated password is irrelevant — only your new
+password's hash matters.
 
 **3. Ongoing authentication (every login).** Entirely local. You POST
 `{ email, password }` to `/api/login`; the server looks up the email in the
