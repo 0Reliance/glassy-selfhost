@@ -100,6 +100,9 @@ docker exec glassy cat /app/data/.initial_admin_password
 docker compose logs glassy | grep -A2 "Default admin created"
 ```
 
+> The password file contains two lines: the first line is your email/username,
+> and the second line is the password.
+
 Sign in at **http://localhost:3000** with your membership email and that password.
 You will be **immediately prompted to set a permanent password** before you can
 use the workspace — the random one is discarded after that.
