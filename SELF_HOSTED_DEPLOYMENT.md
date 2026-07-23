@@ -451,10 +451,10 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.35.0-beta.7 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.6 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.35.0-beta.7` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.6` in `.env` and re-run `docker compose up -d`.
 
 ---
 
