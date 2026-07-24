@@ -360,12 +360,12 @@ On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works
 ### Setup on Windows/WSL2 (the bridge path)
 
 1. **Install Obsidian Local REST API plugin** (v4.0+) in your Obsidian desktop app. Note the API key and the URL (HTTPS `127.0.0.1:27124` or HTTP `127.0.0.1:27123`).
-2. **Install the Glassy Companion** browser extension (Chrome or Firefox).
-3. **Sign in** to the extension with your Glassy account (same email as your self-hosted appliance).
+2. **Install the Glassy Companion** browser extension (Chrome or Firefox) — **v2.14.0+** is required for self-host WSL2 (earlier versions lacked localhost host permissions for the Glassy server URL).
+3. **Sign in** to the extension with your Glassy account (same email as your self-hosted appliance). Set the extension's **Server URL** to your self-host Glassy address (e.g. `http://localhost:3000`).
 4. **Open the extension popup** → Settings → **Obsidian Bridge**:
    - Set **Obsidian URL** to your plugin URL (e.g. `http://127.0.0.1:27123` — HTTP avoids self-signed cert issues).
    - Paste the **API Key** from the Obsidian plugin.
-   - Toggle **Obsidian Bridge** on.
+   - Toggle **Obsidian Bridge** on. **Chrome will prompt for permission to access localhost** — click **Allow**. This grants the extension host permission to reach both the Obsidian URL and the Glassy server URL (both are localhost). If you deny it, the popup shows a warning banner and the bridge won't connect.
    - Click **Test Connection** — this tests the FULL bridge loop (server → extension → Obsidian), not just extension→Obsidian. A green result with "plugin v4.x" confirms both legs work.
    - Click **Save**.
 5. **Verify on the server**: open `http://localhost:3000` in your browser, sign in, go to Settings → Obsidian. You should see "✓ Extension bridge active — Obsidian connected." The URL/token fields are hidden because the extension manages them.
@@ -381,8 +381,9 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 
 ### Troubleshooting Obsidian connectivity
 
-- **Extension says "Bridge connected" but server says not connected:** This was a known issue in older extension versions where the SSE connection lived in the MV3 service worker (which Chrome evicts after ~30s). Update to extension v2.13.0+ which moves the SSE into the offscreen document (persistent, never evicted). Verify with `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status`.
-- **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`).
+- **Extension says "Bridge connected" but server says not connected:** This was a known issue in older extension versions where the SSE connection lived in the MV3 service worker (which Chrome evicts after ~30s). Update to extension **v2.14.0+** which moves the SSE into the offscreen document (persistent, never evicted) AND broadens `optional_host_permissions` to cover any localhost port (the old manifest only covered Obsidian ports 27123/27124 — SSE to a localhost self-host Glassy server on port 3000/3010 was silently blocked by Chrome). Verify with `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status`.
+- **Chrome doesn't prompt for localhost permission / bridge won't connect on self-host:** v2.14.0+ declares `http(s)://127.0.0.1/*` and `http(s)://localhost/*` in `optional_host_permissions`. When you toggle the bridge on or save settings, Chrome prompts for permission to access localhost. If you deny it, the popup shows a warning banner — the bridge will start but SSE/fetches will fail. Re-save to re-prompt.
+- **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`). Also ensure the server is running v2.35.0-beta.8+ (earlier versions had route guards that bailed before checking the bridge).
 - **Container can't reach Obsidian plugin (Linux/macOS direct path):** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically.
 - **WSL2 (`host.docker.internal` → WSL VM, not Windows):** use the browser extension bridge (see Setup above). See [`deploy/selfhost/README.md` § Browser Extension Bridge](../deploy/selfhost/README.md#1-browser-extension-bridge-recommended-for-windowswsl2).
 - **Obsidian on a different machine (LAN/Tailscale):** set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname in `.env`. The plugin must bind to `0.0.0.0` instead of `127.0.0.1` (see [`deploy/selfhost/README.md` § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups)).
