@@ -265,7 +265,7 @@ the Watchtower overlay:
 docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ```
 
-Pin `GLASSY_TAG=v2.35.0` in `.env` to upgrade on your own schedule.
+Pin a released tag such as `GLASSY_TAG=v2.35.0-beta.10` in `.env` to upgrade on your own schedule. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 ---
 
@@ -305,7 +305,7 @@ docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); the server auto-appends `/v1` if missing. Use `http://ollama:11434` with the sidecar overlay |
 | `OLLAMA_MODEL` | `llama3.2` | Default model when none is selected in-app |
 | `BACKUP_ENCRYPTION_KEY` | — | AES-256-GCM; `openssl rand -hex 32` |
-| `CLUSTER_WORKERS` | `min(2, CPUs−1)` | Raise on multi-core hosts |
+| `CLUSTER_WORKERS` | `1` (pinned in `docker-compose.yml`) | The self-host appliance uses one worker for deterministic first-boot seeding. Raise only if you understand the trade-off. |
 | `MCP_PRO_TOOLCALLS_PER_HOUR` | `1200` | Raise for heavy agent automation |
 | `GLASSY_DOMAIN` | — | Required for Caddy HTTPS overlay |
 

@@ -434,15 +434,16 @@ docker compose up -d
 
 ## 9. Upgrading
 
+In your self-host directory (the directory containing `docker-compose.yml`):
+
 ```bash
-cd glassy/deploy/selfhost
 docker compose pull
 docker compose up -d
 ```
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set `GLASSY_TAG=v2.35.0` in `.env`.
+To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.10` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 **Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
 
@@ -493,6 +494,16 @@ server {
 ```
 
 Set `TRUST_PROXY=1` in `.env` when behind a reverse proxy.
+
+### Verify your compose file before starting
+
+After editing `.env`, validate that Docker can parse the configuration:
+
+```bash
+docker compose config
+```
+
+Run this before `docker compose up -d` whenever you change `.env`, `docker-compose.yml`, or any overlay. It catches typos in env var names and port mappings without starting containers.
 
 ---
 
