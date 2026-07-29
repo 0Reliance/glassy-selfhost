@@ -218,18 +218,71 @@ after installing the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacent
 no TLS setup, no public exposure. Install it on the host:
 
 ```bash
-curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
+curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up --hostname glassy
 ```
+
+#### HTTP over tailnet (simplest)
 
 Set in `.env`:
 
 ```env
-APP_URL=http://<this-machine>.tail-net.ts.net:3000
-CORS_ORIGINS=http://localhost:3000,http://<this-machine>.tail-net.ts.net:3000
+APP_URL=http://glassy.tailnet.ts.net:3000
+CORS_ORIGINS=http://localhost:3000,http://glassy.tailnet.ts.net:3000
 ```
 
 Then set the Glassy Companion on your phone to the same hostname for
 one-keystroke capture over Tailscale.
+
+#### Trusted HTTPS via `tailscale serve` (recommended)
+
+`tailscale serve` puts a trusted Let's Encrypt certificate in front of Glassy
+on every device on your tailnet — no Caddy, no public domain, no port
+forwarding. One command:
+
+```bash
+sudo tailscale serve --bg --https 443 http://localhost:3000
+```
+
+Glassy is now at `https://glassy.tailnet.ts.net` with a trusted cert. Update
+`.env` to match:
+
+```env
+APP_URL=https://glassy.tailnet.ts.net
+CORS_ORIGINS=https://glassy.tailnet.ts.net
+```
+
+Then `docker compose up -d` to pick up the new CORS origin. Every device on
+your tailnet (phone, laptop, tablet) can now reach Glassy over HTTPS with a
+green-padlock cert that every browser trusts.
+
+> **Why this matters for Obsidian:** with `tailscale serve` providing a trusted
+cert, the server's direct fetches to Obsidian (see [Obsidian live sync](#obsidian-live-sync))
+work over HTTPS without self-signed cert errors. The browser extension bridge
+— with its SSE cycling, MV3 eviction, and WSL2 networking complexity — becomes
+**optional**, not required. See [`SELF_HOSTED_DEPLOYMENT.md` § 7](SELF_HOSTED_DEPLOYMENT.md#7-obsidian-live-sync)
+for the three connection paths.
+
+#### Cross-machine: extension on laptop, Glassy on homelab
+
+This is the killer use case for Tailscale. The Glassy Companion extension
+connects to whatever server URL you enter — `https://glassy.tailnet.ts.net`
+works identically to `http://localhost:3000`. No extension code changes needed
+(`*.ts.net` has been in the extension's URL allowlist since v2.12.0). Put
+Glassy on a homelab/NAS, run the extension on your laptop, and capture from
+anywhere on your tailnet.
+
+#### Tailscale as a sidecar container (headless servers)
+
+If you don't want Tailscale installed on the host OS (NAS, TrueNAS, headless
+server), use the sidecar overlay — Tailscale runs in its own container:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+```
+
+See [`docker-compose.tailscale.yml`](docker-compose.tailscale.yml) for the
+trade-offs (the glassy container shares the tailscale network namespace and
+loses direct `host.docker.internal` access for Obsidian/Ollama on the host).
 
 ### Automatic HTTPS via Caddy
 

@@ -27,6 +27,7 @@ repo by the `release-image.yml` workflow.
 - `docker-compose.yml`
 - `docker-compose.https.yml`
 - `docker-compose.ollama.yml`
+- `docker-compose.tailscale.yml`
 - `docker-compose.watchtower.yml`
 - `Caddyfile`
 
@@ -57,6 +58,7 @@ When you change anything in `glassy/deploy/selfhost/`:
    cp glassy/deploy/selfhost/docker-compose.yml glassy-selfhost/docker-compose.yml
    cp glassy/deploy/selfhost/docker-compose.https.yml glassy-selfhost/docker-compose.https.yml
    cp glassy/deploy/selfhost/docker-compose.ollama.yml glassy-selfhost/docker-compose.ollama.yml
+   cp glassy/deploy/selfhost/docker-compose.tailscale.yml glassy-selfhost/docker-compose.tailscale.yml
    cp glassy/deploy/selfhost/docker-compose.watchtower.yml glassy-selfhost/docker-compose.watchtower.yml
    cp glassy/deploy/selfhost/Caddyfile glassy-selfhost/Caddyfile
    ```

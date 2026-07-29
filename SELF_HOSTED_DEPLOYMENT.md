@@ -348,12 +348,40 @@ The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://
 
 Live Obsidian vault sync is the primary reason to self-host. The cloud server cannot reach `127.0.0.1` on your machine; a local install can.
 
-### Two connection paths
+### Three connection paths
 
-| Path | Works on | How |
-|------|----------|-----|
-| **Browser extension bridge** (recommended) | All platforms, required on Windows/WSL2 | Extension proxies requests from server → browser → Obsidian |
-| **Direct server→Obsidian** | Native Linux, macOS, Docker-on-Linux | Server reaches `host.docker.internal:27124` directly |
+| Path | Works on | How | Bridge required? |
+|------|----------|-----|:---:|
+| **Direct server→Obsidian via tailnet** (most robust) | Any platform with [Tailscale](https://tailscale.com/) on both machines | Server reaches the Obsidian machine's tailnet IP directly | ❌ |
+| **Direct server→Obsidian via host** | Native Linux, macOS, Docker-on-Linux | Server reaches `host.docker.internal:27124` directly | ❌ |
+| **Browser extension bridge** | All platforms, required on Windows/WSL2 | Extension proxies requests from server → browser → Obsidian | ✅ |
+
+#### When the bridge is optional
+
+The browser extension bridge exists because the container cannot reach `127.0.0.1`
+on your host. **Tailscale changes this.** When Glassy and Obsidian are both on the
+same tailnet, the server reaches Obsidian directly via the tailnet IP — no SSE
+connection, no MV3 service worker, no browser dependency. The entire class of
+bridge bugs (SSE cycling, offscreen eviction, WSL2 networking, auth ticket
+races) does not apply.
+
+To use the tailnet-direct path:
+
+1. Install Tailscale on the Glassy host and the Obsidian host (if different).
+2. Run `sudo tailscale serve --bg --https 443 http://localhost:3000` on the
+   Glassy host (or just `tailscale up` for HTTP-only).
+3. In `.env`, set `OBSIDIAN_HOST_OVERRIDE` to the tailnet IP of the Obsidian
+   machine (e.g. `100.64.0.5`), and add it to `OBSIDIAN_NETWORK_ALLOWLIST`.
+4. Ensure the Obsidian Local REST API plugin binds to `0.0.0.0` (not
+   `127.0.0.1`) so it accepts tailnet connections. See [`deploy/selfhost/README.md`
+   § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups).
+5. With `tailscale serve --https`, Obsidian fetches get a trusted cert — no
+   self-signed cert errors.
+
+The bridge remains the canonical path for WSL2 (where the container cannot
+reach the Windows host's `127.0.0.1`) and for setups where Obsidian is not on
+a tailnet. See [`deploy/selfhost/README.md` § Multi-device access](../deploy/selfhost/README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)
+for Tailscale setup.
 
 On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works — the container cannot reach the Windows host's `127.0.0.1`. The server's Obsidian settings panel (URL, Test Connection, Diagnostics) is hidden on self-hosted instances because those controls run server-side and would always fail from inside the container. The extension is the canonical source for the Obsidian URL and API key on self-host.
 

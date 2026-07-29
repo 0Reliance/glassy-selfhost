@@ -1,0 +1,62 @@
+# Optional overlay: run Tailscale as a sidecar container.
+# Use this when you don't want Tailscale installed on the host OS
+# (e.g. headless server, NAS, TrueNAS app).
+#
+# ⚠️  TRADE-OFF: with network_mode: "service:tailscale", the glassy
+# container shares the tailscale container's network namespace and
+# CANNOT reach host.docker.internal for Obsidian/Ollama on the host.
+# Use this overlay when:
+#   • Obsidian is on another tailnet node (not the same host), OR
+#   • You don't need Obsidian live sync (notes/MCP/voice work fine), OR
+#   • You want Tailscale on a headless box without touching the host OS.
+# For the simpler path (Tailscale on the host), see README § Multi-device access.
+#
+# SETUP:
+#   1. Generate a Tailscale auth key at https://login.tailscale.com/admin/settings/keys
+#      (reuseable, with the "Devices" tag and appropriate expiry).
+#   2. In .env, set:
+#        TAILSCALE_AUTHKEY=tskey-auth-...
+#        APP_URL=https://glassy.tailnet.ts.net
+#        CORS_ORIGINS=https://glassy.tailnet.ts.net
+#      (the tailnet hostname is set by `hostname: glassy` below)
+#   3. docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
+#   4. On the host: `docker exec glassy-tailscale tailscale serve --bg --https 443 http://localhost:8080`
+#      (the glassy container shares this network namespace, so port 8080 is reachable
+#      from the tailscale container's perspective — 8080 is the container's internal port).
+#   5. Glassy is now at https://glassy.tailnet.ts.net with a trusted cert.
+#
+# The tailscale state volume persists your tailnet identity across container
+# recreations so you don't burn a new auth key on every restart. If the auth
+# key expires, generate a new one at the Tailscale admin console and update .env.
+name: glassy-selfhost
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: glassy-tailscale
+    hostname: glassy
+    restart: unless-stopped
+    environment:
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY:?set TAILSCALE_AUTHKEY in .env — generate one at https://login.tailscale.com/admin/settings/keys}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  glassy:
+    # Share the tailscale container's network namespace. Glassy is now
+    # reachable on the tailnet at the tailscale container's IP/hostname.
+    # The host-side port mapping (${APP_PORT}:8080) is removed because
+    # tailscale serve handles the HTTPS listener.
+    network_mode: "service:tailscale"
+    ports: !reset []
+
+volumes:
+  tailscale-state: {}
