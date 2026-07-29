@@ -384,7 +384,7 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 - **Extension says "Bridge connected" but server says not connected:** This was a known issue in older extension versions where the SSE connection lived in the MV3 service worker (which Chrome evicts after ~30s). Update to extension **v2.14.0+** which moves the SSE into the offscreen document (persistent, never evicted) AND broadens `optional_host_permissions` to cover any localhost port (the old manifest only covered Obsidian ports 27123/27124 — SSE to a localhost self-host Glassy server on port 3000/3010 was silently blocked by Chrome). Verify with `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status`.
 - **Server logs show `401 Invalid or expired SSE ticket`:** update the server image to **v2.35.0-beta.9+**. This is a server-side auth bug fixed in beta.9 — the `/api/ext` and `/api/ext/obsidian-bridge` routers ran `auth` twice on every bridge request, consuming the one-time SSE ticket on the first run. The extension masked it by silently falling back to the less-secure `?token=<JWT>` URL form (so the bridge still worked), but the JWT was leaking into server/proxy logs. beta.9 reorders the router mounts and adds a regression test. No extension or Obsidian configuration change is required.
 - **Chrome doesn't prompt for localhost permission / bridge won't connect on self-host:** v2.14.0+ declares `http(s)://127.0.0.1/*` and `http(s)://localhost/*` in `optional_host_permissions`. When you toggle the bridge on or save settings, Chrome prompts for permission to access localhost. If you deny it, the popup shows a warning banner — the bridge will start but SSE/fetches will fail. Re-save to re-prompt.
-- **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`). Also ensure the server is running v2.35.0-beta.9+ (beta.8 fixed the bridge-first route guards; beta.9 fixed the SSE ticket double-consumption + plugin version misreport).
+- **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`). Also ensure the server is running v2.35.0-beta.11+ (beta.8 fixed the bridge-first route guards; beta.9 fixed the SSE ticket double-consumption + plugin version misreport; beta.11 fixed the bridge registry race condition where stale close handlers nuked newer connections — if the bridge "cycles every ~60s", update to beta.11).
 - **Container can't reach Obsidian plugin (Linux/macOS direct path):** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically.
 - **WSL2 (`host.docker.internal` → WSL VM, not Windows):** use the browser extension bridge (see Setup above). See [`deploy/selfhost/README.md` § Browser Extension Bridge](../deploy/selfhost/README.md#1-browser-extension-bridge-recommended-for-windowswsl2).
 - **Obsidian on a different machine (LAN/Tailscale):** set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname in `.env`. The plugin must bind to `0.0.0.0` instead of `127.0.0.1` (see [`deploy/selfhost/README.md` § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups)).
@@ -443,7 +443,7 @@ docker compose up -d
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.10` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
+To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.11` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 **Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
 
@@ -454,10 +454,10 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.35.0-beta.7 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.11 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.35.0-beta.7` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.11` in `.env` and re-run `docker compose up -d`.
 
 ---
 
