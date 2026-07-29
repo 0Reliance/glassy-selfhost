@@ -72,6 +72,21 @@ Setting `INSTANCE_ID=self_hosted` in `docker-compose.yml` activates the single-u
 
 The seeded admin is automatically granted `clear_lifetime` tier, which unlocks every premium feature through the existing `isClearMember()` entitlement path.
 
+### Second Brain / MCP runtime flags
+
+The MCP server (15 tools, 3 prompts, 6 resources) requires **6 runtime flags** to work end-to-end. The self-host `docker-compose.yml` sets all 6 to `true` by default. If you override any of them in `.env`, all 6 must remain `true` together:
+
+| Flag | What it enables | Without it |
+|------|----------------|------------|
+| `ENABLE_CORPUS_INDEXER` | Embedding generation + storage | MCP key generation 403s; search returns empty |
+| `ENABLE_KB_QUERY` | KB query REST endpoint | In-app KB search doesn't work |
+| `ENABLE_MCP_SERVER` | MCP endpoint at `/mcp` | MCP clients get 404 |
+| `ENABLE_HYBRID_SEARCH` | BM25 + vector fusion | Search quality degraded |
+| `ENABLE_MCP_BRIDGE` | Companion token exchange | Companion can't fetch MCP key |
+| `ENABLE_AGENT_GATEWAY` | Agent Gateway routes | Optional — only if using AI agents |
+
+To connect Claude Desktop, Cursor, Windsurf, or any MCP client, go to **Settings → Connections & data → AI Tools (MCP)** in the app and copy the config snippet. The Companion extension (v2.16.0+) also has an MCP Settings section that fetches your key and generates config snippets.
+
 ---
 
 ## 3. First boot & account setup
@@ -471,7 +486,7 @@ docker compose up -d
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.11` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
+To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.12` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 **Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
 
@@ -482,10 +497,10 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.35.0-beta.11 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.12 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.35.0-beta.11` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.12` in `.env` and re-run `docker compose up -d`.
 
 ---
 

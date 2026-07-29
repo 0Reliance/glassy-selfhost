@@ -1,292 +1,376 @@
-<div align="center">
-
-<img src="screenshots/icon.png" alt="Glassy" width="72" />
-
 # Glassy — self-hosted
 
-**A calm, neurodivergent-friendly workspace. Notes, bookmarks, voice transcription,
-and local AI — on one page. Your data stays on your machine.**
-
-[![Latest release](https://img.shields.io/github/v/release/0Reliance/glassy-selfhost?include_prereleases&style=flat-square&label=release&color=6366f1)](https://github.com/0Reliance/glassy-selfhost/releases)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io%2F0reliance%2Fglassy--dash-2496ED?style=flat-square&logo=docker)](https://ghcr.io/0reliance/glassy-dash)
-[![License](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-0f172a?style=flat-square)](https://docs.docker.com/get-started/)
-
-[Cloud app](https://app.glassy.fyi) · [Docs](https://docs.glassy.fyi) · [Companion extension](https://github.com/0Reliance/glassy-companion) · [Release notes](https://github.com/0Reliance/glassy-selfhost/releases)
-
-</div>
-
 <!-- MAINTAINERS: See MAINTAINING.md for the sync process between this
-     repo and glassy/deploy/selfhost/ in the main glassy repo. Any change
-     to .env.example or docker-compose*.yml here MUST also be made in
-     glassy/deploy/selfhost/ (or vice versa) and the two kept identical. -->
+     directory and the glassy-selfhost installer repo. Any change to
+     files here MUST be synced to github.com/0Reliance/glassy-selfhost. -->
 
----
+Run Glassy on your own machine. This is the recommended path if you want
+live Obsidian sync, Ollama, Agent Gateway, or any other localhost integration —
+the cloud server cannot reach `127.0.0.1` on your machine.
 
-![Glassy — Today dashboard](screenshots/today.png)
-
----
-
-## Why self-host
-
-The cloud version of Glassy is great. Self-hosting is for the cases where the
-cloud fundamentally cannot help — because the server cannot reach your machine.
-
-| | Cloud | Self-hosted |
-| --- | :---: | :---: |
-| Notes, tags, documents | ✅ | ✅ |
-| Live Obsidian vault sync | ❌ server ≠ localhost | ✅ |
-| Ollama local AI models | ❌ | ✅ |
-| Agent Gateway (OpenClaw, Hermes) | ❌ | ✅ |
-| MCP server + Second Brain | ❌ | ✅ |
-| All premium features unlocked | Pro plan required | ✅ owner auto-unlocked |
-| Single-owner / no registration | ❌ | ✅ enforced at server level |
-| Data stays on your machine | ❌ | ✅ |
-| Commerce / billing surfaces | ✅ | ❌ not present |
-| Telemetry (Sentry) | ✅ | ❌ not initialised |
-
----
+The image is published to the **public** GitHub Container Registry
+(`ghcr.io/0reliance/glassy-dash`); no GitHub login required.
 
 ## Quick start
 
-> **Self-hosting requires an active Glassy membership** (Clear or Pro).
-> Sign up at [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.fyi](https://glassy.fyi)
-> before continuing — the appliance will not start without your membership email.
+> **Self-hosting requires an active Glassy membership** (Clear or Pro). Sign up at
+> [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.fyi](https://glassy.fyi)
+> before continuing — the appliance will not start without a verified membership.
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
-```
-
-Open `.env` and fill in the **required fields**:
-
-```env
-# Your Glassy account email (Clear or Pro membership)
-GLASSY_MEMBER_EMAIL=your@glassy-account-email
-
-# Pairing token — generate in your Glassy account under
-# Settings → Self-hosting.
-#   • Public/Pro: https://app.glassy.fyi/#/settings?g=account&s=selfhost
-#   • Clear:     https://clear.glassy.fyi/#/settings?g=account&s=selfhost
-GLASSY_SELFHOST_TOKEN=<paste-your-token-here>
-
-# Clear members only — set this to your Clear cloud URL.
-# Public/Pro members can leave the default (https://app.glassy.fyi).
-GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi
-
-# Generate each one with: openssl rand -hex 32
-JWT_SECRET=
-API_KEY_ENCRYPTION_KEY=
-```
-
-Then:
-
-```bash
+# Edit .env — fill in four required fields:
+#   GLASSY_MEMBER_EMAIL=your@glassy-account-email
+#   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
+#   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
+#   JWT_SECRET=$(openssl rand -hex 32)
+#   API_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)
 docker compose up -d
 ```
 
-On first boot the appliance verifies your membership **and pairing token**
-against the cloud, creates your local account using your membership email, and
-persists the initial password to a file you can recover even if the Docker log
-buffer has rotated:
+On first boot the appliance verifies your membership AND pairing token against
+the cloud, creates your local account using your membership email, and prints
+the initial password once. The password is **also written to a file** so you can
+recover it even if the Docker log buffer has rolled:
 
 ```bash
-# Preferred — survives container recreation, deleted on first password change:
-docker exec glassy cat /app/data/.initial_admin_password
-
-# Also printed to stdout on the true first boot (only fires when the
-# database is empty):
+# Option A — grep the logs (only works on the very first boot, see note below):
 docker compose logs glassy | grep -A2 "Default admin created"
+
+# Option B — read the credentials file (survives container recreation, deleted
+# after your first password change):
+docker exec glassy cat /app/data/.initial_admin_password
 ```
 
-> The password file contains two lines: the first line is your email/username,
-> and the second line is the password.
+> ⚠️ **The password line only appears on the true first boot** — when the `users`
+> table is completely empty. If the `glassy-data` volume persisted from a
+> previous run (e.g. you ran `docker compose down` without `-v`), no new
+> password is printed and your existing admin password is unchanged. To start
+> completely fresh, see [Reset everything](#reset-everything-nuclear-option).
 
 Sign in at **http://localhost:3000** with your membership email and that password.
 You will be **immediately prompted to set a permanent password** before you can
 use the workspace — the random one is discarded after that.
-Registration is permanently disabled — this is a single-owner appliance.
+Registration is permanently disabled — this is a single-owner personal appliance.
 All premium features are unlocked automatically.
 
----
+## Why sign in?
 
-## What's inside
+This is your own copy of Glassy, running on your machine. Your notes,
+documents, and tags stay on this device — **your data remains offline**.
+Sign-in uses your membership email and a local password — note content is
+never sent to our servers.
 
-### Notes, documents & rich editor
+Self-hosting requires a Glassy membership (Clear or Pro). Your membership
+is verified against the cloud **once at boot** and cached for 30 days, so
+the appliance works fully offline within that window. This is what keeps
+the project sustainable while self-hosting scales.
 
-Rich TipTap editor with a slash-command palette, callout blocks, task lists,
-tables, code blocks, and LaTeX math. Markdown-native storage — every note
-exports cleanly to `.md` with no lock-in.
+**Sign-in is required during our Kickstarter launch.** Once our published
+Kickstarter goals are met, sign-in on the appliance becomes **optional** —
+the login screen will be a setting rather than a requirement.
 
-![Notes view](screenshots/notes.png)
+We are a transparent, privacy-first, independent company. Track our goals
+at [glassy.fyi/kickstarter](https://glassy.fyi/kickstarter).
 
-### GlassyKeep — bookmarks
+**What stays on this device:**
+- Your notes, documents, and tags
+- Your API keys (stored encrypted in the local database)
+- Any file attachments
 
-Save pages with the Glassy Companion browser extension. Search your entire
-saved library by meaning, not just keywords. Read archived pages without
-opening a new tab.
+The only outbound calls are: the membership check at boot (once per 30 days)
+and AI providers *you* configure (Ollama on localhost, or BYOK keys you add
+in Settings → API Keys). No note content or usage data is ever sent to us.
 
-### Voice Studio
+### How your account works
 
-Local voice transcription powered by Whisper running in your browser.
-Record, transcribe, and structure voice memos — no cloud account, no
-per-minute fees. Everything stays on your device.
+Glassy self-host is a **single-owner appliance**. Here's what happens the first
+time you start it, and every time after:
 
-![Voice Studio](screenshots/voice-studio.png)
+**1. Membership + pairing-token check (once every 30 days, at boot).** The
+appliance sends your email **and** your `GLASSY_SELFHOST_TOKEN` to
+`app.glassy.fyi` — no password, no note content, no personal data. The cloud
+replies with a signed yes/no: *"does this email have an active Clear or Pro
+membership, and does the token match the one in the account?"* The token is
+required so that someone who merely knows your email cannot spin up an
+unlocked instance using your membership. The result is cached locally for 30
+days (signed) or 24 hours (unsigned fallback), so the appliance works fully
+offline within that window. If the cloud can't be reached and no usable cache
+exists, the container refuses to start.
 
-### Obsidian live sync
+You generate the pairing token in your Glassy account on the cloud:
+**Settings → Self-hosting → Generate token**.
+  • Public / Pro members: https://app.glassy.fyi/#/settings?g=account&s=selfhost
+  • Clear members:        https://clear.glassy.fyi/#/settings?g=account&s=selfhost
+Paste it into `GLASSY_SELFHOST_TOKEN` in `.env`. If you generated the token on
+Clear, also set `GLASSY_VERIFY_CLOUD_URL=https://clear.glassy.fyi`. Rotate the
+token any time from the same settings page.
 
-Keep your vault. Add a calm web cockpit on top.
+**2. Admin account created (first boot only).** If no account exists yet, the
+appliance creates one using your `GLASSY_MEMBER_EMAIL` as the login email. A
+random password is generated, printed to the logs **once**, written to
+`/app/data/.initial_admin_password` (chmod 600), and never stored in plaintext
+— only its bcrypt hash goes into the local database:
 
-Glassy connects to the [Obsidian Local REST API plugin](https://github.com/coddingtonbear/obsidian-local-rest-api)
-running on your machine. Browse vault files, open and edit any note, push
-content from Glassy to your vault, and pull your daily note into the
-dashboard — all in one interface.
+```bash
+# Logs (first boot only — see warning above):
+docker compose logs glassy | grep -A2 "Default admin created"
+# File (survives container recreation, deleted after first password change):
+docker exec glassy cat /app/data/.initial_admin_password
+```
 
-Live two-way sync requires the server to be on the same machine as Obsidian.
-The cloud server cannot do that. Self-hosting can.
+On first login you are **forced to set a permanent password** before you can
+use the workspace. After that, the random password and the credentials file are
+discarded.
 
-![Obsidian vault browser](screenshots/obsidian.png)
+**3. Every login after that is 100% local.** The appliance authenticates you
+against its own local SQLite database using a JWT signed with your
+`JWT_SECRET`. No cloud call happens during login — the cloud only confirmed
+your membership at boot, and it only received your email address and pairing
+token. Your notes, passwords, and session tokens never leave your machine.
 
-### Second Brain / MCP server
+```
+GLASSY_MEMBER_EMAIL (your email)
+        │
+        ▼
+  Boot: "does this email have a membership?" ──► Cloud: yes/no
+        │  (email only, no password sent)         (cached 30 days)
+        ▼
+  First boot: create local admin account
+        │  email = yours, random password printed once
+        ▼
+  Every login: local JWT auth against local database
+        │  (no network, no cloud, no phone-home)
+```
 
-Glassy exposes a full [Model Context Protocol](https://modelcontextprotocol.io)
-server so AI agents — Claude Desktop, Cursor, or any MCP-compatible client —
-can read and write directly into your workspace.
+## What works differently from cloud
 
-**10 MCP tools:** search, recent, note create/update/delete, bookmark update/delete,
-Obsidian vault query, Obsidian MCP proxy.  
-**3 MCP prompts:** daily brief, summarize, capture.  
-**3 dynamic resources:** `glassy://kb/search/{query}`, `glassy://recent/{type}`, `glassy://status`.
+| Capability | Cloud (app.glassy.fyi) | Self-hosted (this) |
+| --- | --- | --- |
+| Notes, AI, capture, companion | Yes | Yes |
+| Live Obsidian vault sync | No (server cannot reach your localhost) | Yes |
+| Ollama local AI | No | Yes |
+| Agent Gateway (OpenClaw, Hermes) | No (requires localhost) | Yes |
+| MCP server + Second Brain | No | Yes |
+| Data location | Cloud VM | Your machine (`glassy-data` volume) |
 
-The Knowledge Base (`#/kb`) provides hybrid BM25 + vector semantic search
-across everything you've saved. The self-hosted owner is on the Pro tier:
-1,200 MCP tool calls per hour.
+## Configuration
 
-![Second Brain — Knowledge Base](screenshots/second-brain.png)
+All variables live in `.env` (see `.env.example`). Required variables are
+called out below; everything else has a safe default.
 
-### AI writing assistant
+### Required
 
-Local AI runs inside your browser via WebGPU — Qwen 2.5, Whisper, and MXBai
-models require no account and consume no credits. Cloud AI (Gemini, OpenAI,
-Anthropic, Mistral) is available as BYOK: add your key in Settings → API Keys,
-stored encrypted in the database. No cloud API key is read from the compose file
-or `.env`.
+| Variable | Description |
+| --- | --- |
+| `GLASSY_MEMBER_EMAIL` | Your Clear or Pro membership email. Verified against the cloud on first boot; cached for 30 days. |
+| `GLASSY_SELFHOST_TOKEN` | Pairing token from Settings → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
+| `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
+| `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
+| `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
 
-![AI writing assistant](screenshots/ai-assistant.png)
+### Single-user defaults (already set in `.env.example`)
 
-### Agent Gateway
+| Variable | Default | Description |
+| --- | --- | --- |
+| `INSTANCE_ACCESS_MODE_DEFAULT` | `private` | Hides all public surfaces from logged-out visitors. An admin account is seeded automatically on first boot. |
+| `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
+| `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
+| `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
+| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (15 tools, 3 prompts, 6 resources). |
+| `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
+| `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
+| `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
 
-Dispatch tasks to local AI agent frameworks — OpenClaw, Hermes, Antigravity —
-directly from the sidebar. The gateway bridges Glassy to agent APIs running on
-`localhost`, with SSRF protection, an activity feed, and one-click MCP config
-snippets for Claude Desktop and Cursor.
+> **Registration is permanently disabled.** The server enforces this at the
+> route level regardless of any env var or admin setting. The seeded `admin`
+> account is the owner. Sub-accounts (multiple workspaces under the one owner)
+> are fully supported via Settings → Accounts.
 
-### GlassyCalc · Following · Themes
+### Optional
 
-A spreadsheet sidecar alongside your notes. RSS following with no separate reader.
-Ten glassmorphic theme packs with custom accent colors and per-note backgrounds.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GLASSY_TAG` | `latest` | Image tag to pull from GHCR. Pin a version for reproducibility. |
+| `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
+| `APP_URL` | `http://localhost:3000` | Base URL for OAuth + email links. **Set this if you access via Tailscale or a domain** — see [Multi-device access](#multi-device-access-tailscale--cloudflare-tunnel--netbird). |
+| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins allowed to call the API. **Must include any additional origin you use** (Tailscale hostname, LAN IP, domain). |
+| `GEMINI_API_KEY` | — | *Not used on the appliance.* Cloud AI keys (Gemini/OpenAI/Anthropic) are added in-app at **Settings → API Keys** (BYOK), stored encrypted per-account. Local AI (WebGPU/Ollama) works with no key. |
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on the host (reachable via Docker host gateway). The server auto-appends `/v1` if missing. Use `http://ollama:11434` with the bundled sidecar overlay. |
+| `OBSIDIAN_NETWORK_ALLOWLIST` | — | Additional comma-separated hostnames/IPs allowed for Obsidian connections. Use when Obsidian is on a LAN IP, Tailscale node, or WSL2 bridge address not covered by the defaults. Self-hosted only. |
+| `TRUST_PROXY` | unset | Set to `1` if behind a single reverse proxy. |
 
----
+> **⚠️ If you change `APP_PORT`, you must also update `APP_URL` and `CORS_ORIGINS` to the same port.** Leaving them at `http://localhost:3000` while `APP_PORT=3005` will cause CORS failures and broken login redirects. All three must agree.
+>
+> **Email is disabled on the appliance.** Nothing leaves the machine, so
+> `RESEND_API_KEY` / `EMAIL_FROM` are no-ops here. Lost-password recovery uses
+> local paths instead (admin reset or a secret recovery key) — see
+> [`docs/SELF_HOSTED_DEPLOYMENT.md` § Account recovery](../../docs/SELF_HOSTED_DEPLOYMENT.md).
 
-## Local AI — bundled Ollama
+### Advanced tuning
 
-Glassy detects Ollama on the host automatically via `host.docker.internal:11434`.
-If you don't already run Ollama, the included overlay starts it as a sidecar —
-nothing to install on the host:
+Every knob in `.env.example` under **Advanced tuning** is optional and safe to
+leave at its default: worker count (`CLUSTER_WORKERS`), MCP tool-call rate
+limits (`MCP_PRO_TOOLCALLS_PER_HOUR`), and Obsidian timeout / import caps
+(`OBSIDIAN_REQUEST_TIMEOUT_MS`, `OBSIDIAN_IMPORT_MAX_*`). Raise them for a
+multi-core host, heavy agent automation, or a very large vault.
+
+## Local AI (bundled Ollama)
+
+Glassy runs local AI out of the box: in-browser WebGPU models need nothing,
+and Ollama is auto-detected on the host. If you don't already run Ollama, the
+included overlay starts it as a sidecar so there's nothing extra to install:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
-
 # Pull a model once (stored in the ollama-models volume):
 docker compose -f docker-compose.yml -f docker-compose.ollama.yml \
   exec ollama ollama pull llama3.2
 ```
 
-Glassy points itself at the sidecar automatically. Have an NVIDIA GPU? Uncomment
-the `deploy` block in [`docker-compose.ollama.yml`](docker-compose.ollama.yml)
-after installing the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html).
+Glassy is automatically pointed at the sidecar (`OLLAMA_BASE_URL=http://ollama:11434`).
+Have an NVIDIA GPU? Uncomment the `deploy` block in
+[`docker-compose.ollama.yml`](docker-compose.ollama.yml) after installing the
+NVIDIA Container Toolkit. For **cloud** AI (Gemini / OpenAI / Anthropic), add
+your own key in-app at **Settings → API Keys** (BYOK) — the appliance never
+reads cloud keys from `.env`.
 
----
+## Obsidian vault sync
 
-## Multi-device access
+Glassy connects to your Obsidian vault via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. There are three connection methods — the **browser extension bridge** is recommended for Windows/WSL2:
+
+### 1. Browser Extension Bridge (recommended for Windows/WSL2)
+
+On Windows with Docker Desktop (WSL2), the container cannot reach Obsidian on the Windows host's `127.0.0.1`. The [Glassy Companion](https://github.com/0Reliance/glassy-companion) extension solves this by proxying Obsidian requests from the server through your browser.
+
+> **On self-hosted instances, the web app's Obsidian settings panel hides the URL, Test Connection, and Diagnostics controls** — these run server-side and would always fail from inside the container. The extension is the canonical source for the Obsidian URL and API key. Configure them in the extension popup.
+
+**Setup:**
+
+1. Install the **Obsidian Local REST API** plugin (v4.0+) in Obsidian. Copy the API key from the plugin settings.
+2. Install the **Glassy Companion** extension (Chrome or Firefox).
+3. **Sign in** to the extension with your Glassy account (same email as your self-hosted appliance).
+4. Open the extension popup → Settings → **Obsidian Bridge**:
+   - Set **Obsidian URL** to `http://127.0.0.1:27123` (HTTP avoids self-signed cert issues; HTTPS is `https://127.0.0.1:27124`).
+   - Paste the **API Key** from the Obsidian plugin.
+   - Toggle **Obsidian Bridge** on.
+   - Click **Test Connection** — this tests the FULL bridge loop (server → extension → Obsidian), not just extension→Obsidian. A green result with "plugin v4.x" confirms both legs work.
+   - Click **Save**.
+5. In the self-hosted web app (Settings → Obsidian), you should see "✓ Extension bridge active — Obsidian connected."
+6. **Verify:** `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status` should return `{"connected":true,...}`.
+
+The extension holds the Obsidian API key locally (never sent to the server) and maintains a persistent SSE connection to the Glassy server via the offscreen document (which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search), it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result. See the [Obsidian integration guide](https://docs.glassy.fyi/02-core-features/integrations/obsidian-vault) for full details.
+
+**Troubleshooting the bridge:**
+
+- **Extension says "Bridge connected" but server says not connected:** Update to extension v2.14.0+ (older versions held the SSE in the MV3 service worker, which Chrome evicts after ~30s, and lacked broad localhost permissions for self-host URLs). Verify `CLUSTER_WORKERS=1` (`docker exec glassy env | grep CLUSTER`). Toggle the bridge off and on.
+- **Test Connection green but Obsidian features don't work:** Test Connection tests the full loop — if it's green, both legs work. Check server logs for `ECONNREFUSED` (the direct fallback failing — expected on WSL2).
+
+### 2. Direct server → localhost (Linux/macOS)
+
+On native Linux/macOS or Docker on Linux, the server reaches Obsidian directly via `host.docker.internal:27124`. This works out of the box with the default `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`.
+
+### 3. Network allowlist (split-machine setups)
+
+If Obsidian runs on a different machine, set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname, and configure the plugin to bind to `0.0.0.0` instead of `127.0.0.1`:
+
+```env
+OBSIDIAN_NETWORK_ALLOWLIST=192.168.1.10,glassy.tail-net.ts.net
+```
+
+> ⚠️ Binding the Obsidian plugin to `0.0.0.0` exposes it to your network. Only do this on a trusted network or behind a firewall. The browser extension bridge is safer — it doesn't expose Obsidian to the network at all.
+
+## Upgrading
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Database migrations run automatically on container start.
+
+### Automatic updates (optional)
+
+To have new images pulled and applied automatically, add the Watchtower
+overlay — it polls once a day and recreates the container (same config +
+volumes) when `:latest` moves:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
+```
+
+Pin `GLASSY_TAG` to a version in `.env` if you'd rather upgrade manually.
+
+## Multi-device access (Tailscale · Cloudflare Tunnel · Netbird)
+
+To use Glassy from another device (phone, laptop), you have three good options:
 
 ### Tailscale (recommended)
 
-[Tailscale](https://tailscale.com/) is a WireGuard mesh — no port forwarding,
-no TLS setup, no public exposure. Install it on the host:
+[Tailscale](https://tailscale.com/) is a WireGuard mesh VPN — no port
+forwarding, no TLS to manage, no public attack surface. Each device on your
+tailnet gets a stable IP (in `100.64.0.0/10`) and a MagicDNS hostname like
+`glassy.tail-net.ts.net`.
 
 ```bash
-curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up --hostname glassy
+# One-time, on the host running Glassy:
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
 ```
 
-#### HTTP over tailnet (simplest)
+Then access Glassy from any device on your tailnet at
+`http://<this-machine>.tail-net.ts.net:3000` (replace `<this-machine>` with
+your host's tailnet name).
 
-Set in `.env`:
+**Required `.env` changes:**
 
 ```env
-APP_URL=http://glassy.tailnet.ts.net:3000
-CORS_ORIGINS=http://localhost:3000,http://glassy.tailnet.ts.net:3000
+APP_URL=http://<this-machine>.tail-net.ts.net:3000
+CORS_ORIGINS=http://localhost:3000,http://<this-machine>.tail-net.ts.net:3000
 ```
 
-Then set the Glassy Companion on your phone to the same hostname for
-one-keystroke capture over Tailscale.
+> ⚠️ **Tailscale CORS gotcha:** Tailscale uses `100.64.0.0/10`, which the
+> app does *not* treat as internal. You must add the tailnet hostname
+> (or IP) to `CORS_ORIGINS` — otherwise the browser will be CORS-rejected.
 
-#### Trusted HTTPS via `tailscale serve` (recommended)
+**Companion extension:** On your phone/secondary device, open the Glassy
+Companion → Settings → **Server URL** and set it to
+`http://<this-machine>.tail-net.ts.net:3000` for capture to work over Tailscale.
 
-`tailscale serve` puts a trusted Let's Encrypt certificate in front of Glassy
-on every device on your tailnet — no Caddy, no public domain, no port
-forwarding. One command:
+### Cloudflare Tunnel
+
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+gives Glassy a public HTTPS URL through Cloudflare's edge — no port
+forwarding, free TLS, but exposes the instance to the internet (gated by
+Cloudflare Access if you want auth).
 
 ```bash
-sudo tailscale serve --bg --https 443 http://localhost:3000
+# One-time, on the host running Glassy:
+cloudflared tunnel login
+cloudflared tunnel create glassy
+cloudflared tunnel route dns glassy glassy.example.com
+cloudflared tunnel run glassy
 ```
 
-Glassy is now at `https://glassy.tailnet.ts.net` with a trusted cert. Update
-`.env` to match:
+**Required `.env` changes:**
 
 ```env
-APP_URL=https://glassy.tailnet.ts.net
-CORS_ORIGINS=https://glassy.tailnet.ts.net
+APP_URL=https://glassy.example.com
+CORS_ORIGINS=https://glassy.example.com
 ```
 
-Then `docker compose up -d` to pick up the new CORS origin. Every device on
-your tailnet (phone, laptop, tablet) can now reach Glassy over HTTPS with a
-green-padlock cert that every browser trusts.
+### Netbird
 
-> **Why this matters for Obsidian:** with `tailscale serve` providing a trusted
-cert, the server's direct fetches to Obsidian (see [Obsidian live sync](#obsidian-live-sync))
-work over HTTPS without self-signed cert errors. The browser extension bridge
-— with its SSE cycling, MV3 eviction, and WSL2 networking complexity — becomes
-**optional**, not required. See [`SELF_HOSTED_DEPLOYMENT.md` § 7](SELF_HOSTED_DEPLOYMENT.md#7-obsidian-live-sync)
-for the three connection paths.
+[Netbird](https://netbird.io/) is similar to Tailscale (WireGuard mesh +
+MagicDNS). Same `APP_URL` + `CORS_ORIGINS` pattern as Tailscale.
 
-#### Cross-machine: extension on laptop, Glassy on homelab
+### Automatic HTTPS (Caddy)
 
-This is the killer use case for Tailscale. The Glassy Companion extension
-connects to whatever server URL you enter — `https://glassy.tailnet.ts.net`
-works identically to `http://localhost:3000`. No extension code changes needed
-(`*.ts.net` has been in the extension's URL allowlist since v2.12.0). Put
-Glassy on a homelab/NAS, run the extension on your laptop, and capture from
-anywhere on your tailnet.
-
-#### Tailscale as a sidecar container (headless servers)
-
-If you don't want Tailscale installed on the host OS (NAS, TrueNAS, headless
-server), use the sidecar overlay — Tailscale runs in its own container:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.tailscale.yml up -d
-```
-
-See [`docker-compose.tailscale.yml`](docker-compose.tailscale.yml) for the
-trade-offs (the glassy container shares the tailscale network namespace and
-loses direct `host.docker.internal` access for Obsidian/Ollama on the host).
-
-### Automatic HTTPS via Caddy
-
-If you have a domain with a public A record pointing at this host:
+If you own a domain and can point it at this host (public A/AAAA record, ports
+80 + 443 open), the Caddy overlay terminates TLS with an auto-renewing
+Let's Encrypt certificate — no manual cert wrangling:
 
 ```bash
 # in .env:
@@ -296,93 +380,47 @@ If you have a domain with a public A record pointing at this host:
 docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
 ```
 
-Caddy provisions and renews a Let's Encrypt certificate automatically.
+Caddy proxies to Glassy on the internal network; you can drop the host `3000`
+port publish from `docker-compose.yml` if you only want HTTPS ingress. For a
+private network with no public domain, prefer Tailscale above.
 
-### Cloudflare Tunnel
+## Data persistence, backups & restore
 
-Public HTTPS via Cloudflare's edge — no port forwarding, free TLS. Setup in
-[`SELF_HOSTED_DEPLOYMENT.md`](SELF_HOSTED_DEPLOYMENT.md).
+All data lives in the `glassy-data` Docker volume (notes DB, uploads, logs,
+and `/app/data/backups`). Glassy takes an **automatic daily backup at 02:00** —
+plain SQLite copies in `/app/data/backups`, roughly 7 days retained. No
+configuration required.
 
----
-
-## Upgrading
-
-```bash
-docker compose pull && docker compose up -d
-```
-
-Migrations run automatically. To auto-update daily without manual steps, add
-the Watchtower overlay:
+**Full volume snapshot** (captures everything, including generated backups):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
-```
-
-Pin a released tag such as `GLASSY_TAG=v2.35.0-beta.10` in `.env` to upgrade on your own schedule. There is no `v2.35.0` stable tag yet — only beta tags are published.
-
----
-
-## Backups
-
-Automatic daily backup at 02:00 (SQLite snapshot, ~7 days retained, no setup).
-For encrypted off-machine copies:
-
-```bash
-# Set BACKUP_ENCRYPTION_KEY=<openssl rand -hex 32> in .env first, then:
-docker compose exec glassy node server/utils/backup.js            # create
-docker compose exec glassy node server/utils/backup.js --restore <file>
-```
-
-Full volume snapshot:
-
-```bash
-docker run --rm -v glassy-data:/data -v $(pwd):/backup alpine \
+docker run --rm -v glassy-selfhost_glassy-data:/data -v $(pwd):/backup alpine \
   tar czf /backup/glassy-backup.tar.gz -C /data .
 ```
 
----
+> The named volume is `glassy-selfhost_glassy-data` (the `glassy-selfhost_`\n> prefix comes from the `name:` field in `docker-compose.yml`). Using\n> `glassy-data` without the prefix targets a nonexistent volume and backs\n> up nothing.
 
-## Configuration
+**Encrypted / on-demand backups.** For extra copies you can move off the
+machine, use the backup CLI (honours `BACKUP_ENCRYPTION_KEY`,
+`BACKUP_RETENTION_DAYS`, `BACKUP_DIR` from `.env`). The runtime image has no
+`npm`, so call `node` directly:
 
-| Variable | Default | |
-| --- | --- | --- |
-| `GLASSY_MEMBER_EMAIL` | **required** | Your Clear or Pro membership email |
-| `GLASSY_SELFHOST_TOKEN` | **required** | Pairing token from Settings → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
-| `GLASSY_VERIFY_CLOUD_URL` | `https://app.glassy.fyi` | Cloud instance that verifies your membership. Clear members must set `https://clear.glassy.fyi`. |
-| `JWT_SECRET` | **required** | `openssl rand -hex 32` |
-| `API_KEY_ENCRYPTION_KEY` | **required** | `openssl rand -hex 32` |
-| `APP_URL` | `http://localhost:3000` | Set for Tailscale / domain access |
-| `CORS_ORIGINS` | `http://localhost:3000` | Must include every origin you use |
-| `GLASSY_TAG` | `latest` | Pin a version for reproducibility |
-| `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
-| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on host (default); the server auto-appends `/v1` if missing. Use `http://ollama:11434` with the sidecar overlay |
-| `OLLAMA_MODEL` | `llama3.2` | Default model when none is selected in-app |
-| `BACKUP_ENCRYPTION_KEY` | — | AES-256-GCM; `openssl rand -hex 32` |
-| `CLUSTER_WORKERS` | `1` (pinned in `docker-compose.yml`) | The self-host appliance uses one worker for deterministic first-boot seeding. Raise only if you understand the trade-off. |
-| `MCP_PRO_TOOLCALLS_PER_HOUR` | `1200` | Raise for heavy agent automation |
-| `GLASSY_DOMAIN` | — | Required for Caddy HTTPS overlay |
+```bash
+docker compose exec glassy node server/utils/backup.js            # create
+docker compose exec glassy ls -1 /app/data/backups               # list files
+```
 
-Cloud AI keys are not read from `.env` — add them in-app at **Settings → API Keys**.
-See [`.env.example`](.env.example) for the full annotated list.
+**Restore the database.** The CLI restore auto-decrypts `.enc` files and copies
+plain `.db` files, so it works on both the automatic and CLI backups:
 
----
+```bash
+docker compose exec glassy node server/utils/backup.js --restore <backup-file>
+```
 
-## Security model
-
-The appliance enforces these gates server-side. They cannot be overridden by
-environment variables or admin settings:
-
-- **Registration hard-disabled.** `/api/auth/register` returns 403 before any
-  admin check fires.
-- **Commerce routes not mounted.** `/api/commerce/*` and `/api/stripe/*` → 404.
-- **Email permanently off.** Nothing leaves the machine. Use the admin reset
-  path or a secret recovery key (Settings → Security) to recover a lost password.
-- **Telemetry off.** Sentry is not initialised even if `SENTRY_DSN` is set.
-- **AI credit metering off.** BYOK calls go directly to your provider.
-
-`.env` is excluded from version control by `.gitignore`. Never commit it.
-
----
+The restore takes a pre-restore safety copy and waits 5 seconds before
+overwriting the live database (press Ctrl+C to abort). For a clean restore,
+stop other writers first. Set `BACKUP_ENCRYPTION_KEY` in `.env` before
+restoring an encrypted (`.enc`) backup.
 
 ## Troubleshooting
 
@@ -400,11 +438,10 @@ CORS_ORIGINS=http://localhost:3001
 Then `docker compose up -d`. The container always listens on 8080 internally;
 `APP_PORT` only changes the host-side mapping.
 
-> **⚠️ If you change `APP_PORT`, you must also update `APP_URL` and `CORS_ORIGINS` to the same port.** All three must agree, or login and API calls will fail with CORS errors.
-
 ### Checking container health
 
-To verify the container is healthy from the host:
+The container includes a built-in health check. To verify it's healthy from
+the host:
 
 ```bash
 # Canonical health endpoint (used by Docker healthcheck):
@@ -430,7 +467,6 @@ docker compose exec glassy sh
 curl -s http://host.docker.internal:11434/api/tags | head -c 200
 
 # Test membership-verification endpoint reachability:
-# (use https://clear.glassy.fyi if you are a Clear member)
 curl -s -o /dev/null -w "%{http_code}" https://app.glassy.fyi/api/verify-selfhost
 ```
 
@@ -450,26 +486,15 @@ docker compose logs glassy | grep -i "membership"
 docker compose logs glassy | grep -i "Agent Gateway"
 ```
 
----
+## Licensing
 
-## The Glassy ecosystem
+The Docker Compose files, Caddy configuration, and deployment scripts in this
+repository are licensed under the **MIT License**.
 
-| | |
-| --- | --- |
-| **[app.glassy.fyi](https://app.glassy.fyi)** | Cloud-hosted — zero setup, accessible from anywhere |
-| **[glassy-companion](https://github.com/0Reliance/glassy-companion)** | Browser extension — one-keystroke capture, Obsidian sync |
-| **[docs.glassy.fyi](https://docs.glassy.fyi)** | Documentation |
-| **[learn.glassy.fyi](https://learn.glassy.fyi)** | Guides and video lessons |
-| **[glassy.fyi](https://glassy.fyi)** | Marketing site and Clear community |
+The GlassyDash application image (`ghcr.io/0reliance/glassy-dash`) pulled by
+these compose files is separately licensed under the **Business Source License
+1.1** (BSL 1.1). It is available for personal, non-commercial, self-hosted use
+and will transition to **AGPL-3.0** on 2027-07-13 or upon Kickstarter goal
+satisfaction, whichever comes first.
 
----
-
-<div align="center">
-
-Built and maintained by [0Reliance Lab](https://github.com/0Reliance) ·
-[Report an issue](https://github.com/0Reliance/glassy-selfhost/issues) ·
-[Releases](https://github.com/0Reliance/glassy-selfhost/releases)
-
-**Keep it Glassy.**
-
-</div>
+For commercial licensing inquiries: hello@glassy.fyi

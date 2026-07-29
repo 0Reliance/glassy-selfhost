@@ -46,7 +46,17 @@ services:
       - INSTANCE_ACCESS_MODE_DEFAULT=private
       # Operational flags — safe to override in .env:
       - DEPLOYMENT_LOCALITY=${DEPLOYMENT_LOCALITY:-local}
+      # ── Second Brain / MCP full stack ───────────────────────────────
+      # All 6 flags must be on together for MCP to work end-to-end:
+      # CORPUS_INDEXER generates embeddings, KB_QUERY mounts the search API,
+      # MCP_SERVER mounts the /mcp endpoint, HYBRID_SEARCH enables BM25+vector
+      # fusion, MCP_BRIDGE enables Companion token exchange, KB_UI shows the
+      # knowledge base route in the sidebar. All default true on self-host.
+      - ENABLE_CORPUS_INDEXER=${ENABLE_CORPUS_INDEXER:-true}
+      - ENABLE_KB_QUERY=${ENABLE_KB_QUERY:-true}
       - ENABLE_MCP_SERVER=${ENABLE_MCP_SERVER:-true}
+      - ENABLE_HYBRID_SEARCH=${ENABLE_HYBRID_SEARCH:-true}
+      - ENABLE_MCP_BRIDGE=${ENABLE_MCP_BRIDGE:-true}
       - ENABLE_AGENT_GATEWAY=${ENABLE_AGENT_GATEWAY:-true}
       - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
       # Single-user appliance gains nothing from multi-worker and the
