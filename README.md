@@ -151,6 +151,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | --- | --- | --- |
 | Notes, AI, capture, companion | Yes | Yes |
 | Live Obsidian vault sync | No (server cannot reach your localhost) | Yes |
+| Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | No (requires localhost) | Yes |
 | MCP server + Second Brain | No | Yes |
@@ -281,6 +282,55 @@ OBSIDIAN_NETWORK_ALLOWLIST=192.168.1.10,glassy.tail-net.ts.net
 ```
 
 > ⚠️ Binding the Obsidian plugin to `0.0.0.0` exposes it to your network. Only do this on a trusted network or behind a firewall. The browser extension bridge is safer — it doesn't expose Obsidian to the network at all.
+
+## Cloud Sync (cross-instance data sync)
+
+Cloud Sync keeps your notes, documents, bookmarks, voice recordings,
+conversations, and pinned tags two-way in sync between this appliance and your
+Glassy cloud account (app.glassy.fyi or clear.glassy.fyi). It is separate
+from the self-host pairing token — sync uses its own per-peer token that you
+generate and rotate independently from Settings → Cloud Sync on the cloud
+side.
+
+### Enabling Cloud Sync
+
+1. In your **Glassy cloud account** (app.glassy.fyi or clear.glassy.fyi), open
+   **Settings → Cloud Sync** and click **Generate token**. Copy the raw token
+   (it is shown only once).
+2. In this appliance's `.env`, paste the token and set the cloud URL:
+   ```bash
+   GLASSY_SYNC_TOKEN=<paste-token-from-cloud>
+   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi   # or https://clear.glassy.fyi
+   ```
+3. Restart the container: `docker compose up -d`. The scheduler starts on
+   boot when `GLASSY_SYNC_TOKEN` is set and `INSTANCE_ID=self_hosted`.
+4. Verify in the self-hosted web app at **Settings → Cloud Sync** — you should
+   see the peer connection status, pending outbound count, and per-type
+   cursor state. Click **Sync now** to trigger an immediate cycle.
+
+### Tuning the scheduler (optional)
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GLASSY_SYNC_INTERVAL_MS` | `300000` (5 min) | Full cycle interval — pulls peer changes + pushes local. Set to `0` to disable automation (manual **Sync now** still works). |
+| `GLASSY_SYNC_CHECK_MS` | `10000` (10 s) | Fast-check interval — if there are pending outbound rows, runs an immediate cycle for near-instant push. Set to `0` to disable fast-check. |
+
+The fast check is a lightweight `COUNT(*)` query against the local outbox —
+negligible overhead. When local writes are pending you typically see them
+reach the peer within ~10 seconds.
+
+### Per-type, direction, and conflict controls
+
+In the cloud-side Settings → Cloud Sync panel you can:
+- Toggle individual content types on/off (notes, documents, bookmarks, voice,
+  conversations, pinned tags, etc.).
+- Set the sync direction per type (push-only, pull-only, or two-way).
+- Set the conflict policy: `most-recent` (last-writer-wins, the default) or
+  `cloud-wins` (always apply the incoming cloud version).
+
+Multi-appliance is supported: each appliance that handshakes with the same
+cloud token gets its own row in `sync_peers`, and each runs its own scheduler
+against the shared cloud state.
 
 ## Upgrading
 

@@ -15,10 +15,11 @@
 5. [Account recovery (lost password)](#5-account-recovery-lost-password)
 6. [AI providers (BYOK + Ollama)](#6-ai-providers-byok--ollama)
 7. [Obsidian live sync](#7-obsidian-live-sync)
-8. [Backup & restore](#8-backup--restore)
-9. [Upgrading](#9-upgrading)
-10. [Security hardening](#10-security-hardening)
-11. [Troubleshooting](#11-troubleshooting)
+8. [Cloud Sync (cross-instance data sync)](#8-cloud-sync-cross-instance-data-sync)
+9. [Backup & restore](#9-backup--restore)
+10. [Upgrading](#10-upgrading)
+11. [Security hardening](#11-security-hardening)
+12. [Troubleshooting](#12-troubleshooting)
 
 ---
 
@@ -38,6 +39,7 @@
 | Capture pipeline | ✅ | ✅ |
 | Data export (JSON, Obsidian ZIP, GDPR) | ✅ | ✅ |
 | Live Obsidian vault sync | ❌ (server ≠ localhost) | ✅ |
+| Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | ✅ (appliance side) |
 | Ollama local AI | ❌ | ✅ |
 | BYOK (your own API keys) | ✅ | ✅ (only AI path) |
 | Cloud metered AI (Gemini/OpenAI/Anthropic system keys) | ✅ | ❌ disabled |
@@ -436,7 +438,76 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 
 ---
 
-## 8. Backup & restore
+## 8. Cloud Sync (cross-instance data sync)
+
+Cloud Sync keeps your notes, documents, bookmarks, voice recordings,
+conversations, and pinned tags two-way in sync between this appliance and your
+Glassy cloud account. It is **separate from the self-host pairing token** —
+sync uses its own per-peer token, generated and rotated independently from
+**Settings → Cloud Sync** on the cloud side. The sync channel is
+server-to-server (the appliance talks directly to the cloud over HTTPS); no
+browser or extension is involved.
+
+### Enabling Cloud Sync
+
+1. In your **Glassy cloud account** (app.glassy.fyi or clear.glassy.fyi), open
+   **Settings → Cloud Sync** and click **Generate token**. Copy the raw token
+   (shown only once — if you lose it, rotate it).
+2. In this appliance's `.env`, paste the token and (for Clear members) set the
+   cloud URL:
+   ```bash
+   GLASSY_SYNC_TOKEN=<paste-token-from-cloud>
+   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi   # Clear: https://clear.glassy.fyi
+   ```
+3. Restart the container: `docker compose up -d`. The scheduler starts on
+   boot when `GLASSY_SYNC_TOKEN` is set and `INSTANCE_ID=self_hosted`.
+4. Verify in the self-hosted web app at **Settings → Cloud Sync** — the panel
+   shows peer connection status, pending outbound count, per-type cursor
+   state, and a **Sync now** button for an immediate cycle.
+
+### Scheduler tuning
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `GLASSY_SYNC_INTERVAL_MS` | `300000` (5 min) | Full cycle — pulls peer changes and pushes local ones. `0` disables automation (manual **Sync now** still works). |
+| `GLASSY_SYNC_CHECK_MS` | `10000` (10 s) | Fast check — if there are pending outbound rows, triggers an immediate cycle for near-instant push. `0` disables fast-check; the full interval still runs. |
+
+The fast check is a lightweight `COUNT(*)` on the local outbox — negligible
+overhead. With local writes pending you typically see them reach the peer
+within ~10 seconds.
+
+### Per-type, direction, and conflict controls
+
+In the **cloud-side** Settings → Cloud Sync panel:
+- Toggle individual content types on/off (notes, documents, bookmarks, voice
+  recordings, conversations, pinned tags, etc.).
+- Set sync direction per type (push-only, pull-only, or two-way).
+- Set the conflict policy: `most-recent` (last-writer-wins, the default) or
+  `cloud-wins` (always apply the incoming cloud version).
+
+### Multi-appliance
+
+Each appliance that handshakes with the same cloud sync token gets its own row
+in `sync_peers`, and each runs its own scheduler against the shared cloud
+state. This lets you keep a primary + secondary appliance (or a primary +
+laptop) in sync via the cloud.
+
+### Troubleshooting Cloud Sync
+
+- **Scheduler not running:** check `docker compose logs glassy | grep sync-scheduler`.
+  The line `[sync-scheduler] GLASSY_SYNC_TOKEN not set — automated sync disabled`
+  means the token is empty or wasn't picked up (restart after editing `.env`).
+- **`GLASSY_SYNC_INTERVAL_MS=0` disables automation:** the scheduler logs this
+  explicitly; manual **Sync now** in Settings still works.
+- **Conflict policy `cloud-wins` overrides last-writer-wins:** use this when the
+  cloud account is the canonical source and the appliance should mirror it.
+- **Token rotation:** generating a new token on the cloud side invalidates the
+  old one on the next 30-day re-verification window; to revoke immediately, use
+  **Revoke** and generate a fresh token.
+
+---
+
+## 9. Backup & restore
 
 All persistent data lives in the `glassy-data` Docker volume (the `notes.db` SQLite file).
 
@@ -475,7 +546,7 @@ docker compose up -d
 
 ---
 
-## 9. Upgrading
+## 10. Upgrading
 
 In your self-host directory (the directory containing `docker-compose.yml`):
 
@@ -504,7 +575,7 @@ Or set `GLASSY_TAG=v2.35.0-beta.12` in `.env` and re-run `docker compose up -d`.
 
 ---
 
-## 10. Security hardening
+## 11. Security hardening
 
 ### Secrets
 
@@ -550,7 +621,7 @@ Run this before `docker compose up -d` whenever you change `.env`, `docker-compo
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Container won't start
 
