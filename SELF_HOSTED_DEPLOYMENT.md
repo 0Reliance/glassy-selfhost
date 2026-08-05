@@ -15,11 +15,10 @@
 5. [Account recovery (lost password)](#5-account-recovery-lost-password)
 6. [AI providers (BYOK + Ollama)](#6-ai-providers-byok--ollama)
 7. [Obsidian live sync](#7-obsidian-live-sync)
-8. [Cloud Sync (cross-instance data sync)](#8-cloud-sync-cross-instance-data-sync)
-9. [Backup & restore](#9-backup--restore)
-10. [Upgrading](#10-upgrading)
-11. [Security hardening](#11-security-hardening)
-12. [Troubleshooting](#12-troubleshooting)
+8. [Backup & restore](#8-backup--restore)
+9. [Upgrading](#9-upgrading)
+10. [Security hardening](#10-security-hardening)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -39,7 +38,6 @@
 | Capture pipeline | ✅ | ✅ |
 | Data export (JSON, Obsidian ZIP, GDPR) | ✅ | ✅ |
 | Live Obsidian vault sync | ❌ (server ≠ localhost) | ✅ |
-| Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | ✅ (appliance side) |
 | Ollama local AI | ❌ | ✅ |
 | BYOK (your own API keys) | ✅ | ✅ (only AI path) |
 | Cloud metered AI (Gemini/OpenAI/Anthropic system keys) | ✅ | ❌ disabled |
@@ -73,21 +71,6 @@ Setting `INSTANCE_ID=self_hosted` in `docker-compose.yml` activates the single-u
 | `deductAiCredits()` | No-op — no credit ledger exists on the appliance. |
 
 The seeded admin is automatically granted `clear_lifetime` tier, which unlocks every premium feature through the existing `isClearMember()` entitlement path.
-
-### Second Brain / MCP runtime flags
-
-The MCP server (15 tools, 3 prompts, 6 resources) requires **6 runtime flags** to work end-to-end. The self-host `docker-compose.yml` sets all 6 to `true` by default. If you override any of them in `.env`, all 6 must remain `true` together:
-
-| Flag | What it enables | Without it |
-|------|----------------|------------|
-| `ENABLE_CORPUS_INDEXER` | Embedding generation + storage | MCP key generation 403s; search returns empty |
-| `ENABLE_KB_QUERY` | KB query REST endpoint | In-app KB search doesn't work |
-| `ENABLE_MCP_SERVER` | MCP endpoint at `/mcp` | MCP clients get 404 |
-| `ENABLE_HYBRID_SEARCH` | BM25 + vector fusion | Search quality degraded |
-| `ENABLE_MCP_BRIDGE` | Companion token exchange | Companion can't fetch MCP key |
-| `ENABLE_AGENT_GATEWAY` | Agent Gateway routes | Optional — only if using AI agents |
-
-To connect Claude Desktop, Cursor, Windsurf, or any MCP client, go to **Settings → Connections & data → AI Tools (MCP)** in the app and copy the config snippet. The Companion extension (v2.16.0+) also has an MCP Settings section that fetches your key and generates config snippets.
 
 ---
 
@@ -365,40 +348,12 @@ The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://
 
 Live Obsidian vault sync is the primary reason to self-host. The cloud server cannot reach `127.0.0.1` on your machine; a local install can.
 
-### Three connection paths
+### Two connection paths
 
-| Path | Works on | How | Bridge required? |
-|------|----------|-----|:---:|
-| **Direct server→Obsidian via tailnet** (most robust) | Any platform with [Tailscale](https://tailscale.com/) on both machines | Server reaches the Obsidian machine's tailnet IP directly | ❌ |
-| **Direct server→Obsidian via host** | Native Linux, macOS, Docker-on-Linux | Server reaches `host.docker.internal:27124` directly | ❌ |
-| **Browser extension bridge** | All platforms, required on Windows/WSL2 | Extension proxies requests from server → browser → Obsidian | ✅ |
-
-#### When the bridge is optional
-
-The browser extension bridge exists because the container cannot reach `127.0.0.1`
-on your host. **Tailscale changes this.** When Glassy and Obsidian are both on the
-same tailnet, the server reaches Obsidian directly via the tailnet IP — no SSE
-connection, no MV3 service worker, no browser dependency. The entire class of
-bridge bugs (SSE cycling, offscreen eviction, WSL2 networking, auth ticket
-races) does not apply.
-
-To use the tailnet-direct path:
-
-1. Install Tailscale on the Glassy host and the Obsidian host (if different).
-2. Run `sudo tailscale serve --bg --https 443 http://localhost:3000` on the
-   Glassy host (or just `tailscale up` for HTTP-only).
-3. In `.env`, set `OBSIDIAN_HOST_OVERRIDE` to the tailnet IP of the Obsidian
-   machine (e.g. `100.64.0.5`), and add it to `OBSIDIAN_NETWORK_ALLOWLIST`.
-4. Ensure the Obsidian Local REST API plugin binds to `0.0.0.0` (not
-   `127.0.0.1`) so it accepts tailnet connections. See [`deploy/selfhost/README.md`
-   § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups).
-5. With `tailscale serve --https`, Obsidian fetches get a trusted cert — no
-   self-signed cert errors.
-
-The bridge remains the canonical path for WSL2 (where the container cannot
-reach the Windows host's `127.0.0.1`) and for setups where Obsidian is not on
-a tailnet. See [`deploy/selfhost/README.md` § Multi-device access](../deploy/selfhost/README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)
-for Tailscale setup.
+| Path | Works on | How |
+|------|----------|-----|
+| **Browser extension bridge** (recommended) | All platforms, required on Windows/WSL2 | Extension proxies requests from server → browser → Obsidian |
+| **Direct server→Obsidian** | Native Linux, macOS, Docker-on-Linux | Server reaches `host.docker.internal:27124` directly |
 
 On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works — the container cannot reach the Windows host's `127.0.0.1`. The server's Obsidian settings panel (URL, Test Connection, Diagnostics) is hidden on self-hosted instances because those controls run server-side and would always fail from inside the container. The extension is the canonical source for the Obsidian URL and API key on self-host.
 
@@ -438,76 +393,7 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 
 ---
 
-## 8. Cloud Sync (cross-instance data sync)
-
-Cloud Sync keeps your notes, documents, bookmarks, voice recordings,
-conversations, and pinned tags two-way in sync between this appliance and your
-Glassy cloud account. It is **separate from the self-host pairing token** —
-sync uses its own per-peer token, generated and rotated independently from
-**Settings → Cloud Sync** on the cloud side. The sync channel is
-server-to-server (the appliance talks directly to the cloud over HTTPS); no
-browser or extension is involved.
-
-### Enabling Cloud Sync
-
-1. In your **Glassy cloud account** (app.glassy.fyi or clear.glassy.fyi), open
-   **Settings → Cloud Sync** and click **Generate token**. Copy the raw token
-   (shown only once — if you lose it, rotate it).
-2. In this appliance's `.env`, paste the token and (for Clear members) set the
-   cloud URL:
-   ```bash
-   GLASSY_SYNC_TOKEN=<paste-token-from-cloud>
-   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi   # Clear: https://clear.glassy.fyi
-   ```
-3. Restart the container: `docker compose up -d`. The scheduler starts on
-   boot when `GLASSY_SYNC_TOKEN` is set and `INSTANCE_ID=self_hosted`.
-4. Verify in the self-hosted web app at **Settings → Cloud Sync** — the panel
-   shows peer connection status, pending outbound count, per-type cursor
-   state, and a **Sync now** button for an immediate cycle.
-
-### Scheduler tuning
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `GLASSY_SYNC_INTERVAL_MS` | `300000` (5 min) | Full cycle — pulls peer changes and pushes local ones. `0` disables automation (manual **Sync now** still works). |
-| `GLASSY_SYNC_CHECK_MS` | `10000` (10 s) | Fast check — if there are pending outbound rows, triggers an immediate cycle for near-instant push. `0` disables fast-check; the full interval still runs. |
-
-The fast check is a lightweight `COUNT(*)` on the local outbox — negligible
-overhead. With local writes pending you typically see them reach the peer
-within ~10 seconds.
-
-### Per-type, direction, and conflict controls
-
-In the **cloud-side** Settings → Cloud Sync panel:
-- Toggle individual content types on/off (notes, documents, bookmarks, voice
-  recordings, conversations, pinned tags, etc.).
-- Set sync direction per type (push-only, pull-only, or two-way).
-- Set the conflict policy: `most-recent` (last-writer-wins, the default) or
-  `cloud-wins` (always apply the incoming cloud version).
-
-### Multi-appliance
-
-Each appliance that handshakes with the same cloud sync token gets its own row
-in `sync_peers`, and each runs its own scheduler against the shared cloud
-state. This lets you keep a primary + secondary appliance (or a primary +
-laptop) in sync via the cloud.
-
-### Troubleshooting Cloud Sync
-
-- **Scheduler not running:** check `docker compose logs glassy | grep sync-scheduler`.
-  The line `[sync-scheduler] GLASSY_SYNC_TOKEN not set — automated sync disabled`
-  means the token is empty or wasn't picked up (restart after editing `.env`).
-- **`GLASSY_SYNC_INTERVAL_MS=0` disables automation:** the scheduler logs this
-  explicitly; manual **Sync now** in Settings still works.
-- **Conflict policy `cloud-wins` overrides last-writer-wins:** use this when the
-  cloud account is the canonical source and the appliance should mirror it.
-- **Token rotation:** generating a new token on the cloud side invalidates the
-  old one on the next 30-day re-verification window; to revoke immediately, use
-  **Revoke** and generate a fresh token.
-
----
-
-## 9. Backup & restore
+## 8. Backup & restore
 
 All persistent data lives in the `glassy-data` Docker volume (the `notes.db` SQLite file).
 
@@ -546,7 +432,7 @@ docker compose up -d
 
 ---
 
-## 10. Upgrading
+## 9. Upgrading
 
 In your self-host directory (the directory containing `docker-compose.yml`):
 
@@ -557,7 +443,7 @@ docker compose up -d
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.12` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
+To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.11` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 **Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
 
@@ -568,14 +454,14 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.35.0-beta.12 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.11 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.35.0-beta.12` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.11` in `.env` and re-run `docker compose up -d`.
 
 ---
 
-## 11. Security hardening
+## 10. Security hardening
 
 ### Secrets
 
@@ -621,7 +507,7 @@ Run this before `docker compose up -d` whenever you change `.env`, `docker-compo
 
 ---
 
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 ### Container won't start
 
