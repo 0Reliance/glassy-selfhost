@@ -266,7 +266,7 @@ The extension holds the Obsidian API key locally (never sent to the server) and 
 
 **Troubleshooting the bridge:**
 
-- **Extension says "Bridge connected" but server says not connected:** Update to extension v2.16.0+ (v2.14.0+ is the minimum that moved the SSE out of the MV3 service worker, which Chrome evicts after ~30s, and added broad localhost permissions for self-host URLs; v2.16.0 adds the `chrome.alarms` heartbeat reliability fix). Verify `CLUSTER_WORKERS=1` (`docker exec glassy env | grep CLUSTER`). Toggle the bridge off and on.
+- **Extension says "Bridge connected" but server says not connected:** Update to extension v2.17.0+ (v2.14.0+ is the minimum that moved the SSE out of the MV3 service worker, which Chrome evicts after ~30s, and added broad localhost permissions for self-host URLs; v2.16.0 adds the `chrome.alarms` heartbeat reliability fix; v2.17.0 fixes the save-card image preview). Verify `CLUSTER_WORKERS=1` (`docker exec glassy env | grep CLUSTER`). Toggle the bridge off and on.
 - **Test Connection green but Obsidian features don't work:** Test Connection tests the full loop — if it's green, both legs work. Check server logs for `ECONNREFUSED` (the direct fallback failing — expected on WSL2).
 
 ### 2. Direct server → localhost (Linux/macOS)
