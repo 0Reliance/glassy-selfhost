@@ -443,7 +443,7 @@ docker compose up -d
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.36.0-beta.13` in `.env`. There is no `v2.36.0` stable tag yet — only beta tags are published.
+To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.11` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
 
 **Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
 
@@ -454,10 +454,10 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.36.0-beta.13 docker compose up -d
+GLASSY_TAG=v2.35.0-beta.11 docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.36.0-beta.13` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=v2.35.0-beta.11` in `.env` and re-run `docker compose up -d`.
 
 ---
 
