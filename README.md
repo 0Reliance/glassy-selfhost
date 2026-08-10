@@ -14,7 +14,7 @@ The image is published to the **public** GitHub Container Registry
 ## Quick start
 
 > **Self-hosting requires an active Glassy membership** (Clear or Pro). Sign up at
-> [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.fyi](https://glassy.fyi)
+> [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.today](https://glassy.today)
 > before continuing — the appliance will not start without a verified membership.
 
 ```bash
@@ -73,7 +73,7 @@ Kickstarter goals are met, sign-in on the appliance becomes **optional** —
 the login screen will be a setting rather than a requirement.
 
 We are a transparent, privacy-first, independent company. Track our goals
-at [glassy.fyi/kickstarter](https://glassy.fyi/kickstarter).
+at [glassy.today/kickstarter](https://glassy.today/kickstarter).
 
 **What stays on this device:**
 - Your notes, documents, and tags
@@ -154,7 +154,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | No (requires localhost) | Yes |
-| MCP server + Second Brain | No | Yes |
+| MCP server + Second Brain | Pro only | Yes |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
 
 ## Configuration
