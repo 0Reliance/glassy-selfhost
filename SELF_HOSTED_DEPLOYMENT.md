@@ -91,6 +91,11 @@ docker compose logs glassy | grep -A2 "Default admin created"
 docker exec glassy cat /app/data/.initial_admin_password
 ```
 
+> ⚠️ **The credentials file has TWO lines** — line 1 is the admin **email**,
+> line 2 is the **password**. Use only line 2 as the password (copying both
+> lines will fail login). To grab just the password:
+> `docker exec glassy sed -n 2p /app/data/.initial_admin_password`
+
 You will see something like:
 
 ```
@@ -525,6 +530,38 @@ Common causes:
 ### Login page says "registration disabled"
 
 This is expected. Registration is permanently disabled on the self-hosted appliance. Log in with the admin account (see [First boot](#3-first-boot--admin-account)).
+
+### "Membership verification failed" — even though the token is correct
+
+The appliance verifies `GLASSY_MEMBER_EMAIL` + `GLASSY_SELFHOST_TOKEN` against
+the cloud at boot. That endpoint is **rate-limited (10 requests / 15 min /
+IP)**, and to prevent account enumeration the cloud returns the same generic
+`valid:false` for every failure — including when you are temporarily
+rate-limited with a perfectly valid token.
+
+Two traps to know:
+
+1. **A wrong/placeholder token causes a restart loop.** Each failed boot used
+   to restart immediately (~1/s), burning the entire 15-minute rate budget in
+   seconds. Since v2.36.0-beta.16 the appliance **waits with exponential
+   backoff (30 s → 60 s → 120 s … capped at 15 min) before exiting**, so a
+   restart loop can no longer exhaust the budget while you fix `.env`.
+2. **After the budget is burned, even a CORRECT token reads invalid** for the
+   rest of the 15-minute window. If you just fixed the token and still see
+   `Membership verification failed`, **wait 15 minutes** (or restart the
+   container once after the window passes).
+
+To check the token independently of the appliance:
+
+```bash
+curl -X POST https://app.glassy.fyi/api/verify-selfhost \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","selfhostToken":"<token>"}'
+```
+
+> 💡 The pairing token is shown **once** when generated (it is stored hashed
+> on the cloud and cannot be recovered). Keep a copy in your password manager
+> — if it is lost, generate a new one in Settings → Self-hosting.
 
 ### Checking health from outside the container
 
