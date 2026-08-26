@@ -19,6 +19,7 @@
 9. [Upgrading](#9-upgrading)
 10. [Security hardening](#10-security-hardening)
 11. [Troubleshooting](#11-troubleshooting)
+12. [Cloud Sync (cross-instance data sync)](#12-cloud-sync-cross-instance-data-sync)
 
 ---
 
@@ -583,3 +584,55 @@ docker compose up -d
 > old admin password is the only way in.
 
 > **This is irreversible if you have no backup.** See [Backup & restore](#8-backup--restore).
+
+## 12. Cloud Sync (cross-instance data sync)
+
+Cloud Sync keeps this appliance and your Glassy cloud account two-way in
+sync. Setup (token, `.env`, scheduler tuning) is documented in the README's
+**Cloud Sync** section; this section covers the security model and day-2
+operations.
+
+### Security model
+
+- The channel authenticates with its **own** sync token (`GLASSY_SYNC_TOKEN`)
+  — separate from the self-host pairing token and your login session. Rotate
+  or revoke it any time from **Settings → Cloud Sync** on the cloud side.
+- The channel is **owner-scoped**: every change is captured with its owner at
+  write time, and the S2S endpoints serve each token holder only their own
+  change queue, state, and media. On multi-user clouds nothing leaks across
+  tenants.
+- Sync tokens are stored **hashed** on the cloud; the raw token is shown once
+  at generation.
+
+### Operational notes
+
+- Scheduler: a full pull+push cycle every `GLASSY_SYNC_INTERVAL_MS` (default
+  5 min), plus a fast check every `GLASSY_SYNC_CHECK_MS` (default 10 s) while
+  the outbox has pending rows — local writes typically reach the cloud within
+  ~10 seconds.
+- Conflicts: last-writer-wins by default; `cloud-wins` is selectable per
+  pairing on the cloud side.
+- Changes for **disabled content types are held, not lost** — they sit paused
+  in the outbox and flow again when you re-enable the type. The Settings →
+  Cloud Sync badge shows them as `+N paused (type disabled)` so they don't
+  read as "stuck".
+- Changes that repeatedly fail to apply are **dead-lettered after 10
+  attempts** and surfaced as an alert in Settings → Cloud Sync. They are
+  never silently dropped — fix the cause and press **Sync now**, or export /
+  re-import the affected type.
+- Deletes propagate fully for notes, documents, folders, and voice
+  recordings. Deletes of bookmarks, collections, highlights, conversations,
+  and pinned tags are best-effort — delete on the other instance too.
+
+### Troubleshooting
+
+- **Pending badge never drains:** check the cloud-side panel. Rows may be
+  paused (type disabled) or dead-lettered (alert shown) — both are visible,
+  neither loses data.
+- **Upgrading from a pre-0093 build:** legacy outbox rows whose owner cannot
+  be determined (e.g., tombstones for already-deleted rows on multi-user
+  clouds) are skipped during migration; live rows are attributed from their
+  source table and are unaffected.
+- **Appliance says "no peers connected yet":** the cloud side hasn't seen a
+  handshake since the token was set — verify `GLASSY_SYNC_TOKEN` and
+  `GLASSY_VERIFY_CLOUD_URL`, then **Sync now**.
