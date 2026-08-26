@@ -323,10 +323,15 @@ reach the peer within ~10 seconds.
 
 In the cloud-side Settings → Cloud Sync panel you can:
 - Toggle individual content types on/off (notes, documents, bookmarks, voice,
-  conversations, pinned tags, etc.).
-- Set the sync direction per type (push-only, pull-only, or two-way).
+  conversations, pinned tags, etc.). Disabled types pause in the outbox —
+  they're held (not lost) and flow again when you re-enable them.
+- Set the sync direction for the pairing (push-only, pull-only, or two-way).
 - Set the conflict policy: `most-recent` (last-writer-wins, the default) or
   `cloud-wins` (always apply the incoming cloud version).
+
+Deletes sync fully for notes, documents, folders, and voice recordings. For
+bookmarks, collections, highlights, conversations, and pinned tags, deletes are
+best-effort and may not propagate — delete on the other instance too.
 
 Multi-appliance is supported: each appliance that handshakes with the same
 cloud token gets its own row in `sync_peers`, and each runs its own scheduler
