@@ -19,6 +19,7 @@
 9. [Upgrading](#9-upgrading)
 10. [Security hardening](#10-security-hardening)
 11. [Troubleshooting](#11-troubleshooting)
+12. [Cloud Sync (cross-instance data sync)](#12-cloud-sync-cross-instance-data-sync)
 
 ---
 
@@ -365,7 +366,7 @@ On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works
 ### Setup on Windows/WSL2 (the bridge path)
 
 1. **Install Obsidian Local REST API plugin** (v4.0+) in your Obsidian desktop app. Note the API key and the URL (HTTPS `127.0.0.1:27124` or HTTP `127.0.0.1:27123`).
-2. **Install the Glassy Companion** browser extension (Chrome or Firefox) — **v2.17.1+** recommended (v2.14.0+ is the minimum floor for self-host WSL2; earlier versions lacked localhost host permissions for the Glassy server URL). v2.17.1 is the save & sync reliability release (capture-rule pre-population, 5xx-resilient sessions, offline-queue pause semantics, popup offline queueing, wildcard glassy.fyi host permissions); v2.16.0 adds the `chrome.alarms` heartbeat reliability fix and the MCP Settings UI; v2.17.0 fixes the save-card image preview (og:image object-fit:cover, favicon placeholder fallback, CSP img-src mirrors connect-src).
+2. **Install the Glassy Companion** browser extension (Chrome or Firefox) — **v2.18.0+** recommended (v2.14.0+ is the minimum floor for self-host WSL2; earlier versions lacked localhost host permissions for the Glassy server URL). v2.18.0 ships **bridge transport v2**: vault WRITES (tap-to-toggle checkboxes, add-under-heading, daily-note append, push-to-vault) now traverse the bridge with raw bodies + headers (If-Match/ETag relay) — on companions ≤ 2.17.1 reads work over the bridge but writes fall back to the unreachable direct path and 502. v2.17.1 is the save & sync reliability release (capture-rule pre-population, 5xx-resilient sessions, offline-queue pause semantics, popup offline queueing, wildcard glassy.fyi host permissions); v2.16.0 adds the `chrome.alarms` heartbeat reliability fix and the MCP Settings UI; v2.17.0 fixes the save-card image preview (og:image object-fit:cover, favicon placeholder fallback, CSP img-src mirrors connect-src).
 3. **Sign in** to the extension with your Glassy account (same email as your self-hosted appliance). Set the extension's **Server URL** to your self-host Glassy address (e.g. `http://localhost:3000`).
 4. **Open the extension popup** → Settings → **Obsidian Bridge**:
    - Set **Obsidian URL** to your plugin URL (e.g. `http://127.0.0.1:27123` — HTTP avoids self-signed cert issues).
@@ -376,7 +377,7 @@ On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works
 5. **Verify on the server**: open `http://localhost:3000` in your browser, sign in, go to Settings → Obsidian. You should see "✓ Extension bridge active — Obsidian connected." The URL/token fields are hidden because the extension manages them.
 6. **Verify via API** (optional): `curl -H "Authorization: Bearer <your-jwt>" http://localhost:3000/api/ext/obsidian-bridge/status` should return `{"connected":true,...}`.
 
-The extension maintains a persistent SSE connection to the server (via the offscreen document, which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search), it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result. The extension holds the API key locally — it is never sent to the server.
+The extension maintains a persistent SSE connection to the server (via the offscreen document, which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search) — or needs to WRITE to the vault (checkbox toggles, add-under-heading, daily-note append, push-to-vault; companion v2.18.0+ transport v2) — it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result, including upstream response headers (ETag) that power concurrency-safe writes. The extension holds the API key locally — it is never sent to the server. The extension advertises its version on connect (`&extv=` on the subscribe URL); the server enables transport v2 only for companions ≥ 2.18.0, so older extensions keep the proven read-only-over-bridge behavior.
 
 ### Setup on native Linux/macOS (direct path)
 
@@ -386,7 +387,8 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 
 ### Troubleshooting Obsidian connectivity
 
-- **Extension says "Bridge connected" but server says not connected:** This was a known issue in older extension versions where the SSE connection lived in the MV3 service worker (which Chrome evicts after ~30s). Update to extension **v2.17.1+** (v2.14.0+ is the minimum that moves the SSE into the offscreen document (persistent, never evicted) AND broadens `optional_host_permissions` to cover any localhost port — the old manifest only covered Obsidian ports 27123/27124, so SSE to a localhost self-host Glassy server on port 3000/3010 was silently blocked by Chrome). v2.16.0+ additionally moves the heartbeat onto `chrome.alarms` for reliability under service-worker eviction. v2.17.1 hardens save & sync reliability (offline-queue pause semantics, 5xx-resilient sessions). Verify with `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status`.
+- **Vault writes fail (502) but reads work:** writes need companion **v2.18.0+** (bridge transport v2) AND a server with the Obsidian glass-pane follow-up (v2.36.0-beta.17+). On older companions, raw-markdown writes (checkbox toggles, add-under-heading, daily append, push) fall back to the direct server→Obsidian path — unreachable from WSL2 containers. Update the extension.
+- **Extension says "Bridge connected" but server says not connected:** This was a known issue in older extension versions where the SSE connection lived in the MV3 service worker (which Chrome evicts after ~30s). Update to extension **v2.18.0+** (v2.14.0+ is the minimum that moves the SSE into the offscreen document (persistent, never evicted) AND broadens `optional_host_permissions` to cover any localhost port — the old manifest only covered Obsidian ports 27123/27124, so SSE to a localhost self-host Glassy server on port 3000/3010 was silently blocked by Chrome). v2.16.0+ additionally moves the heartbeat onto `chrome.alarms` for reliability under service-worker eviction. v2.17.1 hardens save & sync reliability (offline-queue pause semantics, 5xx-resilient sessions); v2.18.0 adds bridge transport v2 (vault writes over the bridge). Verify with `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status`.
 - **Server logs show `401 Invalid or expired SSE ticket`:** update the server image to **v2.35.0-beta.9+**. This is a server-side auth bug fixed in beta.9 — the `/api/ext` and `/api/ext/obsidian-bridge` routers ran `auth` twice on every bridge request, consuming the one-time SSE ticket on the first run. The extension masked it by silently falling back to the less-secure `?token=<JWT>` URL form (so the bridge still worked), but the JWT was leaking into server/proxy logs. beta.9 reorders the router mounts and adds a regression test. No extension or Obsidian configuration change is required.
 - **Chrome doesn't prompt for localhost permission / bridge won't connect on self-host:** v2.14.0+ declares `http(s)://127.0.0.1/*` and `http(s)://localhost/*` in `optional_host_permissions`. When you toggle the bridge on or save settings, Chrome prompts for permission to access localhost. If you deny it, the popup shows a warning banner — the bridge will start but SSE/fetches will fail. Re-save to re-prompt.
 - **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`). Also ensure the server is running v2.35.0-beta.11+ (beta.8 fixed the bridge-first route guards; beta.9 fixed the SSE ticket double-consumption + plugin version misreport; beta.11 fixed the bridge registry race condition where stale close handlers nuked newer connections — if the bridge "cycles every ~60s", update to beta.11).
@@ -620,3 +622,55 @@ docker compose up -d
 > old admin password is the only way in.
 
 > **This is irreversible if you have no backup.** See [Backup & restore](#8-backup--restore).
+
+## 12. Cloud Sync (cross-instance data sync)
+
+Cloud Sync keeps this appliance and your Glassy cloud account two-way in
+sync. Setup (token, `.env`, scheduler tuning) is documented in the README's
+**Cloud Sync** section; this section covers the security model and day-2
+operations.
+
+### Security model
+
+- The channel authenticates with its **own** sync token (`GLASSY_SYNC_TOKEN`)
+  — separate from the self-host pairing token and your login session. Rotate
+  or revoke it any time from **Settings → Cloud Sync** on the cloud side.
+- The channel is **owner-scoped**: every change is captured with its owner at
+  write time, and the S2S endpoints serve each token holder only their own
+  change queue, state, and media. On multi-user clouds nothing leaks across
+  tenants.
+- Sync tokens are stored **hashed** on the cloud; the raw token is shown once
+  at generation.
+
+### Operational notes
+
+- Scheduler: a full pull+push cycle every `GLASSY_SYNC_INTERVAL_MS` (default
+  5 min), plus a fast check every `GLASSY_SYNC_CHECK_MS` (default 10 s) while
+  the outbox has pending rows — local writes typically reach the cloud within
+  ~10 seconds.
+- Conflicts: last-writer-wins by default; `cloud-wins` is selectable per
+  pairing on the cloud side.
+- Changes for **disabled content types are held, not lost** — they sit paused
+  in the outbox and flow again when you re-enable the type. The Settings →
+  Cloud Sync badge shows them as `+N paused (type disabled)` so they don't
+  read as "stuck".
+- Changes that repeatedly fail to apply are **dead-lettered after 10
+  attempts** and surfaced as an alert in Settings → Cloud Sync. They are
+  never silently dropped — fix the cause and press **Sync now**, or export /
+  re-import the affected type.
+- Deletes propagate fully for notes, documents, folders, and voice
+  recordings. Deletes of bookmarks, collections, highlights, conversations,
+  and pinned tags are best-effort — delete on the other instance too.
+
+### Troubleshooting
+
+- **Pending badge never drains:** check the cloud-side panel. Rows may be
+  paused (type disabled) or dead-lettered (alert shown) — both are visible,
+  neither loses data.
+- **Upgrading from a pre-0093 build:** legacy outbox rows whose owner cannot
+  be determined (e.g., tombstones for already-deleted rows on multi-user
+  clouds) are skipped during migration; live rows are attributed from their
+  source table and are unaffected.
+- **Appliance says "no peers connected yet":** the cloud side hasn't seen a
+  handshake since the token was set — verify `GLASSY_SYNC_TOKEN` and
+  `GLASSY_VERIFY_CLOUD_URL`, then **Sync now**.
