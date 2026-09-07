@@ -58,6 +58,9 @@ services:
       - ENABLE_HYBRID_SEARCH=${ENABLE_HYBRID_SEARCH:-true}
       - ENABLE_MCP_BRIDGE=${ENABLE_MCP_BRIDGE:-true}
       - ENABLE_AGENT_GATEWAY=${ENABLE_AGENT_GATEWAY:-true}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@glassy.fyi}
       - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
       # Single-user appliance gains nothing from multi-worker and the
       # cluster-mode fork race during initializeDatabase() produces noisy
