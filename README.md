@@ -154,7 +154,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | No (requires localhost) | Yes |
-| MCP server + Second Brain | Pro only | Yes |
+| MCP server + Second Brain (29 tools, vault knowledge graph) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
 
 ## Configuration
@@ -180,7 +180,7 @@ called out below; everything else has a safe default.
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
 | `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
-| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (15 tools, 3 prompts, 6 resources). |
+| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (29 tools incl. the vault knowledge-graph suite, 4 prompts, 10 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
 | `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
@@ -213,10 +213,13 @@ called out below; everything else has a safe default.
 ### Advanced tuning
 
 Every knob in `.env.example` under **Advanced tuning** is optional and safe to
-leave at its default: worker count (`CLUSTER_WORKERS`), MCP tool-call rate
-limits (`MCP_PRO_TOOLCALLS_PER_HOUR`), and Obsidian timeout / import caps
-(`OBSIDIAN_REQUEST_TIMEOUT_MS`, `OBSIDIAN_IMPORT_MAX_*`). Raise them for a
-multi-core host, heavy agent automation, or a very large vault.
+leave at its default: worker count (`CLUSTER_WORKERS`), and Obsidian timeout /
+import caps (`OBSIDIAN_REQUEST_TIMEOUT_MS`, `OBSIDIAN_IMPORT_MAX_*`). Raise them
+for a multi-core host, heavy agent automation, or a very large vault. Note: the
+MCP tool-call rate-limit variables (`MCP_*_TOOLCALLS_PER_HOUR`) are inert on the
+appliance — since v2.36.0-beta.26 the self-hosted MCP server is unthrottled by
+design (rate limiting is a cloud cost-protection mechanism; the safety floor —
+key auth, SSRF validation, destructive-action confirmations — still applies).
 
 ## Local AI (bundled Ollama)
 
