@@ -8,7 +8,14 @@
 name: glassy-selfhost
 services:
   glassy:
-    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:-latest}
+    # ⚠️ GLASSY_TAG must be a pinned version, NOT `latest`. The floating `latest`
+    # tag is the HOSTED build: release-image.yml rebuilds it without the
+    # self-host build-time flags (VITE_ENABLE_MCP_SERVER/KB_UI/AGENT_GATEWAY/
+    # BYOK), so on `latest` the AI tools (MCP), Second Brain, Agent connections
+    # and API keys (BYOK) settings are hidden and a "You are on the cloud"
+    # banner appears on your own appliance. Versioned tags carry all flags.
+    # See DEPLOYMENT_RUNBOOK.md "GHCR tag semantics".
+    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.36.0-beta.26 — do NOT use latest (it is the hosted build and omits self-host features)}
     container_name: glassy
     restart: unless-stopped
     ports: ['${APP_PORT:-3000}:8080']
@@ -58,9 +65,32 @@ services:
       - ENABLE_HYBRID_SEARCH=${ENABLE_HYBRID_SEARCH:-true}
       - ENABLE_MCP_BRIDGE=${ENABLE_MCP_BRIDGE:-true}
       - ENABLE_AGENT_GATEWAY=${ENABLE_AGENT_GATEWAY:-true}
+      # ── Appliance-only capabilities ────────────────────────────────
+      # These two are DEFAULT-OFF in code (server/config/featureFlags.js)
+      # because on the cloud they are either a billing bypass or a hosted-only
+      # product surface. On the appliance the operator owns the keys and the
+      # hardware, so they default ON here. Do not remove them:
+      #   ENABLE_BYOK            — without it the server returns 403
+      #                            BYOK_DISABLED for every provider-key write
+      #                            while the UI (baked VITE_ENABLE_BYOK=true in
+      #                            versioned images) still shows the section.
+      #   ENABLE_CALENDAR_AUTOMATION — without it event-triggered Agent Gateway
+      #                            dispatch is silently skipped by the
+      #                            scheduler (it is permanently OFF on the
+      #                            hosted instances by product decision).
+      - ENABLE_BYOK=${ENABLE_BYOK:-true}
+      - ENABLE_CALENDAR_AUTOMATION=${ENABLE_CALENDAR_AUTOMATION:-true}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@glassy.fyi}
+      # Ollama on the HOST (not in a container). The code default is
+      # http://localhost:11434/v1, which inside a container points at the
+      # container itself and always fails ("TypeError: fetch failed") — so set
+      # the host gateway explicitly, same as OBSIDIAN_HOST_OVERRIDE below.
+      # `extra_hosts` (bottom of this file) makes host.docker.internal resolve.
+      # Using the bundled Ollama sidecar overlay instead? It overrides this to
+      # http://ollama:11434 — see docker-compose.ollama.yml.
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
       # Single-user appliance gains nothing from multi-worker and the
       # cluster-mode fork race during initializeDatabase() produces noisy

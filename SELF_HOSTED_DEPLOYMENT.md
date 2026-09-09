@@ -337,7 +337,16 @@ Ollama is already reachable via `host.docker.internal` without any configuration
 2. Pull a model: `ollama pull llama3.2` (or any supported model)
 3. In Glassy: Settings → AI → **Ollama** — Glassy auto-detects models from `http://host.docker.internal:11434`
 
-The `OLLAMA_BASE_URL` env var defaults to `http://host.docker.internal:11434` (reaches Ollama running on the host via Docker's host gateway). The server automatically appends `/v1` if it's missing, so both `http://host.docker.internal:11434` and `http://host.docker.internal:11434/v1` work. If you're using the bundled sidecar overlay, use `http://ollama:11434` instead. Override in `.env` if Ollama runs on a different port or host.
+`OLLAMA_BASE_URL` is set to `http://host.docker.internal:11434` by
+[`deploy/selfhost/docker-compose.yml`](../deploy/selfhost/docker-compose.yml),
+which reaches Ollama running on the host via Docker's host gateway. Do not
+remove that override: the server's own code default is
+`http://localhost:11434/v1`, and inside a container `localhost` is the container
+itself, so every embedding request fails with `TypeError: fetch failed`. The
+server automatically appends `/v1` if it's missing, so both
+`http://host.docker.internal:11434` and `http://host.docker.internal:11434/v1`
+work. If you're using the bundled sidecar overlay, use `http://ollama:11434`
+instead. Override in `.env` if Ollama runs on a different port or host.
 
 **No Ollama installed?** Use the bundled sidecar overlay so there's nothing extra to install on the host:
 
@@ -450,9 +459,19 @@ docker compose up -d
 
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
-To pin a specific version instead of tracking `latest`, set a released tag such as `GLASSY_TAG=v2.35.0-beta.11` in `.env`. There is no `v2.35.0` stable tag yet — only beta tags are published.
+`GLASSY_TAG` is **required** and must name a released version (e.g.
+`GLASSY_TAG=v2.36.0-beta.26`) — `docker compose` refuses to start without it.
+Only beta tags are published; there are no stable tags yet. **Do not use
+`latest`**: that floating tag is the hosted build and is rebuilt on every push
+to `main` without the self-host build-time flags, which hides the AI tools
+(MCP), Second Brain, Agent connections and API keys (BYOK) settings. See
+`DEPLOYMENT_RUNBOOK.md` → "GHCR tag semantics".
 
-**Hands-off updates (optional).** Add the Watchtower overlay to pull and apply new `:latest` images automatically (daily poll):
+**Hands-off updates (optional).** With `GLASSY_TAG` pinned to an immutable
+versioned tag there is nothing for the Watchtower overlay to pull, so it is a
+no-op. To upgrade, change `GLASSY_TAG` to the new released version and re-run
+`docker compose up -d`. (Pointing `GLASSY_TAG` at `latest` would restore
+auto-updates at the cost of the self-host feature set — not recommended.)
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
@@ -461,10 +480,11 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ### Rollback
 
 ```bash
-GLASSY_TAG=v2.35.0-beta.11 docker compose up -d
+GLASSY_TAG=<previous-released-version> docker compose up -d
 ```
 
-Or set `GLASSY_TAG=v2.35.0-beta.11` in `.env` and re-run `docker compose up -d`.
+Or set `GLASSY_TAG=<previous-released-version>` in `.env` and re-run
+`docker compose up -d`.
 
 ---
 
