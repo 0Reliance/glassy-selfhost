@@ -15,7 +15,7 @@ services:
     # and API keys (BYOK) settings are hidden and a "You are on the cloud"
     # banner appears on your own appliance. Versioned tags carry all flags.
     # See DEPLOYMENT_RUNBOOK.md "GHCR tag semantics".
-    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.36.0-beta.26 — do NOT use latest (it is the hosted build and omits self-host features)}
+    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.36.0-beta.27 — do NOT use latest (it is the hosted build and omits self-host features)}
     container_name: glassy
     restart: unless-stopped
     ports: ['${APP_PORT:-3000}:8080']
