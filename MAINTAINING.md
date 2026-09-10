@@ -33,15 +33,22 @@ repo by the `release-image.yml` workflow.
 
 These files must be **byte-identical** between the two repos. After any
 change to these files in the `glassy` repo, you must sync them to
-`glassy-selfhost` and push.
+`glassy-selfhost` and push. The `release-image.yml` workflow auto-syncs most of
+this on every push to `main`: `.env.example`, the base `docker-compose.yml`,
+three of the four overlays (`https`, `ollama`, `watchtower`), `Caddyfile` and
+`SELF_HOSTED_DEPLOYMENT.md`. **`docker-compose.tailscale.yml` is not copied by
+CI** (it exists only in the installer repo), so sync that one by hand.
 
 **`glassy-selfhost` owns its own versions** of:
 - `README.md` — has badges, screenshots, and a different presentation
   style than the main repo's `deploy/selfhost/README.md`. Content must
   be consistent but formatting differs.
-- `SELF_HOSTED_DEPLOYMENT.md` — same situation as README.md.
 - `screenshots/` — only in the installer repo.
 - `LICENSE` — only in the installer repo.
+
+`SELF_HOSTED_DEPLOYMENT.md` is **not** installer-owned: CI copies
+`docs/SELF_HOSTED_DEPLOYMENT.md` verbatim on every `main` push, so edit it in
+the `glassy` repo and let the sync carry it over.
 
 ## Sync checklist
 
@@ -65,8 +72,9 @@ When you change anything in `glassy/deploy/selfhost/`:
 5. **Update README.md** in `glassy-selfhost` if the change affects user-
    facing env vars, quick start instructions, or configuration. Keep the
    installer repo's badge/screenshot formatting.
-6. **Update SELF_HOSTED_DEPLOYMENT.md** in `glassy-selfhost` if the
-   change affects the verification flow, architecture, or security model.
+6. **`SELF_HOSTED_DEPLOYMENT.md`** lives in the `glassy` repo at
+   `docs/SELF_HOSTED_DEPLOYMENT.md` and is copied verbatim by CI — no manual
+   sync needed. If you edited it locally, just commit and push `glassy`.
 7. **Verify file identity**:
    ```bash
    diff glassy/deploy/selfhost/.env.example glassy-selfhost/.env.example
