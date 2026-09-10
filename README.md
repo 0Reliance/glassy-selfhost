@@ -171,6 +171,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.27`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -180,7 +181,7 @@ called out below; everything else has a safe default.
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
 | `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
-| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (29 tools incl. the vault knowledge-graph suite, 4 prompts, 10 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
+| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (29 tools incl. the vault knowledge-graph suite, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
 | `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
@@ -194,7 +195,6 @@ called out below; everything else has a safe default.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `GLASSY_TAG` | `latest` | Image tag to pull from GHCR. Pin a version for reproducibility. |
 | `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
 | `APP_URL` | `http://localhost:3000` | Base URL for OAuth + email links. **Set this if you access via Tailscale or a domain** — see [Multi-device access](#multi-device-access-tailscale--cloudflare-tunnel--netbird). |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins allowed to call the API. **Must include any additional origin you use** (Tailscale hostname, LAN IP, domain). |
@@ -352,15 +352,17 @@ Database migrations run automatically on container start.
 
 ### Automatic updates (optional)
 
-To have new images pulled and applied automatically, add the Watchtower
-overlay — it polls once a day and recreates the container (same config +
-volumes) when `:latest` moves:
+The bundled Watchtower overlay polls once a day and recreates the container
+(same config + volumes) when its image tag moves. Caveat: with `GLASSY_TAG`
+pinned to a released version (the recommended setup — never `latest`, the
+hosted build), the tag never moves, so in practice upgrading stays manual:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 ```
 
-Pin `GLASSY_TAG` to a version in `.env` if you'd rather upgrade manually.
+To upgrade, change `GLASSY_TAG` in `.env` to the newest released version, then
+run `docker compose pull && docker compose up -d`.
 
 ## Multi-device access (Tailscale · Cloudflare Tunnel · Netbird)
 
