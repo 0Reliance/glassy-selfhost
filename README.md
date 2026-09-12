@@ -364,6 +364,16 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 To upgrade, change `GLASSY_TAG` in `.env` to the newest released version, then
 run `docker compose pull && docker compose up -d`.
 
+> **After any upgrade, close and reopen the Glassy tab (or hard-refresh).** The
+> PWA's service worker + cached shell live in your browser, not the container —
+> an already-open tab keeps enforcing the OLD page's security policy until it
+> reloads. Symptoms if you skip this: model downloads/other fetches failing
+> with CSP violations that list hosts the server no longer blocks, or the UI
+> showing the previous build (e.g. the old "You are on the cloud" banner on a
+> self-host). If the old symptoms persist after a reopen, clear site data for
+> the Glassy origin (DevTools → Application → Storage → Clear site data).
+> Tracked upstream as 0Reliance/glassy#36.
+
 ## Multi-device access (Tailscale · Cloudflare Tunnel · Netbird)
 
 To use Glassy from another device (phone, laptop), you have three good options:
