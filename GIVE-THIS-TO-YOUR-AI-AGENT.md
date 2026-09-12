@@ -129,6 +129,13 @@ Remaining known self-host quirks worth knowing:
 - **Updates:** pinned GLASSY_TAG (`v2.36.0-beta.29` here); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features).
+- **After any upgrade, close and reopen the Glassy tab (or hard-refresh).**
+  The PWA service worker + cached shell live in the browser, not the
+  container — an already-open tab keeps enforcing the OLD page's security
+  policy until it reloads. Stale-shell symptom: fetches (model downloads,
+  etc.) blocked by CSP violations listing hosts the server no longer
+  blocks, or the old UI showing. Clear site data only if it persists.
+  Tracked upstream: 0Reliance/glassy#36.
 
 ## Suggested first actions for an agent
 
