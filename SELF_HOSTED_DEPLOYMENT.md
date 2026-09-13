@@ -686,7 +686,7 @@ docker compose up -d
 > goal is a true reset you MUST add `-v` — otherwise the admin seeding block
 > sees a non-empty `users` table and skips, so no password is printed and your
 > old admin password is the only way in.
-
+>
 > **This is irreversible if you have no backup.** See [Backup & restore](#8-backup--restore).
 
 ## 12. Cloud Sync (cross-instance data sync)
