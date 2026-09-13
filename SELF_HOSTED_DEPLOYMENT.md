@@ -53,7 +53,8 @@
 | Linked accounts (cross-user email linking) | ✅ | ❌ disabled |
 | Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access |
 | Social previews (OG tags on `/w/:slug`) | ✅ | ✅ mounted, 401 to anonymous crawlers — private mode is enforced before the User-Agent branch |
-| RSS following (external feeds + people) | ✅ | ⚠️ external feed fetches need outbound internet; everything else works offline |
+| Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
+| Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
 | Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
 
