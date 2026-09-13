@@ -51,6 +51,11 @@
 | Telemetry (Sentry) | ✅ | ❌ not initialised |
 | Sub-accounts (multiple workspaces, one owner) | ✅ | ✅ |
 | Linked accounts (cross-user email linking) | ✅ | ❌ disabled |
+| Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access |
+| Social previews (OG tags on `/w/:slug`) | ✅ | ✅ mounted, 401 to anonymous crawlers — private mode is enforced before the User-Agent branch |
+| RSS following (external feeds + people) | ✅ | ⚠️ external feed fetches need outbound internet; everything else works offline |
+| Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
+| Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
 
 ---
 
@@ -65,13 +70,20 @@ Setting `INSTANCE_ID=self_hosted` in `docker-compose.yml` activates the single-u
 | `/api/push/*` (web push) | Routes not mounted → 404. |
 | `/api/auth/oauth/status` | Always returns `{google: false}`. |
 | `/api/accounts/link/request` and `/link/verify` | 403 `LINKING_DISABLED`. |
-| `PATCH /api/admin/settings` | Mutations to `allowNewAccounts` and `instanceAccessMode` silently rejected; server re-enforces them on every boot. |
+| `/api/admin/users` (POST) and `/api/admin/users/:id` (DELETE) | 404 — the appliance cannot create or delete users. The single-user invariant is enforced here as well as at `/api/auth/register`; without it the owner (who is admin) could mint arbitrary `users` rows and turn the appliance into the multi-user hosted service the BSL forbids. The admin panel hides "Add User" to match. |
+| `POST /api/verify-selfhost` | Not mounted (`index.js:3931-3933`) — an appliance cannot validate other appliances, so it cannot act as a membership oracle. |
+| `GET /w/:slug` and `GET /w/:slug/:noteId` (social meta) | 401 in private mode — guarded before the User-Agent branch; a spoofed crawler UA is not a credential. |
+| `PATCH /api/admin/settings` | Mutations to `allowNewAccounts` and `instanceAccessMode` silently rejected; server re-enforces them on every boot. The admin panel disables both toggles and explains why, so it no longer reports success for a change the server discarded. |
 | `sendEmail()` | Returns early without any network call, even if `RESEND_API_KEY` is set. |
 | Sentry | Not initialised, even if `SENTRY_DSN` is set. |
 | Cloud system AI keys | Not loaded at startup. Only BYOK (`/api/api-keys`) and Ollama work. |
 | `deductAiCredits()` | No-op — no credit ledger exists on the appliance. |
 
-The seeded admin is automatically granted `clear_lifetime` tier, which unlocks every premium feature through the existing `isClearMember()` entitlement path.
+The seeded admin is also granted `clear_lifetime` tier as belt-and-braces, but premium
+features do not depend on it: entitlement is **instance-driven** — `INSTANCE_ID=self_hosted`
+short-circuits every tier gate in `server/config/tierPolicy.js` (and, since beta.30, the
+client mirror in `src/config/tierPolicy.js`), so DB tier drift (a restore, a bad sync) can
+never degrade the appliance. Cloud deployments keep every gate.
 
 ---
 
@@ -95,6 +107,34 @@ docker exec glassy cat /app/data/.initial_admin_password
 > line 2 is the **password**. Use only line 2 as the password (copying both
 > lines will fail login). To grab just the password:
 > `docker exec glassy sed -n 2p /app/data/.initial_admin_password`
+
+### Degraded mode (membership could not be verified)
+
+The appliance **always starts and works**. You buy and you own: if the cloud cannot be
+reached, or `GLASSY_MEMBER_EMAIL` / `GLASSY_SELFHOST_TOKEN` are unset or wrong, the
+appliance boots in **degraded mode** instead of refusing to start.
+
+Degraded mode is informational and means exactly this:
+
+- Every local feature keeps working, and premium features keep working too — entitlement
+  is instance-driven (see §2), not tier-driven, so it does not depend on verification.
+- `GET /api/instance` reports `membershipState`, and the boot log explains the cause:
+
+| Value | Meaning |
+|---|---|
+| `unverified` | Boot has not reached the check yet |
+| `verified` | Cloud confirmed the membership (live, or from the signed offline cache) |
+| `degraded` | Not confirmed — the appliance is otherwise fully functional |
+
+- Nothing else changes. No service is switched off by degraded mode; the state exists so
+  the operator — and future cloud features — can tell a confirmed membership from an
+  unconfirmed one.
+
+After a failed live verification the appliance skips the live retry while inside the
+backoff window (at most 15 minutes), so a container that restarts for *any* reason cannot
+exhaust the cloud's verification rate limit (10 requests / 15 min / IP) — and once that
+budget is spent, the cloud rejects even correct tokens for the rest of the window. Fix the
+`.env` values and restart; the next boot after the window retries live.
 
 You will see something like:
 
@@ -163,7 +203,9 @@ cached to `.membership_cache.json` in the data volume for 30 days when signed,
 or 24 hours when unsigned. If the cloud is unreachable, the appliance falls back
 to the cache (signed caches accepted indefinitely offline; unsigned caches up to
 7 days past expiry as a degraded-mode safety net) and warns in the logs. If no
-usable cache exists, the container exits with code 1.
+usable cache exists, the appliance starts in **degraded mode** (see
+[Degraded mode](#degraded-mode-membership-could-not-be-verified)) — the
+container no longer exits over a failed verification.
 
 **2. Admin account created (first boot only).** If the `users` table is empty,
 the appliance creates a local admin account:
@@ -562,11 +604,14 @@ rate-limited with a perfectly valid token.
 
 Two traps to know:
 
-1. **A wrong/placeholder token causes a restart loop.** Each failed boot used
-   to restart immediately (~1/s), burning the entire 15-minute rate budget in
-   seconds. Since v2.36.0-beta.16 the appliance **waits with exponential
-   backoff (30 s → 60 s → 120 s … capped at 15 min) before exiting**, so a
-   restart loop can no longer exhaust the budget while you fix `.env`.
+1. **A wrong/placeholder token cannot burn the rate budget.** Before v2.36.0-beta.30 a
+   failed verification exited the container, and each restart re-verified (~1/s),
+   burning the entire 15-minute rate budget in seconds. Since v2.36.0-beta.30 the
+   appliance **always boots** — a failed verification starts it in degraded mode —
+   and the live retry is **skipped while inside the persisted backoff window**
+   (30 s → 60 s → 120 s … capped at 15 min), so no restart pattern can exhaust the
+   budget while you fix `.env`. `GET /api/instance` reports the current state as
+   `membershipState` (`verified` / `degraded` / `unverified`).
 2. **After the budget is burned, even a CORRECT token reads invalid** for the
    rest of the 15-minute window. If you just fixed the token and still see
    `Membership verification failed`, **wait 15 minutes** (or restart the

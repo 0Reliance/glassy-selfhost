@@ -91,7 +91,6 @@ services:
       # Using the bundled Ollama sidecar overlay instead? It overrides this to
       # http://ollama:11434 — see docker-compose.ollama.yml.
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
       - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
       # Single-user appliance gains nothing from multi-worker and the
       # cluster-mode fork race during initializeDatabase() produces noisy
