@@ -20,7 +20,7 @@
 10. [Security hardening](#10-security-hardening)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Cloud Sync (cross-instance data sync)](#12-cloud-sync-cross-instance-data-sync)
-13. [Push notifications — unavailable on self-host](#13-push-notifications--unavailable-on-self-host)
+13. [Push notifications — opt-in on self-host](#13-push-notifications--opt-in-on-self-host)
 
 ---
 
@@ -467,9 +467,30 @@ curl -s -X POST localhost:3000/api/kb/backfill \
 Watch it with `GET /api/kb/backfill-status`, then re-check
 `.embeddingHealth` — it should read `ok: true` with a single `distinctWidths` entry.
 
-> **Known gap:** there is no single "rebuild the index" endpoint, so the SQL above
-> is currently the supported path. It should be one button; tracked as a follow-up.
-> Never hand-edit these tables on the hosted service.
+**Re-index in one call (preferred):** the appliance now ships a reset-and-rebuild
+endpoint, surfaced as **Settings → Connections & data → Second Brain → Rebuild
+index** (a deliberate two-click arm/confirm button). It clears the same tables as
+the SQL below — vectors *and* the sync ledger together — and starts the backfill
+immediately:
+
+```bash
+curl -X POST localhost:3000/api/kb/backfill/reindex \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"confirm": true}'
+```
+
+The manual SQL below remains the no-API fallback (for example when the server
+will not boot). Never hand-edit these tables on the hosted service.
+
+### Connect your AI agent (MCP)
+
+Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
+[`GIVE-THIS-TO-YOUR-AI-AGENT.md`](GIVE-THIS-TO-YOUR-AI-AGENT.md) from the repo
+root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
+the full 29-tool table, the Obsidian-bridge explainer, ops facts, and first
+actions. The self-host compose enables the MCP stack by default; generate your
+MCP key in **Settings → Connections & data**.
 
 ---
 
@@ -574,7 +595,7 @@ docker compose up -d
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
-`GLASSY_TAG=v2.36.0-beta.32`) — `docker compose` refuses to start without it.
+`GLASSY_TAG=v2.36.0-beta.33`) — `docker compose` refuses to start without it.
 Only beta tags are published; there are no stable tags yet. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the AI tools
@@ -841,39 +862,42 @@ operations.
 
 ---
 
-## 13. Push notifications — intentionally unavailable on self-host
+## 13. Push notifications — opt-in on self-host
 
-**Do not expect browser push on the appliance.** The push routes are deliberately
-never mounted on a self-hosted instance:
+**Browser push works on the appliance if you ask for it.** The original
+"unavailable" stance rested on a wrong premise: standard Web Push (VAPID,
+RFC 8291/8292 — the `web-push` package in `pushService.js`) does **not** require
+FCM/APNs for a browser PWA. Deliveries go to each subscription's push-service
+endpoint (Chrome's is Google-operated, Firefox's is Mozilla-operated), so the
+only third-party involvement is the push service itself — which is why push
+stays **off by default**: an operator may reasonably not want that dependency.
 
+**To opt in** (#45): generate a keypair and set the variables in your `.env`
+(see the `Web Push (VAPID)` block in `deploy/selfhost/.env.example`):
+
+```bash
+node scripts/generate-vapid-keys.js
+# then set in .env:
+#   VAPID_PUBLIC_KEY=...
+#   VAPID_PRIVATE_KEY=...
+#   VAPID_SUBJECT=mailto:you@example.com
 ```
-server/index.js:  // Not mounted on the single-user appliance: web push depends on cloud relay
-                  // services (FCM/APNs) and cannot work offline. /api/push/* returns 404.
-                  if (!isSelfHostedInstance()) { app.use('/api/push', pushRoutes) }
-```
 
-So `/api/push/*` answers 404 on the appliance and
-**Settings → Push Notifications renders nothing** (`PushNotificationSettings` bails
-out on `isSelfHostedInstance()`). That is consistent, not a bug: the panel is hidden
-precisely because the endpoints do not exist.
+With both keys set, `server/index.js` mounts `/api/push/*` and the
+**Settings → Notifications → Push** panel appears (the panel feature-detects the
+route: `/api/push/status` 404s → hidden, exactly the behavior when push is off).
+Unset them and both disappear again.
 
 **Consequences worth knowing:**
 
-- The `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` variables are
-  intentionally **not** offered in the appliance `.env.example` or
-  `docker-compose.yml`. Mounting routes that are never registered would be the same
-  dead-knob mistake as the `ENABLE_BYOK` divergence documented in
-  `docker-compose.yml`. If you set them anyway, nothing consumes them.
-- Reminders still fire **in-app over SSE** on the appliance, and
-  `pushService` logs a boot warning that push is disabled. So rule-driven
-  `push_reminder` actions are not silently lost — they just never leave the tab.
-- If you want browser push on self-host, it needs a product decision (mount the
-  routes and publish VAPID, which also means deciding whether the cloud-relay
-  assumption in the `index.js` comment still holds for a browser PWA — Web Push does
-  not inherently require FCM/APNs for web apps). Tracked as a question for the
-  maintainer, not something to work around by hand.
-- If you self-host and also want notifications today, use the email or in-app paths
-  instead.
+- Without the keys, `/api/push/*` answers 404 and the panel hides itself —
+  identical to the previous behavior, so nothing changes for existing installs.
+- Reminders always also fire **in-app over SSE** on the appliance, and
+  `pushService` logs a boot warning when push is disabled. Rule-driven
+  `push_reminder` actions are never silently lost — they just never leave the tab
+  unless you opted in.
+- The subscription endpoints still belong to third-party push services — that
+  is inherent to Web Push, not something Glassy adds.
 
 See `server/index.js` (route mounting) and
 `src/components/settings/PushNotificationSettings.jsx` (panel gating). If you were
