@@ -15,7 +15,7 @@ services:
     # and API keys (BYOK) settings are hidden and a "You are on the cloud"
     # banner appears on your own appliance. Versioned tags carry all flags.
     # See DEPLOYMENT_RUNBOOK.md "GHCR tag semantics".
-    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.36.0-beta.31 — do NOT use latest (it is the hosted build and omits self-host features)}
+    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.36.0-beta.32 — do NOT use latest (it is the hosted build and omits self-host features)}
     container_name: glassy
     restart: unless-stopped
     ports: ['${APP_PORT:-3000}:8080']
@@ -80,9 +80,14 @@ services:
       #                            hosted instances by product decision).
       - ENABLE_BYOK=${ENABLE_BYOK:-true}
       - ENABLE_CALENDAR_AUTOMATION=${ENABLE_CALENDAR_AUTOMATION:-true}
-      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
-      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
-      - VAPID_SUBJECT=${VAPID_SUBJECT:-mailto:admin@glassy.fyi}
+      # NOTE: no VAPID_* here. Web-push routes are deliberately never mounted on the
+      # appliance (server/index.js: "/api/push/* returns 404") and the push settings
+      # panel is hidden to match — so these three keys would be forwarded into a
+      # container that has no code path that reads them. Same reasoning as the
+      # ENABLE_BYOK note above: do not advertise a knob the appliance cannot use.
+      # If web push is ever enabled on self-host, add them back together with the
+      # route mount — see SELF_HOSTED_DEPLOYMENT.md §13.
+
       # Ollama on the HOST (not in a container). The code default is
       # http://localhost:11434/v1, which inside a container points at the
       # container itself and always fails ("TypeError: fetch failed") — so set
@@ -91,6 +96,16 @@ services:
       # Using the bundled Ollama sidecar overlay instead? It overrides this to
       # http://ollama:11434 — see docker-compose.ollama.yml.
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # Chat model. `env_file: [.env]` below already forwards OLLAMA_MODEL into the
+      # container, so this explicit entry is for `docker inspect` visibility and a
+      # sane default, NOT for reachability. Ollama tags are exact — `llama3.2` is
+      # `llama3.2:latest`, which a homelab that pulled `llama3.2:3b` does NOT have,
+      # and that 404 was the #35 symptom. Set the tag you actually have.
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.2}
+      # Embeddings use a SEPARATE model from chat. Left empty on purpose: the
+      # provider then probes /api/tags once and auto-selects an embedding-capable
+      # model you already have, so a stock appliance needs no configuration.
+      - OLLAMA_EMBEDDING_MODEL=${OLLAMA_EMBEDDING_MODEL:-}
       - OBSIDIAN_HOST_OVERRIDE=${OBSIDIAN_HOST_OVERRIDE:-host.docker.internal}
       # Single-user appliance gains nothing from multi-worker and the
       # cluster-mode fork race during initializeDatabase() produces noisy

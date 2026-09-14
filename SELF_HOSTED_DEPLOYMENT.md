@@ -20,6 +20,7 @@
 10. [Security hardening](#10-security-hardening)
 11. [Troubleshooting](#11-troubleshooting)
 12. [Cloud Sync (cross-instance data sync)](#12-cloud-sync-cross-instance-data-sync)
+13. [Push notifications — unavailable on self-host](#13-push-notifications--unavailable-on-self-host)
 
 ---
 
@@ -400,6 +401,76 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml exec ollama ol
 
 The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`deploy/selfhost/docker-compose.ollama.yml`](../deploy/selfhost/docker-compose.ollama.yml)).
 
+### Re-indexing embeddings
+
+**Changing the embedding model or provider invalidates every stored vector.**
+Vectors are only comparable within the width their model produces:
+`gemini-embedding-001` → 768, `nomic-embed-text` → 768, `mxbai-embed-large` → 1024,
+`llama3.2:3b` → 3072. After a change, cosine similarity throws on the width
+mismatch and the row is skipped — so semantic search quietly returns less (often
+nothing) while the API still answers 200.
+
+This applies to `GLASSY_EMBEDDING_MODEL`, `GLASSY_EMBEDDING_PROVIDER` and
+`OLLAMA_EMBEDDING_MODEL`.
+
+**Check whether you have drift:**
+
+```bash
+curl -s localhost:3000/api/monitoring/ready | jq '.embeddingHealth'
+```
+
+`ok: true` means one consistent width is stored. `ok: false` reports
+`offReferenceRows` (vectors the current model cannot use), `distinctWidths`, and an
+`action` naming the remedy. This field is informational and never flips the
+endpoint to `not ready` — a stale index degrades search, it does not stop the
+process serving traffic.
+
+**Re-index (destructive; the vectors are derived data and are rebuilt from your
+notes, bookmarks, documents and transcripts):**
+
+Back up first — this is the whole point of §8, and here you are deliberately
+deleting an index:
+
+```bash
+docker compose exec glassy node -e "
+  const db = require('./server/db').getDb();
+  for (const t of ['content_embeddings','note_embeddings','voice_embeddings',
+                   'document_embeddings','bookmark_embeddings','embedding_sync_status']) {
+    const n = db.prepare('SELECT COUNT(*) n FROM ' + t).get().n;
+    console.log(t, n);
+  }
+"
+```
+
+That counts the rows you are about to drop. Confirm `GLASSY_TAG` is a released
+version, take a backup, then clear the index and the sync ledger together —
+**both** are required, because backfill only processes items that are not already
+recorded as `synced`, so clearing vectors alone leaves them permanently unrebuilt:
+
+```sql
+DELETE FROM content_embeddings;
+DELETE FROM embedding_sync_status;
+DELETE FROM note_embeddings;
+DELETE FROM voice_embeddings;
+DELETE FROM document_embeddings;
+DELETE FROM bookmark_embeddings;
+```
+
+Then re-run the backfill — **Settings → Second Brain → Backfill**, or:
+
+```bash
+curl -s -X POST localhost:3000/api/kb/backfill \
+  -H "Authorization: Bearer <jwt>" -H 'Content-Type: application/json' \
+  -d '{"sourceTypes":["note","bookmark","document","voice_transcript"]}'
+```
+
+Watch it with `GET /api/kb/backfill-status`, then re-check
+`.embeddingHealth` — it should read `ok: true` with a single `distinctWidths` entry.
+
+> **Known gap:** there is no single "rebuild the index" endpoint, so the SQL above
+> is currently the supported path. It should be one button; tracked as a follow-up.
+> Never hand-edit these tables on the hosted service.
+
 ---
 
 ## 7. Obsidian live sync
@@ -503,7 +574,7 @@ docker compose up -d
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
-`GLASSY_TAG=v2.36.0-beta.31`) — `docker compose` refuses to start without it.
+`GLASSY_TAG=v2.36.0-beta.32`) — `docker compose` refuses to start without it.
 Only beta tags are published; there are no stable tags yet. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the AI tools
@@ -528,6 +599,33 @@ GLASSY_TAG=<previous-released-version> docker compose up -d
 
 Or set `GLASSY_TAG=<previous-released-version>` in `.env` and re-run
 `docker compose up -d`.
+
+### Reinstalling from scratch? Rotate `JWT_SECRET` first
+
+If you destroy the data volume but reuse the previous `.env`, the old
+`JWT_SECRET` survives — and session tokens are verified against that secret alone
+(`jwt.verify(token, JWT_SECRET)`). The appliance seeds its admin from
+`GLASSY_MEMBER_EMAIL`, so a browser still holding a token from the *previous*
+install authenticates straight into the new one and skips the
+"set your permanent password" first-boot screen entirely. You are then logged in
+against a database you have never seen, with no prompt telling you so.
+
+Before reinstalling, do one of these:
+
+```bash
+# Rotate the signing key — invalidates every existing session:
+sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" .env
+```
+
+…or clear site data for the appliance origin in every browser that previously used
+it. If you intentionally restore a **backup** onto a fresh install with the same
+`JWT_SECRET`, existing sessions keep working — that is the desired outcome there,
+which is why this is a reinstall caution and not a code change.
+
+A `jwt_version` claim bumped when a fresh database is seeded was considered and
+rejected: it would also invalidate tokens after a legitimate restore-from-backup,
+and on a single-user appliance rotating one secret is a strictly smaller blast
+radius than a token-schema migration.
 
 ---
 
@@ -740,3 +838,45 @@ operations.
 - **Appliance says "no peers connected yet":** the cloud side hasn't seen a
   handshake since the token was set — verify `GLASSY_SYNC_TOKEN` and
   `GLASSY_VERIFY_CLOUD_URL`, then **Sync now**.
+
+---
+
+## 13. Push notifications — intentionally unavailable on self-host
+
+**Do not expect browser push on the appliance.** The push routes are deliberately
+never mounted on a self-hosted instance:
+
+```
+server/index.js:  // Not mounted on the single-user appliance: web push depends on cloud relay
+                  // services (FCM/APNs) and cannot work offline. /api/push/* returns 404.
+                  if (!isSelfHostedInstance()) { app.use('/api/push', pushRoutes) }
+```
+
+So `/api/push/*` answers 404 on the appliance and
+**Settings → Push Notifications renders nothing** (`PushNotificationSettings` bails
+out on `isSelfHostedInstance()`). That is consistent, not a bug: the panel is hidden
+precisely because the endpoints do not exist.
+
+**Consequences worth knowing:**
+
+- The `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` variables are
+  intentionally **not** offered in the appliance `.env.example` or
+  `docker-compose.yml`. Mounting routes that are never registered would be the same
+  dead-knob mistake as the `ENABLE_BYOK` divergence documented in
+  `docker-compose.yml`. If you set them anyway, nothing consumes them.
+- Reminders still fire **in-app over SSE** on the appliance, and
+  `pushService` logs a boot warning that push is disabled. So rule-driven
+  `push_reminder` actions are not silently lost — they just never leave the tab.
+- If you want browser push on self-host, it needs a product decision (mount the
+  routes and publish VAPID, which also means deciding whether the cloud-relay
+  assumption in the `index.js` comment still holds for a browser PWA — Web Push does
+  not inherently require FCM/APNs for web apps). Tracked as a question for the
+  maintainer, not something to work around by hand.
+- If you self-host and also want notifications today, use the email or in-app paths
+  instead.
+
+See `server/index.js` (route mounting) and
+`src/components/settings/PushNotificationSettings.jsx` (panel gating). If you were
+looking for this because model downloads fail, that is a separate CSP issue — see
+§6 and `server/middleware/security.js`.
+
