@@ -28,7 +28,7 @@ cp .env.example .env
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
 #   JWT_SECRET=$(openssl rand -hex 32)
 #   API_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)
-docker compose up -d
+docker compose up -d --quiet-pull   # ~1.2 GB image; suppresses per-layer progress
 ```
 
 > **Pin `GLASSY_TAG` to a released version — never use `latest`.** The floating
