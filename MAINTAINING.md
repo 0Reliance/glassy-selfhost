@@ -17,8 +17,29 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 ```
 
 The installer repo's `docker-compose.yml` pulls the GHCR image
-(`ghcr.io/0reliance/glassy-dash:main`), which is built from the `glassy`
-repo by the `release-image.yml` workflow.
+`ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?…}`. **`GLASSY_TAG` is required and
+must name a released version** (e.g. `v2.36.0-beta.31`): compose refuses to start
+without it, and `latest` is the wrong value.
+
+### Which tag to reference: `latest` is the hosted build, not the appliance
+
+Two workflows publish images, and they do **not** build the same thing:
+
+| Workflow | Trigger | Tags | Self-host build flags |
+|---|---|---|---|
+| `publish-image.yml` | version tag | `v2.36.0-beta.N` | **yes** — `INSTANCE_ID=self_hosted` + all four `VITE_ENABLE_*` |
+| `release-image.yml` | every push to `main` | `latest`, `main` | **no** — built without them |
+
+So `:latest` and `:main` move constantly and always carry the *hosted* bundle.
+Pointing an appliance at them hides **AI tools (MCP)**, **Second Brain**, **Agent
+connections** and **API keys (BYOK)**, and shows a "You are on the cloud" banner on
+the user's own hardware. Versioned tags are the appliance build. `Dockerfile`
+asserts the baked marker and fails the build if the two variants converge, and the
+installer compose encodes `${GLASSY_TAG:?…}` so a missing pin is a startup error
+rather than a degraded install.
+
+If you are reading this to debug a "features are missing" report, the first
+question is always `grep GLASSY_TAG .env`.
 
 ## Source of truth
 
@@ -142,11 +163,52 @@ latest image:
 docker compose pull && docker compose up -d
 ```
 
+### Editing the installer repo directly (your change will be deleted)
+
+**Do not fix these files here.** `docker-compose.yml`, the `https`/`ollama`/
+`watchtower` overlays, `Caddyfile`, `.env.example` and
+`SELF_HOSTED_DEPLOYMENT.md` are generated: `release-image.yml` blind-copies them
+over this repo on **every push to `glassy/main`**, and `publish-image.yml` does it
+on every version tag. A `cp` has no merge step, so a correct, tested, reviewed fix
+committed here vanishes at the next sync — and nothing fails when it does.
+
+This already happened once:
+
+```
+1606c9f  2026-09-11  fix(compose): forward OLLAMA_MODEL env into the glassy container
+1001ecb  two commits later, "chore: auto-sync from glassy@346d6f3"
+                   -> deleted that line, because upstream was never changed
+```
+
+The documented remedy for a live user-facing bug (0Reliance/glassy#35) sat reverted
+for two days before anyone noticed.
+
+The rule is enforced in two places now:
+
+- `guard-source-of-truth.yml` (this repo) fails any non-bot commit touching a
+  CI-owned file, so the mistake is caught at the moment it is pushed.
+- `scripts/check-selfhost-sync.js` (`glassy` repo) reports drift in both directions
+  and runs in `glassy`'s CI plus before both sync `cp` steps.
+
+**The correct workflow:** open `0Reliance/glassy`, edit the matching file under
+`deploy/selfhost/` (or `docs/SELF_HOSTED_DEPLOYMENT.md`), and push. The auto-sync
+lands it here within minutes. If you genuinely need a local change first, make it in
+`glassy` on a branch and tag — do not hand-edit the mirror.
+
+Files this repo owns, and which are always safe to edit here: `README.md`,
+`MAINTAINING.md`, `screenshots/`, `LICENSE`, `docker-compose.tailscale.yml`.
+
 ### Env var not passed to container
 
-`docker-compose.yml` uses `env_file: [.env]` which passes all vars in
-`.env` to the container. However, for critical vars we also add an
-explicit `environment:` entry with a default. This makes the var visible
-in `docker inspect` output and ensures it works even if the user
-accidentally removes it from `.env`. Always add an explicit
-`environment:` entry for any new required or important env var.
+`docker-compose.yml` declares `env_file: [.env]`, which forwards **every** variable
+in `.env` into the container — a var does **not** need an `environment:` entry to
+reach the process. (Verified: `env_file` alone delivers `OLLAMA_MODEL=…` to
+`docker compose run … env`, and `environment:` only takes precedence for keys it
+also names.)
+
+Add an explicit `environment:` entry anyway for important vars, for two reasons
+that are about operability rather than reachability: it appears in `docker inspect`
+output when support is debugging a live box, and it gives the var a working default
+if the user deletes the line from `.env`. Do not add one believing the var is
+otherwise invisible to the container — that misconception sent the #35 triage down
+the wrong path first.

@@ -21,7 +21,8 @@ The image is published to the **public** GitHub Container Registry
 git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
-# Edit .env — fill in four required fields:
+# Edit .env — fill in six required fields:
+#   GLASSY_TAG=<latest released version, e.g. v2.36.0-beta.31>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -29,6 +30,15 @@ cp .env.example .env
 #   API_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)
 docker compose up -d
 ```
+
+> **Pin `GLASSY_TAG` to a released version — never use `latest`.** The floating
+> `latest` tag is the *hosted* build: it is rebuilt on every push to `main`
+> without the self-host build-time flags, so on `latest` the **AI tools (MCP)**,
+> **Second Brain**, **Agent connections** and **API keys (BYOK)** settings are
+> hidden and a "You are on the cloud" banner appears on your own appliance.
+> Versioned tags carry all self-host features. Check the
+> [releases page](https://github.com/0Reliance/glassy-selfhost/releases) for the
+> newest version. `docker compose` will refuse to start until `GLASSY_TAG` is set.
 
 On first boot the appliance verifies your membership AND pairing token against
 the cloud, creates your local account using your membership email, and prints
@@ -171,7 +181,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.28`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.31`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
