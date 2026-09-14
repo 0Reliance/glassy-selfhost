@@ -1,0 +1,108 @@
+name: Guard source of truth
+
+# WHY THIS WORKFLOW EXISTS
+#
+# These files are NOT maintained here. `glassy/deploy/selfhost/` (and
+# glassy/docs/SELF_HOSTED_DEPLOYMENT.md) is the source of truth, and two upstream
+# workflows — release-image.yml (every push to glassy/main) and publish-image.yml
+# (every version tag) — keep this repo in lockstep by blind-copying over them.
+#
+# A blind `cp` has no merge step, so a fix committed directly HERE is silently
+# erased the next time either workflow runs. This actually happened:
+#
+#   glassy-selfhost@1606c9f  (2026-09-11)  added OLLAMA_MODEL to docker-compose.yml
+#   glassy-selfhost@1001ecb  (two commits later, "auto-sync from glassy@346d6f3")
+#                                          DELETED it, because upstream never changed
+#
+# The result was that the documented fix for a live, user-facing bug (0Reliance/
+# glassy#35) sat reverted for two days with nothing failing anywhere. This job
+# makes that edit fail loudly at the moment it is pushed.
+#
+# WHY AUTHORSHIP RATHER THAN TEXT COMPARISON
+# Comparing this repo against upstream cannot distinguish "a human added a fix
+# here that upstream lacks" (must block) from "this repo is merely behind upstream,
+# waiting for the next auto-sync" (completely normal, happens on every push).
+# Text comparison sees both as a difference. The commit author separates them
+# cleanly: auto-sync commits are made by GitHub Actions, human commits are not.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: CI-owned files unchanged by humans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Reject human edits to CI-owned installer files
+        env:
+          EVENT: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Must stay in lockstep with SYNC_PAIRS in
+          # glassy/scripts/check-selfhost-sync.js, which is verified upstream by
+          # server/tests/selfhostSync.test.js.
+          CI_OWNED='docker-compose.yml docker-compose.https.yml docker-compose.ollama.yml docker-compose.watchtower.yml Caddyfile .env.example SELF_HOSTED_DEPLOYMENT.md'
+
+          if [ "$EVENT" = 'pull_request' ]; then
+            RANGE="$PR_BASE..$HEAD_SHA"
+          else
+            # All-zeros before = branch creation; nothing to compare against.
+            case "$PUSH_BEFORE" in
+              ''|0000000000000000000000000000000000000000) RANGE="$HEAD_SHA~1..$HEAD_SHA" ;;
+              *) RANGE="$PUSH_BEFORE..$HEAD_SHA" ;;
+            esac
+          fi
+
+          CHANGED=''
+          for f in $CI_OWNED; do
+            if git diff --name-only "$RANGE" -- "$f" | grep -qx "$f"; then
+              CHANGED="$CHANGED $f"
+            fi
+          done
+
+          if [ -z "$CHANGED" ]; then
+            echo "No CI-owned files touched — README.md, MAINTAINING.md, screenshots/ and docker-compose.tailscale.yml are maintained here and are always fine to edit."
+            exit 0
+          fi
+
+          echo "CI-owned files touched:$CHANGED"
+
+          # Commits in this range that touched those files, excluding the bot.
+          OFFENDERS=$(git log --no-merges --format='%H%x09%ae%x09%an' "$RANGE" -- $CHANGED \
+            | grep -vE $'\t(actions@github\.com|[0-9]+\+github-actions(\[bot\])?@users\.noreply\.github\.com)\t' || true)
+
+          if [ -z "$OFFENDERS" ]; then
+            echo 'All such commits were made by the upstream auto-sync bot. Proceeding.'
+            exit 0
+          fi
+
+          {
+            echo '::error::These files are generated from glassy/deploy/selfhost/ and glassy/docs/ — the blind auto-sync overwrites any edit made here, with nothing failing.'
+            echo ''
+            echo 'Touched here by a non-bot commit:'
+            echo "$OFFENDERS" | while IFS=$'\t' read -r sha email name; do
+              printf '  %s  committed by %s <%s>\n' "${sha:0:7}" "$name" "$email"
+            done
+            echo ''
+            echo 'This is exactly how the OLLAMA_MODEL fix in 1606c9f was lost to 1001ecb.'
+            echo ''
+            echo 'Instead: open 0Reliance/glassy, edit the matching file under'
+            echo 'deploy/selfhost/ (docs/SELF_HOSTED_DEPLOYMENT.md lives in docs/), and push'
+            echo 'there. release-image.yml will copy it here within a few minutes.'
+            echo ''
+            echo 'See MAINTAINING.md. To land an urgent fix here, disable this check once and say why.'
+          } >&2
+          exit 1
