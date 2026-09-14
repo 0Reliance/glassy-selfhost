@@ -374,15 +374,19 @@ docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
 To upgrade, change `GLASSY_TAG` in `.env` to the newest released version, then
 run `docker compose pull && docker compose up -d`.
 
-> **After any upgrade, close and reopen the Glassy tab (or hard-refresh).** The
-> PWA's service worker + cached shell live in your browser, not the container —
-> an already-open tab keeps enforcing the OLD page's security policy until it
-> reloads. Symptoms if you skip this: model downloads/other fetches failing
-> with CSP violations that list hosts the server no longer blocks, or the UI
+> **After an upgrade, give the tab one reload.** The PWA's service worker and
+> cached shell live in your browser, not the container. Since v2.36.0-beta.32 the
+> app serves its shell **network-first** and reloads an open tab once when the
+> service worker updates, so this is mostly automatic (0Reliance/glassy#36).
+>
+> Two cases still need you: a tab that has been **open across the upgrade**
+> enforces the security policy of the document it already loaded until it reloads,
+> and a browser still running a **pre-fix service worker** keeps precaching the
+> shell until that worker is itself replaced. Symptoms, if you hit either: fetches
+> failing with CSP violations listing hosts the server no longer blocks, or the UI
 > showing the previous build (e.g. the old "You are on the cloud" banner on a
-> self-host). If the old symptoms persist after a reopen, clear site data for
-> the Glassy origin (DevTools → Application → Storage → Clear site data).
-> Tracked upstream as 0Reliance/glassy#36.
+> self-host). Close and reopen the tab; if it persists, clear site data for the
+> Glassy origin (DevTools → Application → Storage → Clear site data).
 
 ## Multi-device access (Tailscale · Cloudflare Tunnel · Netbird)
 
