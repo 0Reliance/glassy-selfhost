@@ -503,7 +503,7 @@ Live Obsidian vault sync is the primary reason to self-host. The cloud server ca
 | Path | Works on | How |
 |------|----------|-----|
 | **Browser extension bridge** (recommended) | All platforms, required on Windows/WSL2 | Extension proxies requests from server → browser → Obsidian |
-| **Direct server→Obsidian** | Native Linux, macOS, Docker-on-Linux | Server reaches `host.docker.internal:27124` directly |
+| **Direct server→Obsidian** | Native Linux, macOS, Docker-on-Linux | Server reaches the host via `host.docker.internal:27123/27124` — requires the plugin bound to `0.0.0.0` and a host firewall allowance (see the direct-path setup below) |
 
 On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works — the container cannot reach the Windows host's `127.0.0.1`. The server's Obsidian settings panel (URL, Test Connection, Diagnostics) is hidden on self-hosted instances because those controls run server-side and would always fail from inside the container. The extension is the canonical source for the Obsidian URL and API key on self-host.
 
@@ -525,7 +525,20 @@ The extension maintains a persistent SSE connection to the server (via the offsc
 
 ### Setup on native Linux/macOS (direct path)
 
-The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which rewrites `127.0.0.1` references so the container can reach the Obsidian desktop app running on the host. This works out of the box on **native Linux and macOS**. Configure the URL and API key in Settings → Obsidian on the web app.
+The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which rewrites `127.0.0.1` references in the configured URL so the server dials the host machine instead of its own loopback. That rewrite is necessary but **not sufficient by itself**: the Obsidian Local REST API plugin binds to `127.0.0.1` by default, and no container can reach a loopback-bound port on the host. Three things are required:
+
+1. **Rebind the plugin to all interfaces.** In Obsidian → Settings → Local REST API, enable the network/listen-on-all-interfaces option so the plugin binds `0.0.0.0` instead of `127.0.0.1` (the same change the [network allowlist](#troubleshooting-obsidian-connectivity) guidance teaches for split-machine setups). Without it, every server-side call fails with a connection timeout.
+2. **Allow the container network through the host firewall.** With `ufw` in default-deny mode, container→host traffic to the plugin ports is dropped silently — the symptom is a bare timeout with no matching rule in `ufw status`. A working rule (adjust the subnet to your compose network — `docker network inspect` shows it): `ufw allow from 172.18.0.0/16 to any port 27123 proto tcp`.
+3. **Configure the server side.** The Obsidian settings panel (URL, Test Connection) is hidden on self-hosted instances by design — those controls run server-side and the browser extension is the canonical path. For the direct path, set the same fields the hidden panel would have, via the API:
+
+```bash
+curl -X PATCH http://localhost:3000/api/users/profile \
+  -H "Authorization: Bearer <your-jwt>" \
+  -H "Content-Type: application/json" \
+  -d '{"obsidian_url": "http://host.docker.internal:27123", "obsidian_token": "<plugin API key>", "obsidian_enabled": true}'
+```
+
+Self-host sets `allowAnyHost` in the SSRF validator, and `host.docker.internal` is on the agent allowlist, so both forms are accepted. Afterwards `GET /api/obsidian/status` should return `"connected": true, "authenticated": true` — the same check the hidden Test Connection button performs.
 
 > **⚠️ Windows + WSL2 users:** `host.docker.internal` inside the container resolves to the **WSL2 VM**, not the Windows host. The container cannot reach Obsidian running on Windows `127.0.0.1` this way. Use the **browser extension bridge** (steps above). See [`deploy/selfhost/README.md` § Obsidian vault sync](../deploy/selfhost/README.md#obsidian-vault-sync) for the full WSL2 setup guide.
 
@@ -536,7 +549,7 @@ The compose file includes `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`, which r
 - **Server logs show `401 Invalid or expired SSE ticket`:** update the server image to **v2.35.0-beta.9+**. This is a server-side auth bug fixed in beta.9 — the `/api/ext` and `/api/ext/obsidian-bridge` routers ran `auth` twice on every bridge request, consuming the one-time SSE ticket on the first run. The extension masked it by silently falling back to the less-secure `?token=<JWT>` URL form (so the bridge still worked), but the JWT was leaking into server/proxy logs. beta.9 reorders the router mounts and adds a regression test. No extension or Obsidian configuration change is required.
 - **Chrome doesn't prompt for localhost permission / bridge won't connect on self-host:** v2.14.0+ declares `http(s)://127.0.0.1/*` and `http(s)://localhost/*` in `optional_host_permissions`. When you toggle the bridge on or save settings, Chrome prompts for permission to access localhost. If you deny it, the popup shows a warning banner — the bridge will start but SSE/fetches will fail. Re-save to re-prompt.
 - **Test Connection in extension is green but Obsidian features don't work:** The Test Connection button tests the full bridge loop. If it's green, both legs work. If features still fail, check the server logs for `ECONNREFUSED` (direct fallback failing — expected on WSL2) and verify `CLUSTER_WORKERS=1` is set in the container env (`docker exec glassy env | grep CLUSTER`). Also ensure the server is running v2.35.0-beta.11+ (beta.8 fixed the bridge-first route guards; beta.9 fixed the SSE ticket double-consumption + plugin version misreport; beta.11 fixed the bridge registry race condition where stale close handlers nuked newer connections — if the bridge "cycles every ~60s", update to beta.11).
-- **Container can't reach Obsidian plugin (Linux/macOS direct path):** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically.
+- **Container can't reach Obsidian plugin (Linux/macOS direct path):** verify `host.docker.internal` resolves. On Linux, the `extra_hosts: ['host.docker.internal:host-gateway']` in the compose file handles this; Docker Desktop (Mac/Windows) includes it automatically. Resolution is only the DNS leg — the plugin must also be bound to `0.0.0.0` (not its `127.0.0.1` default) and the host firewall must allow the container network (see [§7 direct path](#7-obsidian-live-sync)).
 - **WSL2 (`host.docker.internal` → WSL VM, not Windows):** use the browser extension bridge (see Setup above). See [`deploy/selfhost/README.md` § Browser Extension Bridge](../deploy/selfhost/README.md#1-browser-extension-bridge-recommended-for-windowswsl2).
 - **Obsidian on a different machine (LAN/Tailscale):** set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname in `.env`. The plugin must bind to `0.0.0.0` instead of `127.0.0.1` (see [`deploy/selfhost/README.md` § Network allowlist](../deploy/selfhost/README.md#3-network-allowlist-split-machine-setups)).
 - **`APP_URL` mismatch:** if you access Glassy from a hostname other than `localhost`, set `APP_URL` and `CORS_ORIGINS` accordingly (see [multi-device access](../deploy/selfhost/README.md#multi-device-access-tailscale--cloudflare-tunnel--netbird)).
@@ -595,7 +608,7 @@ docker compose up -d
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
-`GLASSY_TAG=v2.36.0-beta.33`) — `docker compose` refuses to start without it.
+`GLASSY_TAG=v2.36.0-beta.34`) — `docker compose` refuses to start without it.
 Only beta tags are published; there are no stable tags yet. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the AI tools
