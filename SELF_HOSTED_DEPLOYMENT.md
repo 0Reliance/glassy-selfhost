@@ -52,7 +52,7 @@
 | Telemetry (Sentry) | ✅ | ❌ not initialised |
 | Sub-accounts (multiple workspaces, one owner) | ✅ | ✅ |
 | Linked accounts (cross-user email linking) | ✅ | ❌ disabled |
-| Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access |
+| Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access, and the signed-in owner views their own window (session attached client-side, beta.36) |
 | Social previews (OG tags on `/w/:slug`) | ✅ | ✅ mounted, 401 to anonymous crawlers — private mode is enforced before the User-Agent branch |
 | Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
 | Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
