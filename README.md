@@ -309,11 +309,11 @@ from the self-host pairing token — sync uses its own per-peer token that you
 generate and rotate independently from Settings → Cloud Sync on the cloud
 side.
 
-Since v2.36.0-beta.40, sync also transfers the **image and audio files**
-behind the synced rows, not just the rows: after each cycle the appliance
-fetches a media manifest from the peer and downloads any missing image or
-voice-audio file (sha256-verified, retried on the next cycle if the peer is
-offline).
+Beta.40 adds appliance-side downloads of missing note images and custom-background
+renditions after row sync. Voice audio uses a separate download path. The server
+exposes a size/hash manifest, but the downloader currently fetches local references
+directly and does not verify manifest checksums. Downloads retry on eligible pull
+cycles; this is not two-way file replication. Back up appliance-origin media.
 
 ### Enabling Cloud Sync
 
@@ -362,14 +362,13 @@ against the shared cloud state.
 
 ### Sync health & missing media
 
-The canonical health endpoint reports per-type **media integrity**:
-`curl http://localhost:3000/api/monitoring/ready` (and Settings → Cloud Sync
-in the app) surface a `mediaMissing` count when a synced row references an
-image or voice file that is not on disk — for example on a restored instance,
-or rows synced before v2.36.0-beta.40 whose bytes predate media transfer.
-Missing files are re-fetched automatically on the next sync cycle whenever
-the peer still has them; entries the peer cannot provide are reported
-honestly rather than silently dropped.
+Settings → Cloud Sync reads the authenticated `/api/sync-token/health` endpoint.
+Its `mediaMissing` field counts missing voice and note-image files; background
+renditions are not included. In beta.40 this scan is instance-wide, not filtered
+per account. It is separate from readiness/liveness endpoints.
+Missing files can be downloaded on eligible pull cycles when the peer has them.
+Check connectivity, permissions, versions, and disk space before concluding a
+persistent count represents lost data.
 
 ## Upgrading
 
@@ -562,11 +561,10 @@ retry.
 
 ### Sync media missing (restored instance)
 
-If the health JSON reports `mediaMissing` counts, some synced rows reference
-files that are not on disk. Since v2.36.0-beta.40 the appliance fetches a
-media manifest from its peer each cycle and re-downloads what the peer still
-has; counts that persist mean the bytes exist on neither instance (they are
-reported, not hidden).
+If `mediaMissing` persists, confirm the source file exists and check the peer's
+version, credentials, connectivity, and available disk space. The counter alone
+cannot establish permanent loss. Restore or re-upload available files; do not
+delete note metadata or transcripts merely to hide a warning.
 
 ### Debugging from inside the container
 
