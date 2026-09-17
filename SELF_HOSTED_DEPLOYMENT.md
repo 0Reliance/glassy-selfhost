@@ -35,9 +35,12 @@
 | Voice Studio | Pro only | ✅ unlocked |
 | Knowledge base (KB) | Pro only | ✅ unlocked |
 | MCP server + Second Brain | Pro only | ✅ unlocked |
-| Agent Gateway (OpenClaw / Hermes) | Pro only | ✅ unlocked |
+| Agent Gateway (OpenClaw / Hermes) | Pro only | ✅ unlocked — LAN/Tailscale `baseUrl`s allowed on self-host (beta.40, #37); cloud keeps the strict allowlist |
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
+| Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
+| Sync media transfer (note images, custom backgrounds, voice audio) | ✅ | ✅ (beta.40: manifest + fetch; best-effort, retries each cycle; `mediaMissing` health signal surfaces any gap) |
+| Custom backgrounds (upload, 3 renditions, dedup by hash) | ✅ (tier-capped) | ✅ unlocked + synced (beta.40: rows via migration 0107 triggers, bytes via media transfer) |
 | Data export (JSON, Obsidian ZIP, GDPR) | ✅ | ✅ |
 | Live Obsidian vault sync | ❌ (server ≠ localhost) | ✅ |
 | Ollama local AI | ❌ | ✅ |
@@ -486,8 +489,8 @@ will not boot). Never hand-edit these tables on the hosted service.
 ### Connect your AI agent (MCP)
 
 Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
-[`GIVE-THIS-TO-YOUR-AI-AGENT.md`](GIVE-THIS-TO-YOUR-AI-AGENT.md) from the repo
-root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
+[`GIVE-THIS-TO-YOUR-AI-AGENT.md`](https://github.com/0Reliance/glassy-selfhost/blob/main/GIVE-THIS-TO-YOUR-AI-AGENT.md)
+from the installer repo root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
 the full 29-tool table, the Obsidian-bridge explainer, ops facts, and first
 actions. The self-host compose enables the MCP stack by default; generate your
 MCP key in **Settings → Connections & data**.
