@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.36.0-beta.34>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.36.0-beta.37>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -181,7 +181,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.34`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.37`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
