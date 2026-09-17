@@ -39,7 +39,7 @@
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
-| Sync media transfer (note images, custom backgrounds, voice audio) | ✅ | ✅ (beta.40: manifest + fetch; best-effort, retries each cycle; `mediaMissing` health signal surfaces any gap) |
+| Sync media transfer (note images, custom backgrounds, voice audio) | Serves available owner-authorized files | Appliance downloads missing files on eligible pull cycles (beta.40); not two-way file replication or checksum-verified transfer. Instance-wide `mediaMissing` counts voice/note images only |
 | Custom backgrounds (upload, 3 renditions, dedup by hash) | ✅ (tier-capped) | ✅ unlocked + synced (beta.40: rows via migration 0107 triggers, bytes via media transfer) |
 | Data export (JSON, Obsidian ZIP, GDPR) | ✅ | ✅ |
 | Live Obsidian vault sync | ❌ (server ≠ localhost) | ✅ |
@@ -836,10 +836,11 @@ operations.
 - The channel authenticates with its **own** sync token (`GLASSY_SYNC_TOKEN`)
   — separate from the self-host pairing token and your login session. Rotate
   or revoke it any time from **Settings → Cloud Sync** on the cloud side.
-- The channel is **owner-scoped**: every change is captured with its owner at
-  write time, and the S2S endpoints serve each token holder only their own
-  change queue, state, and media. On multi-user clouds nothing leaks across
-  tenants.
+- S2S change and media-serving endpoints check the sync token's owner.
+  Do not generalize this to all local diagnostics: beta.40's missing-media
+  scan and download-candidate collection are instance-wide. Health counters
+  are not a per-account inventory; owner-scoping these scans remains follow-up
+  work before relying on them for multi-user isolation.
 - Sync tokens are stored **hashed** on the cloud; the raw token is shown once
   at generation.
 
