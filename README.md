@@ -163,7 +163,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Live Obsidian vault sync | No (server cannot reach your localhost) | Yes |
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
-| Agent Gateway (OpenClaw, Hermes) | No (requires localhost) | Yes |
+| Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
 | MCP server + Second Brain (29 tools, vault knowledge graph) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
 
@@ -245,7 +245,9 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml \
 ```
 
 Glassy is automatically pointed at the sidecar (`OLLAMA_BASE_URL=http://ollama:11434`).
-Have an NVIDIA GPU? Uncomment the `deploy` block in
+The model picker fetches the list **live from your Ollama instance** and caches
+it for 30 seconds (v2.36.0-beta.40+), so it always shows the models you have
+actually pulled — no manual refresh or restart needed. Have an NVIDIA GPU? Uncomment the `deploy` block in
 [`docker-compose.ollama.yml`](docker-compose.ollama.yml) after installing the
 NVIDIA Container Toolkit. For **cloud** AI (Gemini / OpenAI / Anthropic), add
 your own key in-app at **Settings → API Keys** (BYOK) — the appliance never
@@ -299,12 +301,19 @@ OBSIDIAN_NETWORK_ALLOWLIST=192.168.1.10,glassy.tail-net.ts.net
 
 ## Cloud Sync (cross-instance data sync)
 
-Cloud Sync keeps your notes, documents, bookmarks, voice recordings,
-conversations, and pinned tags two-way in sync between this appliance and your
+Cloud Sync keeps notes, documents, bookmarks, voice recordings,
+conversations, pinned tags, collections, highlights, and custom backgrounds
+two-way in sync between this appliance and your
 Glassy cloud account (app.glassy.fyi or clear.glassy.fyi). It is separate
 from the self-host pairing token — sync uses its own per-peer token that you
 generate and rotate independently from Settings → Cloud Sync on the cloud
 side.
+
+Since v2.36.0-beta.40, sync also transfers the **image and audio files**
+behind the synced rows, not just the rows: after each cycle the appliance
+fetches a media manifest from the peer and downloads any missing image or
+voice-audio file (sha256-verified, retried on the next cycle if the peer is
+offline).
 
 ### Enabling Cloud Sync
 
@@ -350,6 +359,17 @@ best-effort and may not propagate — delete on the other instance too.
 Multi-appliance is supported: each appliance that handshakes with the same
 cloud token gets its own row in `sync_peers`, and each runs its own scheduler
 against the shared cloud state.
+
+### Sync health & missing media
+
+The canonical health endpoint reports per-type **media integrity**:
+`curl http://localhost:3000/api/monitoring/ready` (and Settings → Cloud Sync
+in the app) surface a `mediaMissing` count when a synced row references an
+image or voice file that is not on disk — for example on a restored instance,
+or rows synced before v2.36.0-beta.40 whose bytes predate media transfer.
+Missing files are re-fetched automatically on the next sync cycle whenever
+the peer still has them; entries the peer cannot provide are reported
+honestly rather than silently dropped.
 
 ## Upgrading
 
@@ -539,6 +559,14 @@ curl http://localhost:3000/ready
 Both return JSON with `"status":"ready"` when healthy. If you get HTML
 instead, the container may still be starting up — wait a few seconds and
 retry.
+
+### Sync media missing (restored instance)
+
+If the health JSON reports `mediaMissing` counts, some synced rows reference
+files that are not on disk. Since v2.36.0-beta.40 the appliance fetches a
+media manifest from its peer each cycle and re-downloads what the peer still
+has; counts that persist mean the bytes exist on neither instance (they are
+reported, not hidden).
 
 ### Debugging from inside the container
 
