@@ -130,9 +130,14 @@ the administrator as the note's last editor.
 The note goes to the bin; it is not destroyed, and its embeddings are cleaned up.
 Two consequences worth designing around:
 
-- **Delete is idempotent.** Deleting an already-binned note returns success
-  rather than 404, so a retry after a timeout is safe. The original trash
-  timestamp is preserved — a repeated call does not move it.
+- **Delete is idempotent for already-binned notes.** Deleting a note that is
+  already in the trash returns **quiet success** — `structuredContent.status`
+  is `"already"` — so a retry after a timeout is safe. The original trash
+  timestamp is preserved; a repeated call does not move it. An id that never
+  existed (or belongs to someone else) still returns `isError` — `status` is
+  `"deleted"` on the first successful call, `"already"` on a safe retry. The
+  same distinction holds over REST: already-binned is `200 {ok:true}`, a
+  missing note is `404`.
 - **Restore is owner-only** and says so with a `403`, not a hollow `{ok:true}`.
   You cannot undo a delete you were not entitled to make. Confirm destructive
   intent with the operator *before* the call, not after.
@@ -172,12 +177,18 @@ extension endpoints alike:
 ```json
 {
   "error": "INVALID_TAGS",
+  "scope": "entire-write",
+  "message": "The entire write was refused — nothing was stored. Fix or remove the rejected tags and retry.",
   "rejected": [{ "value": "…", "reason": "longer than 64 characters" }],
   "accepted": ["the", "tags", "that", "passed"],
   "limits": { "maxTags": 20, "maxLength": 64 },
   "hint": "Tags must be non-empty strings without control characters. Case and surrounding whitespace are normalised automatically."
 }
 ```
+
+The `scope` field is the important one: the refusal is **whole-write** — one bad
+tag refuses the note, its title, its body and its images. Nothing is stored, and
+`scope: "entire-write"` says so explicitly.
 
 Read `rejected` and fix the input. Do **not** treat a `200` as "my tags were
 stored as sent" without reading back — and note that a scope mismatch is now

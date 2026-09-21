@@ -62,10 +62,15 @@
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
 | Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
 | Two-factor authentication (TOTP + 10 recovery codes) | ✅ | ✅ — verification accepts ±1 30-second step (beta.42, RFC 6238 §5.2). **The appliance has no cloud NTP of its own:** a Docker host whose clock is more than ~30s out rejects every code from every device, and re-enrolling 2FA will not fix it |
-| Note authorship (`last_edited_by`) | ✅ | ✅ — MCP `note_update` records `MCP agent` (beta.41); publish/takedown deliberately does **not** stamp an editor, so a moderation takedown is never credited as an edit |
+| Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP writes record the connecting client's `clientInfo.name`, falling back to `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
+| Bookmark authorship | ✅ | ✅ — same three columns (migration 0109, beta.43). Content writes go through `bookmarkService`. A takedown is not an edit |
+| Document authorship | ✅ | ✅ — same three columns (migration 0110, beta.43). Content create/update and the public toggle go through `documentService`. Archive, pin and account move stay narrow state transitions and do not stamp an editor |
+| Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43) |
 | Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
 | Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
 | Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
+| Memory layer (semantic + keyword + graph) | One lane for all content | One lane (2.37): notes, bookmarks, documents and vault files share ONE memory system — `content_embeddings`, `vault_fts`, and the `note_links` graph. Trashed or archived content is never indexed, and deleting content removes its index rows. The graph accepts every content type — a note's `[[wikilink]]` to another note or document becomes an edge, and the graph MCP tools take node keys (`note:<id>`, `document:<id>`) as well as vault paths |
+| Memory rebuild | Automatic | Automatic (2.37): whenever content arrives — including via Cloud Sync — its memory (embeddings, full-text, graph edges) builds on that machine. No manual reindex. `POST /api/kb/backfill/reindex` remains the one-call repair path for a model change or a missed batch; `POST /api/kb/backfill` seeds types in bulk |
 
 ---
 
