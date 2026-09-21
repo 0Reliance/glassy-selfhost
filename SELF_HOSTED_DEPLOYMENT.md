@@ -611,7 +611,7 @@ docker compose up -d
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
-`GLASSY_TAG=v2.36.0-beta.34`) — `docker compose` refuses to start without it.
+`GLASSY_TAG=v2.36.0-beta.42`) — `docker compose` refuses to start without it.
 Only beta tags are published; there are no stable tags yet. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the AI tools
