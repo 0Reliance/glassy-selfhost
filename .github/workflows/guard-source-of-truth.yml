@@ -2,10 +2,11 @@ name: Guard source of truth
 
 # WHY THIS WORKFLOW EXISTS
 #
-# These files are NOT maintained here. `glassy/deploy/selfhost/` (and
-# glassy/docs/SELF_HOSTED_DEPLOYMENT.md) is the source of truth, and two upstream
-# workflows — release-image.yml (every push to glassy/main) and publish-image.yml
-# (every version tag) — keep this repo in lockstep by blind-copying over them.
+# These files are NOT maintained here. `glassy/deploy/selfhost/`,
+# `glassy/docs/SELF_HOSTED_DEPLOYMENT.md` and `glassy/GIVE-THIS-TO-YOUR-AI-AGENT.md`
+# are the sources of truth, and two upstream workflows — release-image.yml (every
+# push to glassy/main) and publish-image.yml (every version tag) — keep this repo
+# in lockstep by blind-copying over them.
 #
 # A blind `cp` has no merge step, so a fix committed directly HERE is silently
 # erased the next time either workflow runs. This actually happened:
@@ -54,7 +55,7 @@ jobs:
           # Must stay in lockstep with SYNC_PAIRS in
           # glassy/scripts/check-selfhost-sync.js, which is verified upstream by
           # server/tests/selfhostSync.test.js.
-          CI_OWNED='docker-compose.yml docker-compose.https.yml docker-compose.ollama.yml docker-compose.watchtower.yml Caddyfile .env.example SELF_HOSTED_DEPLOYMENT.md'
+          CI_OWNED='docker-compose.yml docker-compose.https.yml docker-compose.ollama.yml docker-compose.watchtower.yml Caddyfile .env.example SELF_HOSTED_DEPLOYMENT.md GIVE-THIS-TO-YOUR-AI-AGENT.md'
 
           if [ "$EVENT" = 'pull_request' ]; then
             RANGE="$PR_BASE..$HEAD_SHA"
@@ -100,7 +101,8 @@ jobs:
             echo 'This is exactly how the OLLAMA_MODEL fix in 1606c9f was lost to 1001ecb.'
             echo ''
             echo 'Instead: open 0Reliance/glassy, edit the matching file under'
-            echo 'deploy/selfhost/ (docs/SELF_HOSTED_DEPLOYMENT.md lives in docs/), and push'
+            echo 'deploy/selfhost/ (docs/SELF_HOSTED_DEPLOYMENT.md lives in docs/,'
+            echo 'GIVE-THIS-TO-YOUR-AI-AGENT.md lives at the repo root), and push'
             echo 'there. release-image.yml will copy it here within a few minutes.'
             echo ''
             echo 'See MAINTAINING.md. To land an urgent fix here, disable this check once and say why.'

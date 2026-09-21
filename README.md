@@ -379,6 +379,38 @@ docker compose up -d
 
 Database migrations run automatically on container start.
 
+### What changed recently that you might notice
+
+**`v2.36.0-beta.42`** — 2FA verification accepts one 30-second step either side of
+the current one (it previously checked the exact step only, so a *correct* code was
+rejected whenever the boundary fell between reading it and submitting it). If 2FA
+has ever told you a code was invalid and then worked seconds later, upgrading fixes
+it. The appliance inherits your Docker host's clock and has no NTP of its own, so a
+host more than ~30 seconds out still rejects everything — check `date -u` on the
+host before re-enrolling. See
+[SELF_HOSTED_DEPLOYMENT.md § 11](SELF_HOSTED_DEPLOYMENT.md#11-troubleshooting).
+
+**`v2.36.0-beta.41`** — every note write now goes through one server service. Four
+operator-visible consequences:
+
+- **Newly created notes sync.** A new note was written with no `updated_at`, so it
+  was invisible to incremental sync and sorted last in every recently-updated view.
+  If Cloud Sync ever appeared to "miss" fresh notes, this was it.
+- **Tags keep their characters.** One canonical policy now governs notes,
+  bookmarks, captures, extension writes, AI auto-tag and MCP: 20 tags × 64
+  characters, lowercased and trimmed, with accents and internal spaces preserved.
+  The AI auto-tag lane used to strip non-alphanumerics — `Résumé` came back as
+  `rsum`. Already-mangled tags are not retroactively repaired.
+- **Agent edits are attributed.** An MCP `note_update` records `MCP agent` as the
+  last editor, so you can tell an agent's change from your own.
+- **Delete and restore behave.** `note_delete` soft-deletes and is idempotent (an
+  agent retry is safe); restore is owner-only and returns a real `403` instead of a
+  hollow success.
+
+**`v2.36.0-beta.41` has no published image and needs none** — its tag push landed
+inside a transient CI outage, and beta.42 contains all of its work plus the 2FA
+fix. Do not pin beta.41.
+
 ### Automatic updates (optional)
 
 The bundled Watchtower overlay polls once a day and recreates the container
