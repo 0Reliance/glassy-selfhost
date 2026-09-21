@@ -3,13 +3,22 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.36.0-beta.29** (September 11, 2026).
+**v2.36.0-beta.42** (September 21, 2026).
+
+> **Read this first if you were briefed on an older appliance.** beta.41 put
+> every note write behind one service, which changed four things an agent can
+> observe: your edits are now **attributed**, `glassy_note_delete`
+> **soft-deletes**, bookmark tags follow the **canonical note tag policy**, and
+> invalid tags are **rejected with a 422 that names the offender** instead of
+> being silently rewritten. Details in
+> [Write-path contract (beta.41+)](#write-path-contract-beta41) — the tag
+> change is the one that breaks assumptions.
 
 ## What this is
 
 A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
-**MCP server** (29 tools, 4 prompts, 9 resources), an **Obsidian bridge**
+**MCP server** (29 tools, 4 prompts, 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
 (extension + direct REST path), a local **Ollama** inference path, and an
 **agent gateway** for AI feature routing.
 
@@ -29,8 +38,8 @@ URL:     http://<host>:3010/mcp
 Auth:    Authorization: Bearer <mcp-key>
 ```
 
-The MCP key is generated in the UI: **Settings → MCP** (or **API Keys →
-MCP**). It looks like `gky_mcp_…`. Revoke/rotate it from the same panel —
+The MCP key is generated in the UI: **Settings → Connections & data** (the
+MCP key panel — the same section as API keys and corpus health). It looks like `gky_mcp_…`. Revoke/rotate it from the same panel —
 it is scoped to this instance only.
 
 Claude Desktop example (the UI shows this exact snippet): paste into
@@ -68,9 +77,25 @@ Glassy UI is not focused.
 Read access is the default posture; write tools are available but the
 operator controls the key.
 
+### Present your work through the Public Window (beta.36)
+
+The intended loop when you produce an artifact the operator must LOOK at —
+a design doc, a diagnostic report, a code-review summary:
+
+1. `glassy_note_create` with `is_public: true` (same paid entitlement as the
+   app's own publish button — on this appliance it is always allowed).
+2. Open the browser AT the note: `#/w/<owner-slug>/<noteId>`. The signed-in
+   owner lands directly on your work (beta.36 fixed the private-instance
+   owner-view); an anonymous visitor is redirected to sign-in first and
+   returned to the note afterwards.
+
+No file archaeology for the operator, no "I wrote something somewhere" —
+you put the artifact in front of them, already inside their knowledge layer.
+Un-publish any time with `glassy_note_update { is_public: false }`.
+
 ## Obsidian bridge
 
-Two paths exist, both verified connected in beta.29:
+Two paths exist, both verified connected in beta.42:
 
 1. **Direct REST** — Glassy ↔ Obsidian Local REST API plugin
    (`http://127.0.0.1:27123` by default). Fast, works when Obsidian is
@@ -83,10 +108,109 @@ Two paths exist, both verified connected in beta.29:
 As an agent you don't need to care about the transport — call the Glassy
 tools and the server picks the path.
 
-## What was broken and is now fixed (beta.29)
+## Write-path contract (beta.41+)
 
-This brief assumes beta.29, which shipped fixes for a wave of self-host
-findings filed on GitHub (0Reliance/glassy #24–#34):
+Every note create and every note content update now goes through one server
+service (`noteService`). For an agent this is not internal tidiness — it changed
+observable behaviour in four ways.
+
+### 1. Your edits are attributed
+
+`glassy_note_update` stamps `last_edited_by` with **`MCP agent`**. Before beta.41
+an agent's edit was indistinguishable from the operator's own, so a human would
+open a note and find prose they did not write with no way to tell where it came
+from. If you are asked "who changed this?", the answer is now on the row.
+
+Publishing is deliberately **not** attributed: `is_public` toggles (yours or a
+moderator's) move the flag and the sync cursor only, so a takedown never credits
+the administrator as the note's last editor.
+
+### 2. `glassy_note_delete` soft-deletes
+
+The note goes to the bin; it is not destroyed, and its embeddings are cleaned up.
+Two consequences worth designing around:
+
+- **Delete is idempotent.** Deleting an already-binned note returns success
+  rather than 404, so a retry after a timeout is safe. The original trash
+  timestamp is preserved — a repeated call does not move it.
+- **Restore is owner-only** and says so with a `403`, not a hollow `{ok:true}`.
+  You cannot undo a delete you were not entitled to make. Confirm destructive
+  intent with the operator *before* the call, not after.
+
+A **collaborator's** delete is an *unfollow*, not a delete: the creator's note is
+untouched and only that user's access is removed. One intent, one call — the old
+`403 "use the other endpoint"` is gone.
+
+### 3. Tags follow one canonical policy — this is the breaking one
+
+Bookmark tags adopted the note tag policy. The old bookmark/MCP helper stripped
+non-alphanumerics and capped at 50 characters while its own schema advertised 64;
+the AI auto-tag lane had a third, different policy again. Now there is one:
+
+| Rule | Value |
+|---|---|
+| Max tags per item | **20** |
+| Max tag length | **64** characters |
+| Case | lowercased (`AI` and `ai` are the same tag) |
+| Surrounding whitespace | trimmed |
+| Accents, spaces, punctuation inside a tag | **preserved** |
+| Control characters / newlines | rejected |
+| Empty after trimming | rejected |
+
+So `Résumé` stays `résumé` — it no longer becomes `rsum` — and `release notes`
+keeps its space instead of becoming `releasenotes`. **If your agent
+pre-normalised tags to survive the old stripper, stop:** double-normalising is
+harmless for case but you may now be mangling tags that would have survived
+intact.
+
+### 4. Invalid tags are refused, not silently rewritten
+
+A write carrying a bad tag returns **`422 INVALID_TAGS`** with a body that names
+every offender and why, so one error path handles notes, captures and the
+extension endpoints alike:
+
+```json
+{
+  "error": "INVALID_TAGS",
+  "rejected": [{ "value": "…", "reason": "longer than 64 characters" }],
+  "accepted": ["the", "tags", "that", "passed"],
+  "limits": { "maxTags": 20, "maxLength": 64 },
+  "hint": "Tags must be non-empty strings without control characters. Case and surrounding whitespace are normalised automatically."
+}
+```
+
+Read `rejected` and fix the input. Do **not** treat a `200` as "my tags were
+stored as sent" without reading back — and note that a scope mismatch is now
+distinguishable from success rather than reporting a hollow `updated: 1`.
+
+### 5. New notes are visible to incremental sync immediately
+
+`createNote` stamps `updated_at`. Before beta.41 a freshly created note had a
+NULL `updated_at`, so it was invisible to `updated_at > @since` delta queries and
+sorted last in every "recently updated" read path. Two further write sites stored
+SQLite's `datetime('now')` (space-separated) into an ISO-`T` column, and a space
+sorts before `T` — those notes read as *older* than same-day ISO stamps. If your
+agent polls for recent changes, a note created seconds ago now appears.
+
+### Storage headroom is checked *before* the write
+
+Capture, the extension's note/document endpoints and the notes POST/PUT/PATCH
+paths gate on remaining storage headroom rather than writing first and accounting
+after. On a full instance you get a clear refusal at write time instead of a
+silent over-quota row. Bookmarks are deliberately ungated — they cost no storage.
+
+### Admin-only: `is_announcement` on import
+
+`POST /api/notes/import` accepted `is_announcement` from any caller, so a
+non-admin could publish a note to every user on the instance. It is now gated on
+`is_admin`. If your import payload sets it and you are not an admin, that is the
+reason it stopped working — and it was a privilege escalation, not a feature.
+
+## Previously fixed (beta.29 wave)
+
+Historical context for findings filed as 0Reliance/glassy #24–#34. All are fixed
+in any current appliance; kept because agents still encounter them in old issue
+threads and stale briefs:
 
 - **#30** Local AI model downloads now work — CSP + service-worker routes
   include HuggingFace's current CDN (`us.aws.cdn.hf.co`).
@@ -168,9 +292,17 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 - **Data:** SQLite at `/app/data/notes.db` inside the container; backups
   are operator-managed via the Import/Export settings panel.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned GLASSY_TAG (`v2.36.0-beta.29` here); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.36.0-beta.42`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
-  features).
+  features). **`v2.36.0-beta.41` has no GHCR image and needs none** — its tag
+  push landed inside a transient Actions outage, and beta.42 contains all of
+  beta.41's work plus the TOTP fix. Never point a pin at beta.41.
+- **Sign-in with 2FA:** beta.42 widened TOTP acceptance from the exact 30-second
+  step to ±1 step, so a code stays valid ~90s. Before beta.42 a *correct* code
+  was rejected whenever the step boundary fell between reading it and submitting
+  it. If you drive a browser login against an older appliance and see "Invalid
+  verification code" for a code you just read, that is the bug — wait for the
+  next code rather than concluding the secret is wrong.
 - **After any upgrade, close and reopen the Glassy tab (or hard-refresh).**
   The PWA service worker + cached shell live in the browser, not the
   container — an already-open tab keeps enforcing the OLD page's security
@@ -188,4 +320,7 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 
 Be careful with `glassy_note_delete` / `glassy_bookmark_delete` /
 `glassy_vault_append` — they mutate the operator's real data. Prefer
-create/update and confirm destructive intent with the operator.
+create/update and confirm destructive intent with the operator *before* the call:
+a note delete is recoverable (soft-delete to the bin) but only the **owner** can
+restore it, and a `vault_append` writes straight into the operator's Obsidian
+files with no bin at all.

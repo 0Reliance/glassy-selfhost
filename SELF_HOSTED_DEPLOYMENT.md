@@ -61,6 +61,11 @@
 | Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
 | Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
+| Two-factor authentication (TOTP + 10 recovery codes) | ✅ | ✅ — verification accepts ±1 30-second step (beta.42, RFC 6238 §5.2). **The appliance has no cloud NTP of its own:** a Docker host whose clock is more than ~30s out rejects every code from every device, and re-enrolling 2FA will not fix it |
+| Note authorship (`last_edited_by`) | ✅ | ✅ — MCP `note_update` records `MCP agent` (beta.41); publish/takedown deliberately does **not** stamp an editor, so a moderation takedown is never credited as an edit |
+| Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
+| Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
+| Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
 
 ---
 
@@ -729,6 +734,46 @@ Common causes:
 ### Login page says "registration disabled"
 
 This is expected. Registration is permanently disabled on the self-hosted appliance. Log in with the admin account (see [First boot](#3-first-boot--admin-account)).
+
+### "Invalid verification code" — 2FA rejects a code you just read
+
+Work through these in order. On an appliance, **step 2 is the one that is
+actually likely**, and it is the one people skip.
+
+1. **Upgrade to `v2.36.0-beta.42` or later.** Earlier builds verified against the
+   exact current 30-second step only, so a *correct* code was rejected whenever the
+   step boundary fell between the user reading it and the server checking it —
+   roughly every login landing in the back half of a step. beta.42 accepts ±1 step
+   (RFC 6238 §5.2), which is what every Google Authenticator-compatible service
+   does. If the appliance is behind, this is almost certainly the cause and nothing
+   the user does differently will help. Check with:
+   ```bash
+   curl -s http://localhost:3000/api/health | head -c 120   # → {"version":"2.36.0-beta.NN",…}
+   ```
+2. **Check the Docker host's clock, not the phone's.** The container inherits the
+   host clock and has no NTP of its own. TOTP is derived from the time, and the ±1
+   step tolerance absorbs roughly 30 seconds of skew in either direction — a host
+   that is minutes out will reject **every code from every device**, and
+   re-enrolling 2FA will not fix it:
+   ```bash
+   date -u                                   # on the host
+   docker compose exec glassy date -u        # inside the container; should match
+   curl -sI https://cloudflare.com | grep -i '^date:'   # a trusted reference
+   ```
+   Fix the host's time sync (`timedatectl set-ntp true` on systemd hosts, or the
+   equivalent for your OS), then restart the container. Do not re-enrol first.
+3. **Then the phone.** Automatic time sync on; Google Authenticator also has
+   Settings → *Time correction for codes* → *Sync now*.
+4. **Only then re-enrol.** Disabling 2FA clears the secret **and** the existing
+   recovery codes; re-enrolling issues a fresh set of 10, shown once. Re-enrolling
+   against a wrong host clock produces a new secret that also will not verify.
+
+> **Trade-off, stated so it is a decision rather than a surprise:** the ±1 window
+> means a code stays valid ~90s instead of ~30s, so there is no replay protection
+> inside that span. That is the standard TOTP trade-off. The mitigation is
+> throttling the verify endpoints, not narrowing the window back to something that
+> rejects honest users — see `docs/NEXT_STEPS.md` OPEN 3 for the current state of
+> the limiter, which is a separate open item.
 
 ### "Membership verification failed" — even though the token is correct
 
