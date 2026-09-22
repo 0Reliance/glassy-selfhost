@@ -139,15 +139,24 @@ your own later `glassy_search`.
 ## Read what the instance can do before you write (2.38.0)
 
 `GET /api/capabilities` describes the deployment: note types, limits, the
-renderer allowlists, what render silently drops, accepted upload types, the
-embedding chunk size and dimensions, the review-loop limits, and the live MCP
-tool list. Read it instead of probing — every fact you cannot read is a fact you
-discover by getting a 201 that does nothing.
+renderer allowlists **per surface**, what each renderer silently drops, accepted
+upload types, the embedding chunk size and dimensions, the review-loop limits,
+and the live MCP tool list. Read it instead of probing — every fact you cannot
+read is a fact you discover by getting a 201 that does nothing.
 
 ```bash
-curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.notes.renderer.droppedAtRender'
-# ["video","audio","iframe","script","style","object","embed","form"]  <- do not write these
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers | keys'
+# [ "ai-assistant-preview", "help-article", "keep", "note", "window", "writing" ]
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers.keep'
 ```
+
+Six renderer configs exist in this product — do not assume the note renderer's
+allowlist applies to the keep/bookmark render (that assumption has cost real
+debugging time). Each entry carries `allowTags`, `allowAttrs`,
+`discardBehavior` (`silent-drop` = the tag vanishes at render after a successful
+write; `prompt-only` = it constrains model output), `stripsAtRender`, and
+`warnsAtWrite` (only `note` warns today). `keep` also distinguishes validated
+embeds (`embeds: ["youtube","vimeo"]`) from user `<iframe>`s, which are stripped.
 
 Every value is read from the module that enforces it, and the renderer mirror is
 checked against the browser's own config by test, so the manifest cannot drift

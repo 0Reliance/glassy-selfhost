@@ -517,12 +517,37 @@ curl -s http://localhost:3000/api/capabilities | jq '.capabilities.notes.rendere
 ```
 
 It reports, read from the code that enforces each value: note types, image/item
-limits, the renderer allowlists (both surfaces) plus the elements render drops,
-document limits, accepted upload MIME types (and that video is not served),
-upload cache lifetimes, the embedding chunk size and dimensions, the review-loop
-limits, and the live MCP tool list. Every value is derived from the enforcing
-module — the allowlist mirror is checked against `src/utils/safe-markdown.js` by
-test, so it cannot silently drift from the browser.
+limits, the renderer allowlists per SURFACE, document limits + route shapes,
+accepted upload MIME types (and that video is not served), upload cache
+lifetimes, the embedding chunk size and dimensions, the review-loop limits, and
+the live MCP tool list.
+
+### Renderers are per-surface, with the discard behavior (#75)
+
+The product holds **six** renderer configs, not one. The manifest reports each
+one separately with its allowlist AND what happens when you violate it — because
+the expensive failure is not the allowlist, it is that violation is *silent*:
+
+```bash
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers | keys'
+# [ "ai-assistant-preview", "help-article", "keep", "note", "window", "writing" ]
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers.keep.discardBehavior'
+# "silent-drop"      <- the tag vanishes at render; the write already succeeded
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers."ai-assistant-preview".allowAttrs'
+# []                 <- no attributes survive there, not even class
+```
+
+`discardBehavior` is `silent-drop` (the element disappears at render) or
+`prompt-only` (it constrains what the model may emit, not a sanitizer). The
+`note` surface is the only one that also *warns at write time*
+(`warnsAtWrite: true`, via the `warnings` array on write responses), and `keep`
+distinguishes validated **embeds** (youtube/vimeo, built from ids) from **user
+`<iframe>`s, which are stripped**.
+
+Every value is derived from the enforcing module. The mirrors are drift-checked
+against their sources by tests that parse the source files (`safe-markdown.js`,
+`keep.js`, `writing.js`, `AiWritingAssistant.jsx`, `HelpArticle.jsx`), so the
+manifest cannot silently disagree with what the app renders.
 
 ### Ask-and-answer loop for agents
 
