@@ -717,6 +717,12 @@ radius than a token-schema migration.
 - By default Glassy binds to `0.0.0.0:3000` on the host. On a single-user machine, use a firewall to restrict access to `127.0.0.1:3000` unless you need LAN/Tailscale access.
 - Do not expose port 3000 directly to the public internet without TLS in front (Cloudflare Tunnel or a local nginx reverse proxy).
 
+### `/uploads` is unauthenticated and serves any extension — know this before you open a port
+
+The `/uploads/*` path is deliberately **unauthenticated** (notes embed images over a plain static path) and has **no extension allowlist** — it serves whatever is in the data volume, including a video or an HTML file someone placed there. Combined with the compose default that publishes `${APP_PORT:-3000}:8080` on `0.0.0.0`, that is a network-reachable, unauthenticated static host whose contents the product did not choose.
+
+This is a documented trade-off, not a silent one (it is disclosed in the `/api/capabilities` manifest as `uploads.servedExtensions: null` + `authenticated: false`). The default posture is safe for the intended single-user, closed-network deployment (firewall/Tailscale only). If you run on a VPS with the port open, restrict the host binding or put auth in front — you are the one choosing what lands in that volume.
+
 ### TLS (optional)
 
 For a public hostname, run Cloudflare Tunnel or add nginx in front:
