@@ -501,9 +501,37 @@ will not boot). Never hand-edit these tables on the hosted service.
 Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
 [`GIVE-THIS-TO-YOUR-AI-AGENT.md`](https://github.com/0Reliance/glassy-selfhost/blob/main/GIVE-THIS-TO-YOUR-AI-AGENT.md)
 from the installer repo root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
-the full 29-tool table, the Obsidian-bridge explainer, ops facts, and first
+the full 36-tool table, the Obsidian-bridge explainer, ops facts, and first
 actions. The self-host compose enables the MCP stack by default; generate your
 MCP key in **Settings → Connections & data**.
+
+### What the instance can do (`/api/capabilities`)
+
+`/api/instance` answers *who am I*; `/api/capabilities` answers *what can this
+instance DO*, so an agent does not have to discover it by probing and getting a
+201 that silently does nothing:
+
+```bash
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.notes.renderer.droppedAtRender'
+# [ "video", "audio", "iframe", "script", "style", "object", "embed", "form" ]
+```
+
+It reports, read from the code that enforces each value: note types, image/item
+limits, the renderer allowlists (both surfaces) plus the elements render drops,
+document limits, accepted upload MIME types (and that video is not served),
+upload cache lifetimes, the embedding chunk size and dimensions, the review-loop
+limits, and the live MCP tool list. Every value is derived from the enforcing
+module — the allowlist mirror is checked against `src/utils/safe-markdown.js` by
+test, so it cannot silently drift from the browser.
+
+### Ask-and-answer loop for agents
+
+Agents can ask you a question and wait for a click: `glassy_request_review`
+(question + 2–10 choices, optionally linked to a note or document), then poll
+`glassy_get_review`. Questions appear in the **Agent Review** sidebar view
+(self-host only) with one button per choice, an optional comment box, and the
+linked item rendered next to them. Answers sync between paired seats, so a
+question asked on one machine can be answered on the other.
 
 ---
 

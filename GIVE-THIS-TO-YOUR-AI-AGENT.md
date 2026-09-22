@@ -56,12 +56,14 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 29 tools (live-verified)
+### The 36 tools (live-verified)
 
 | Category | Tools |
 |---|---|
 | Search & retrieval | `glassy_search`, `glassy_obsidian_query`, `glassy_get_recent`, `glassy_get_backlinks`, `glassy_get_forward_links` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
+| Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document` |
+| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` |
 | Vault (live Obsidian files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
@@ -124,6 +126,51 @@ from. If you are asked "who changed this?", the answer is now on the row.
 Publishing is deliberately **not** attributed: `is_public` toggles (yours or a
 moderator's) move the flag and the sync cursor only, so a takedown never credits
 the administrator as the note's last editor.
+
+**Documents share this contract** (2.38.0). `glassy_create_document` and
+`glassy_update_document` write through `documentService`, so `created_by` /
+`last_edited_by` carry your client name exactly as they do for notes, the tag
+policy is the same 422 envelope (with `scope: "entire-write"`), the storage cap
+is checked before the write, and a content update is what re-embeds the document
+into the memory lane. Use documents for long-form work — journals, plans,
+drafts — and notes for short captures; a document you update is searchable by
+your own later `glassy_search`.
+
+## Read what the instance can do before you write (2.38.0)
+
+`GET /api/capabilities` describes the deployment: note types, limits, the
+renderer allowlists, what render silently drops, accepted upload types, the
+embedding chunk size and dimensions, the review-loop limits, and the live MCP
+tool list. Read it instead of probing — every fact you cannot read is a fact you
+discover by getting a 201 that does nothing.
+
+```bash
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.notes.renderer.droppedAtRender'
+# ["video","audio","iframe","script","style","object","embed","form"]  <- do not write these
+```
+
+Every value is read from the module that enforces it, and the renderer mirror is
+checked against the browser's own config by test, so the manifest cannot drift
+away from what the app actually does.
+
+## Asking the owner a question (2.38.0)
+
+Do not guess when a decision is the owner's. Ask, and keep working elsewhere
+while you wait:
+
+1. `glassy_request_review` with `question`, optional `choices` (2–10 distinct
+   strings; default `["yes","no"]`), and — when the question is about a specific
+   item — `linked_type` (`note`|`document`) plus `linked_id`. The owner sees the
+   item rendered next to your question.
+2. Poll `glassy_get_review` with the returned `id`. `status` stays `open` until
+   the owner clicks a choice; then it is `answered` with `answer_choice`,
+   `answer_comment` (optional), `answered_by` and `answered_at`.
+3. `glassy_withdraw_review` if the question no longer stands. Once the owner has
+   answered, withdrawal is refused (`NOT_OPEN`) — their answer stands.
+
+The choices are stored and enforced: the owner's answer must be one you offered,
+so `answer_choice` is always one of your strings. A question with one option is
+refused (`INVALID_CHOICES`) — that is a statement, not a decision.
 
 ### 2. `glassy_note_delete` soft-deletes
 
@@ -195,13 +242,31 @@ stored as sent" without reading back — and note that a scope mismatch is now
 distinguishable from success rather than reporting a hollow `updated: 1`.
 
 ### 5. New notes are visible to incremental sync immediately
-
 `createNote` stamps `updated_at`. Before beta.41 a freshly created note had a
 NULL `updated_at`, so it was invisible to `updated_at > @since` delta queries and
 sorted last in every "recently updated" read path. Two further write sites stored
 SQLite's `datetime('now')` (space-separated) into an ISO-`T` column, and a space
 sorts before `T` — those notes read as *older* than same-day ISO stamps. If your
 agent polls for recent changes, a note created seconds ago now appears.
+
+### The unfinished-work flag (`needs_review`, 2.38.0)
+
+An agent that leaves a note half-done can say so, and the owner sees it in the
+UI without reading the note:
+
+```json
+// glassy_note_update
+{ "id": "note-123", "needs_review": true }
+```
+
+`needs_review` is `0` or `1` on every note row and every note-shaped response,
+always present (a missing key means an old server, never "not flagged"). Raise
+it when you stop before the work is finished; the owner clears it through
+PATCH/PUT `{ "needs_review": false }` or the flag control in the UI. `PUT`
+keeps the stored value when you omit the field, and `PATCH` only writes what you
+send, so an unrelated edit never clears or sets it. `glassy_list_notes` and
+`glassy_read_note` return it as `needsReview`, so you can find your own
+unfinished notes later.
 
 ### Storage headroom is checked *before* the write
 
