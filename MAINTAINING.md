@@ -18,7 +18,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 
 The installer repo's `docker-compose.yml` pulls the GHCR image
 `ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?…}`. **`GLASSY_TAG` is required and
-must name a released version** (e.g. `v2.36.0-beta.42`): compose refuses to start
+must name a released version** (e.g. `v2.40.0`): compose refuses to start
 without it, and `latest` is the wrong value.
 
 ### Which tag to reference: `latest` is the hosted build, not the appliance
@@ -27,7 +27,7 @@ Two workflows publish images, and they do **not** build the same thing:
 
 | Workflow | Trigger | Tags | Self-host build flags |
 |---|---|---|---|
-| `publish-image.yml` | version tag | `v2.36.0-beta.N` | **yes** — `INSTANCE_ID=self_hosted` + all four `VITE_ENABLE_*` |
+| `publish-image.yml` | version tag | `v2.40.0` | **yes** — `INSTANCE_ID=self_hosted` + all four `VITE_ENABLE_*` |
 | `release-image.yml` | every push to `main` | `latest`, `main` | **no** — built without them |
 
 So `:latest` and `:main` move constantly and always carry the *hosted* bundle.
@@ -121,7 +121,7 @@ CI-owned file is rejected by `guard-source-of-truth.yml`, so following the old
    `:main` and `:latest` are **hosted** builds without the self-host feature
    flags, so a green check against them proves nothing about the appliance:
    ```bash
-   TAG=v2.36.0-beta.42   # the release you just published
+   TAG=v2.40.0   # the release you just published
    docker pull "ghcr.io/0reliance/glassy-dash:${TAG}"
    docker inspect "ghcr.io/0reliance/glassy-dash:${TAG}" \
      --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
@@ -161,7 +161,7 @@ After pushing to `glassy` `main` and the GHCR build completes:
 ```bash
 # The appliance build is the VERSIONED tag. :main / :latest are the hosted
 # variant and omit the self-host feature flags — checking them proves nothing.
-TAG=v2.36.0-beta.42
+TAG=v2.40.0
 docker pull "ghcr.io/0reliance/glassy-dash:${TAG}"
 
 # Check the revision label matches the commit you pushed

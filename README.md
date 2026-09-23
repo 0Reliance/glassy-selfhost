@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.36.0-beta.42>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -164,7 +164,9 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
-| MCP server + Second Brain (29 tools, vault knowledge graph) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
+| MCP server + Second Brain (40 tools on the appliance; 39 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
+| Named per-agent MCP keys (agent identity) | Single shared key | Yes — one named key per agent, pinned to a verified identity (`/api/mcp-keys`) |
+| Agent awareness lane (`glassy_notify`) + aging-review escalation | Not available | Yes — ≤10 notifications/min per key by design |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
 
 ## Configuration
@@ -181,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.36.0-beta.42`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -191,7 +193,7 @@ called out below; everything else has a safe default.
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
 | `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
-| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (29 tools incl. the vault knowledge-graph suite, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
+| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (40 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
 | `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
@@ -380,6 +382,38 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.40.0`** — *the agent is a principal.* Your AI agents stop being anonymous
+callers and become named, verifiable coworkers:
+
+- **Named agent keys.** The appliance can now issue one MCP key **per agent**
+  (Settings → the MCP key manager, `POST /api/mcp-keys`) instead of one shared
+  key for everything. Each key is pinned to an agent name, so the activity feed,
+  note authorship and agent memory all say *which* agent did the work. The
+  Companion browser extension can issue itself a named key ("Companion") from
+  its AI Tools section.
+- **Your agents can remember.** A new memory lane
+  (`glassy_remember`/`glassy_recall`) stores durable memories as ordinary notes —
+  searchable, graph-linked, and private per agent.
+- **An awareness lane.** Agents can ping you with `glassy_notify` (rate-limited
+  to 10/minute by design) and post end-of-session digests. Unread notifications
+  appear on the **Agent Review** page and as a badge in the Companion popup;
+  review requests you leave unanswered escalate to a warning at 24h and 72h.
+- **Approval badges on your notes.** A note that an agent asked you about now
+  shows its state — under review / approved / changes requested — on the card
+  itself, not only in the queue. When you pick a changes-style answer you now
+  have to say why.
+- **Brain depth.** Embedding widths are pinned per content source with loud,
+  actionable errors instead of silent search degradation; re-indexing can be
+  scoped to one source (`?sourceTypes`), which keeps it fast and cheap;
+  `glassy_search` can federate across extra search endpoints you register by
+  config; and search ranking now respects your note graph (well-linked notes
+  rank up).
+
+Migrations 0117–0122 apply automatically on the first start after upgrading.
+The new agent surfaces are **appliance-only** — the hosted service deliberately
+withholds them (check `curl -s localhost:3000/api/capabilities` →
+`agentIdentity` + `notifications`).
 
 **`v2.36.0-beta.42`** — 2FA verification accepts one 30-second step either side of
 the current one (it previously checked the exact step only, so a *correct* code was
