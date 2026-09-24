@@ -3,7 +3,19 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.36.0-beta.42** (September 21, 2026).
+**v2.40.0** (September 22, 2026).
+
+> **The second brain is yours too.** Glassy is one workspace for the human AND
+> their agents: you get durable **memory** (notes authored by your pinned
+> identity), a surfaced **pairing** loop (dispatch results ride the event and
+> your work lands as real notes), and a structured **approval** loop (ask, the
+> owner clicks, the artifact carries the state). The capability split,
+> stated plainly: the self-host build carries the capability, the cloud build carries
+> the restriction — on a self-hosted appliance you are a principal; on cloud
+> some surfaces (multi-key identity, notify, external corpora) are withheld,
+> and that is the design, not a bug.
+
+The rest of this brief is the practical detail.
 
 > **Read this first if you were briefed on an older appliance.** beta.41 put
 > every note write behind one service, which changed four things an agent can
@@ -18,7 +30,7 @@ self-host without a human explaining it. Verified against
 
 A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
-**MCP server** (29 tools, 4 prompts, 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
+**MCP server** (40 tools — 39 on cloud, `glassy_notify` is self-host only; 4 prompts; 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
 (extension + direct REST path), a local **Ollama** inference path, and an
 **agent gateway** for AI feature routing.
 
@@ -38,9 +50,36 @@ URL:     http://<host>:3010/mcp
 Auth:    Authorization: Bearer <mcp-key>
 ```
 
-The MCP key is generated in the UI: **Settings → Connections & data** (the
-MCP key panel — the same section as API keys and corpus health). It looks like `gky_mcp_…`. Revoke/rotate it from the same panel —
-it is scoped to this instance only.
+Both kinds of key live in **one** panel: **Settings → Connections & data → AI tools
+(MCP)**. ("Connections & data" is the group; "AI tools (MCP)" is the panel.) The
+instance key is at the top, named agent keys below it. Either can be revoked from
+there, and both are scoped to this instance only.
+
+### Two kinds of key — and only one makes you a principal
+
+Both look like `gky_mcp_…`. **They are the same shape** — both come from the same
+generator (`generateMcpKey()`), so you cannot tell which you were given by looking
+at it. Ask the instance instead; see below.
+
+| | **Named agent key** | **Instance key** |
+|---|---|---|
+| Minted by | The owner, in the panel's *Named agent keys* section — or by Companion v2.19.0+ for itself | The owner, at the top of the same panel |
+| Your identity | **Pinned and verified.** `agent: { name: "<your name>", verified: true, identityMode: "named-key" }` | Self-declared from your MCP handshake `clientInfo.name`; `verified: false`, `identityMode: "self-declared"` |
+| What that buys | Your note edits are attributed to *you*; `glassy_recall { scope: "mine" }` returns only your memories; `glassy_notify` and digests are signed with your name | Everything works, but authorship reads "MCP agent" and memory scope is coarse — one shared key, one identity for every client using it |
+| Availability | Self-host only (cloud answers 403 `FEATURE_NOT_AVAILABLE`) | Everywhere |
+
+**Ask for a named key if you will write anything.** Then verify what you actually
+got — do not assume you are verified because you set a client name, and do not
+infer it from the key's prefix, which cannot distinguish the two. Read the
+`glassy://status` resource; it carries:
+
+```json
+{ "agent": { "name": "Hermes", "verified": true, "identityMode": "named-key" } }
+```
+
+`verified: false` means the instance is trusting a name you declared about yourself.
+That is fine for reading; it is why your writes are attributed to "MCP agent" rather
+than to you.
 
 Claude Desktop example (the UI shows this exact snippet): paste into
 `~/.config/Claude/claude_desktop_config.json`:
@@ -56,11 +95,12 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 36 tools (live-verified)
+### The 40 tools (live-verified, v2.40.0)
 
 | Category | Tools |
 |---|---|
 | Search & retrieval | `glassy_search`, `glassy_obsidian_query`, `glassy_get_recent`, `glassy_get_backlinks`, `glassy_get_forward_links` |
+| Memory (durable, yours) | `glassy_remember`, `glassy_recall` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
 | Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document` |
 | Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` |
@@ -71,10 +111,17 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 | Schedule | `glassy_get_schedule`, `glassy_create_event`, `glassy_update_event`, `glassy_delete_event`, `glassy_find_free_slots` |
 | Tags / folders | `glassy_get_tags`, `glassy_get_folders` |
 | Proxy | `glassy_obsidian_proxy` |
+| Awareness & digests | `glassy_notify` (self-host only, ≤10/min), `glassy_create_digest` |
 
 `glassy_obsidian_query` and `glassy_obsidian_proxy` reach the operator's
 Obsidian vault through the local REST API plugin — they work even when the
 Glassy UI is not focused.
+
+**Memory:** `glassy_remember` stores a durable memory (a note tagged
+`agent-memory`, authored by YOUR pinned identity); `glassy_recall` retrieves it
+(`scope: 'mine'` is your memories only; `scope: 'all-agents'` sees every agent's).
+Recall before acting on a long-running task — the owner's preferences and
+project state live there.
 
 Read access is the default posture; write tools are available but the
 operator controls the key.
@@ -143,6 +190,22 @@ renderer allowlists **per surface**, what each renderer silently drops, accepted
 upload types, the embedding chunk size and dimensions, the review-loop limits,
 and the live MCP tool list. Read it instead of probing — every fact you cannot
 read is a fact you discover by getting a 201 that does nothing.
+
+## Canvas pages — publishing a live surface (2.39.0)
+
+A `canvas` note is the one surface that may embed live content (dashboards,
+charts, build logs) — normal notes cannot: their renderer strips `iframe`/`script`.
+Create one with `glassy_note_create {type:"canvas", content:"<html…>"}` (the content
+is HTML, not markdown), then hand the owner `#/canvas/<id>` for full-screen, or let
+them open it from Notes. List them with `glassy_list_notes {type:"canvas"}`, read
+with `glassy_read_note`.
+
+The embed policy is an **origin allowlist**, and it is per-instance: self-host
+defaults to LAN hostnames (`localhost`, `127.0.0.1`, `host.docker.internal`), cloud
+is locked until an admin lists origins (`CANVAS_EMBED_ORIGINS`). A canvas that
+references a non-allowlisted host refuses to render and names the offender — so
+check `renderers.canvas.allowedOrigins` in the capabilities manifest before you
+embed a third-party origin, and don't expect an arbitrary public URL to render.
 
 ```bash
 curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers | keys'
@@ -343,6 +406,27 @@ is `task`, not `prompt`. Note `GET /api/agents/discover` probes a hardcoded
 `127.0.0.1:8642` and may report "not reachable" even when your configured
 connection dispatches fine (#84).
 
+Facts that make the recipe work, in case the fields are already filled oddly:
+
+- **`host.docker.internal` only resolves because the compose maps it**
+  (`extra_hosts: ['host.docker.internal:host-gateway']`). The bundled appliance
+  compose has it; **the Tailscale overlay does not** — on `docker-compose.tailscale.yml`
+  use the host's tailnet name or IP instead.
+- **Ports by framework:** Hermes `8642` (default profile; profile installs often
+  `8643`), OpenClaw `18789`. Antigravity is the cloud framework — it needs a
+  Google API key and no local gateway at all.
+- **`GET /api/agents/activity`** is where the dispatch log lives (action,
+  `task_text`, `response_text`, timestamp). A dispatch that "did nothing" is
+  usually visible there as an `error` row with the upstream message.
+- **SSRF posture differs by instance, deliberately:** the hosted tier accepts only
+  `localhost`, `127.0.0.1`, `::1`, `host.docker.internal`; a **self-hosted**
+  instance accepts any host (`getAgentSsrfOptions`, `server/utils/urlValidator.js`),
+  which is what allows a LAN or Tailscale address. Don't "fix" a self-host baseUrl
+  to loopback to satisfy a validator — that is the bug, not the fix.
+- **From 2.39.0** the appliance's framework selector offers OpenClaw and Hermes.
+  Before that they were gated on the Clear instance identity, which an appliance
+  never reports, so only Antigravity was selectable (#85).
+
 ## Embeddings: switching models and the reindex recovery path
 
 - The embedding health oracle is `GET /api/monitoring/ready` →
@@ -377,7 +461,7 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 - **Data:** SQLite at `/app/data/notes.db` inside the container; backups
   are operator-managed via the Import/Export settings panel.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.36.0-beta.42`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.0`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features). **`v2.36.0-beta.41` has no GHCR image and needs none** — its tag
   push landed inside a transient Actions outage, and beta.42 contains all of
@@ -409,3 +493,29 @@ create/update and confirm destructive intent with the operator *before* the call
 a note delete is recoverable (soft-delete to the bin) but only the **owner** can
 restore it, and a `vault_append` writes straight into the operator's Obsidian
 files with no bin at all.
+
+## Reporting a defect
+
+You are expected to file defects, and your reports are triaged against source — not
+against a summary. File **one issue per finding** in `0Reliance/glassy` and include
+all five of:
+
+1. the exact surface (`/api/...` path or MCP tool name) and the exact request;
+2. the observed response, **verbatim** — copy the body, do not paraphrase it;
+3. the expected response and **which document or schema promised it**, with file and
+   line. "This brief says X" is the most useful sentence you can write: it turns a bug
+   into contract drift, which is a faster and more complete fix;
+4. `GET /api/instance` and `GET /api/capabilities` output — a self-host-only defect and
+   a cloud one are different defects;
+5. reproduction steps that do not depend on your own state. Seed what you used.
+
+If it concerns the appliance-only capability set (named keys, memory, notifications,
+external corpora), run `scripts/verify-selfhost-capabilities.sh` from the repo and paste
+its output. Sixteen checks with evidence lines beats a paragraph of prose, and it
+establishes immediately whether your instance is in the posture you think it is.
+
+You will get a verdict — **CONFIRMED / NOT CONFIRMED / WITHDRAWN / UNVERIFIED** — citing
+the source it was checked against. If you were wrong, say so in the issue: the correction
+is kept and dated, because that is what makes the next report believable. The full
+contract is
+[`docs/investigations/2026-09-23-two-agent-field-intake-protocol.md`](https://github.com/0Reliance/glassy/blob/main/docs/investigations/2026-09-23-two-agent-field-intake-protocol.md).

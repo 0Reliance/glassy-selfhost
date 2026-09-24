@@ -60,6 +60,9 @@
 | Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
 | Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
+| Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name |
+| Agent awareness lane (`glassy_notify`) | ❌ not available | ✅ — notifications + owner surface + 24h/72h review escalation; ≤10 notifications/min per key by design |
+| The approval badge on artifacts | ✅ | ✅ — the derived review state rides note reads, so you decide on the work itself |
 | Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
 | Two-factor authentication (TOTP + 10 recovery codes) | ✅ | ✅ — verification accepts ±1 30-second step (beta.42, RFC 6238 §5.2). **The appliance has no cloud NTP of its own:** a Docker host whose clock is more than ~30s out rejects every code from every device, and re-enrolling 2FA will not fix it |
 | Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP writes record the connecting client's `clientInfo.name`, falling back to `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
@@ -386,6 +389,16 @@ Supported providers: Gemini, OpenAI, Anthropic, Mistral, and any OpenAI-compatib
 
 > BYOK calls are billed to **your** provider account. There is no credit ledger or metering on the appliance.
 
+#### BYOK and a local Ollama (the "local" option)
+
+The BYOK dialog's **local (localhost:11434)** choice is offered because the form runs in your browser — but the request is made by the **server**, which on an appliance runs inside a container where `localhost` is the container itself. That mismatch used to save successfully and then fail on the first call with `fetch failed`.
+
+That is now handled for you: a loopback address (localhost / 127.0.0.1 / 0.0.0.0 / ::1) is rewritten to `host.docker.internal` automatically when the server is in a container, on both the validation path and the runtime path. A host you name yourself is never rewritten, and `ollama.com` is never rewritten.
+
+- **You probably do not need BYOK for a local daemon at all.** The non-BYOK lane above (`OLLAMA_BASE_URL=http://host.docker.internal:11434`) is what the AI assistant uses by default and works out of the box. BYOK's local option is for a *second* daemon or for `ollama.com` with your own key.
+- **To pin a specific host anyway** (a remote GPU box, a sidecar, a different port), set `OLLAMA_HOST_OVERRIDE` in `.env` — it wins over the automatic rewrite, on containers and bare metal alike.
+- **The model is probed before it is stored.** Saving with no model no longer writes a hardcoded default your instance has never pulled (which produced an opaque 404 at first use). The instance's real `/api/tags` list is read first; if it cannot be reached, no model is stored and the response says so, rather than inventing one.
+
 ### Local AI with Ollama
 
 Ollama is already reachable via `host.docker.internal` without any configuration change. To use it:
@@ -413,6 +426,42 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml exec ollama ol
 ```
 
 The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`deploy/selfhost/docker-compose.ollama.yml`](../deploy/selfhost/docker-compose.ollama.yml)).
+
+### Bulk-ingesting an existing vault (`#89`)
+
+The Obsidian bridge indexes files as they change; it cannot seed a vault that
+already exists. For that, the instance has a bulk ingest:
+
+```bash
+# the vault must be a path THIS SERVER can read — on Docker, mount it in. Declare once:
+echo 'VAULT_INGEST_ROOT=/mnt/vault' >> .env
+
+curl -sX POST http://localhost:3000/api/ingest -H "Authorization: Bearer $TOKEN"
+# {"jobId":"…","planned":5012,"skippedCount":0}
+
+curl -s "http://localhost:3000/api/ingest/status?jobId=…" -H "Authorization: Bearer $TOKEN"
+# {"job":{…,"status":"running"},"counts":{"pending":0,"processing":0,"done":5012,…},"errors":[]}
+
+curl -sX POST http://localhost:3000/api/ingest/<jobId>/cancel -H "Authorization: Bearer $TOKEN"
+```
+
+What it guarantees, and why each guarantee exists:
+
+- **Resumable.** Progress is rows, not memory. A restart resumes from where the
+  run stopped; a file finished once is never indexed twice. If a worker dies
+  mid-batch its claims are returned to the queue after a staleness threshold.
+- **Idempotent.** Re-running over an unchanged vault is a **no-op** — every file
+  is reported `skipped`, because the indexer already knows which sources are
+  synced. You can run it again without fear; you cannot double-embed anything.
+- **Honest.** `status` reports counts plus the first errors, and files that could
+  not be read are listed rather than silently missing. Nothing is truncated
+  without a reported reason.
+
+**Cost, stated plainly:** every newly-indexed file costs one embedding call. On
+the cloud provider that is real money at vault scale (thousands of files), which
+is why ingest is **explicitly opt-in** — it never runs by itself, and re-runs cost
+nothing because there is nothing new to embed. On a local Ollama embedding model
+there is no per-file cost, only time.
 
 ### Re-indexing embeddings
 
@@ -496,14 +545,92 @@ curl -X POST localhost:3000/api/kb/backfill/reindex \
 The manual SQL below remains the no-API fallback (for example when the server
 will not boot). Never hand-edit these tables on the hosted service.
 
+**Scoped re-index — one source only (#92).** Since the per-source width pins, a
+model change for ONE source does not force a corpus-wide, billable rebuild. The
+endpoint accepts an optional `sourceTypes` array and touches only the named
+sources (their vectors, their sync-ledger rows, their legacy tables and their
+width pins; every other source's rows survive):
+
+```bash
+curl -X POST localhost:3000/api/kb/backfill/reindex \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"confirm": true, "sourceTypes": ["note"]}'
+```
+
+**Per-source width pins (#92).** Migration 0119 pins the expected vector width
+per source type (`embedding_source_pins`): the first write establishes it, a
+mismatched write RAISES `EMBEDDING_DIMENSION_MISMATCH` naming the source (loud,
+not silent), and a query whose width differs from a requested source's pinned
+width answers 409 naming that source — search the matching sources or re-index
+the named ones. Two widths coexist fine: each source searches with its own
+width. Per-source health rides the readiness endpoint:
+
+```bash
+curl -s localhost:3000/api/monitoring/ready | jq '.embeddingHealth.bySource'
+# [{ "sourceType": "note", "ok": true, "width": 768, "pinnedWidth": 768,
+#    "offWidthRows": 0, "lastModelChangeAt": "..." }, ...]
+```
+
+`ok: false` for a source means some of its rows disagree with the pin — a scoped
+re-index of that source restores it.
+
+### Register external search corpora (federated search, #94)
+
+`glassy_search` can fuse the local index with registered REMOTE search endpoints.
+A corpus joins **by config, not code**: a row in `external_corpora`, managed on
+self-host at `/api/external-corpora` (cloud answers 403 — external corpora are a
+self-host capability). Endpoints are SSRF-validated at registration and again at
+every fetch, and the fetch has a 10s hard timeout.
+
+**On the appliance the operator owns the network**, so a LAN IP, a Tailscale node,
+loopback and `host.docker.internal` are all valid endpoints — the same posture
+Obsidian, calendar feeds and the agent gateway already use. Format and protocol are
+still checked (http/https only). On **cloud** the strict posture applies and
+registration additionally resolves DNS, so a hostname that only looks public cannot
+smuggle a private-IP fetch.
+
+```bash
+# A corpus on your LAN, a sibling container, or the Docker host:
+curl -X POST localhost:3000/api/external-corpora \
+  -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
+  -d '{"id": "ext-nas", "name": "Home NAS vault", "endpoint": "http://192.168.1.50:8080/search", "dim": 768}'
+
+# Disable a flaky corpus WITHOUT losing its config (search filters enabled = 1):
+curl -X PATCH localhost:3000/api/external-corpora/ext-nas \
+  -H "Authorization: Bearer <token>" -H 'Content-Type: application/json' \
+  -d '{"enabled": false}'
+```
+
+The remote endpoint receives `POST { query, limit }` and answers
+`{ "results": [{ "sourceId", "title", "content", "score" }] }`. Agents search it
+with `glassy_search({ query, corpora: ["local", "ext-nas"], weights: { "ext-nas": 2 } })`
+— every result carries its `corpus` attribution, and a corpus that fails is named
+in `degraded: []` (never silently omitted). Backlink-aware ranking (a modest
+graph-centrality boost, default-on) applies to local note results only.
+
 ### Connect your AI agent (MCP)
 
 Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
 [`GIVE-THIS-TO-YOUR-AI-AGENT.md`](https://github.com/0Reliance/glassy-selfhost/blob/main/GIVE-THIS-TO-YOUR-AI-AGENT.md)
 from the installer repo root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
-the full 36-tool table, the Obsidian-bridge explainer, ops facts, and first
-actions. The self-host compose enables the MCP stack by default; generate your
-MCP key in **Settings → Connections & data**.
+the full 40-tool table, the Obsidian-bridge explainer, ops facts, and first
+actions. The self-host compose enables the MCP stack by default.
+
+**Give each agent its own named key.** Both key kinds live in one panel:
+**Settings → Connections & data → AI tools (MCP)** ("Connections & data" is the
+group, "AI tools (MCP)" is the panel). The instance key sits at the top; the *Named
+agent keys* section below it mints one key per agent, each pinned to a verified
+identity, and is the only place a named key can be revoked.
+
+A named key is what makes an agent a **principal** rather than a guest: its note
+edits are attributed to its own name instead of "MCP agent", `glassy_recall
+{ scope: "mine" }` returns only its own memories, and its notifications and digests
+are signed. The two key kinds are the same `gky_mcp_…` shape, so an agent verifies
+which it holds by reading the `glassy://status` resource (`agent.verified`), not by
+looking at the key. Named keys are self-host only — `/api/mcp-keys` answers 403
+`FEATURE_NOT_AVAILABLE` on cloud, and `/api/capabilities` reports
+`agentIdentity.mode` as `named-keys` here and `single-key` there.
 
 ### What the instance can do (`/api/capabilities`)
 
@@ -521,6 +648,26 @@ limits, the renderer allowlists per SURFACE, document limits + route shapes,
 accepted upload MIME types (and that video is not served), upload cache
 lifetimes, the embedding chunk size and dimensions, the review-loop limits, and
 the live MCP tool list.
+
+**The split rule is in the manifest** (v2.40.0): every capability that differs
+between the appliance and cloud is gated on the instance identity and reported,
+so an agent or a client can tell what this instance offers BEFORE probing:
+
+```bash
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities | {agentIdentity, notifications}'
+# { "agentIdentity": { "available": true, "mode": "named-keys" },
+#   "notifications": { "available": true } }
+```
+
+`agentIdentity.mode: "named-keys"` means the appliance accepts named per-agent
+MCP keys at `/api/mcp-keys` (each pinned to a verified identity — the key an
+agent uses becomes the agent's principal for authorship, memory and
+notifications). `notifications.available` means the awareness lane exists here
+(`glassy_notify`, the owner surface on the Agent Review page, and the 24h/72h
+aging-review escalation). On cloud both report `false`/`single-key`, and the
+corresponding endpoints answer 403 `FEATURE_NOT_AVAILABLE`. Clients are expected
+to gate on this manifest — the Companion extension does exactly that (fail
+closed: any error resolves to "capability absent").
 
 ### Renderers are per-surface, with the discard behavior (#75)
 
@@ -558,9 +705,97 @@ Agents can ask you a question and wait for a click: `glassy_request_review`
 linked item rendered next to them. Answers sync between paired seats, so a
 question asked on one machine can be answered on the other.
 
----
+### Dispatching tasks to your own agent (Agent Gateway)
 
-## 7. Obsidian live sync
+The Agent Gateway sends a task to an agent framework you run, and puts the
+answer where you can read it. On the appliance it is **enabled by default**
+(`ENABLE_AGENT_GATEWAY=true` in `deploy/selfhost/docker-compose.yml`), and the
+**Agent Gateway** nav item appears because the instance is self-hosted.
+
+**The whole difficulty is one sentence: the Glassy SERVER makes the call, not your
+browser.** Everything below follows from that.
+
+**1. Run the agent's gateway on the host.** Note the port it listens on. Defaults:
+Hermes `8642` (profile installs commonly land on `8643`), OpenClaw `18789`.
+Antigravity is the cloud option — it talks to Google and needs no local gateway.
+
+**2. Settings → Agent connections → Framework: Hermes (or OpenClaw).**
+
+- **Base URL** — pre-filled with `http://host.docker.internal:<port>`, and that is
+  the right answer: the appliance's compose maps `host.docker.internal` to the host
+  gateway (`extra_hosts: ['host.docker.internal:host-gateway']`, line 120).
+  `http://127.0.0.1:8642` **can never work** — inside the container that address is
+  the container itself.
+- **Bearer Token** — the **agent gateway's own** key, not a Glassy key. For Hermes
+  it is `api_server.key` in the agent profile's `config.yaml` (not `.env`; the
+  `API_SERVER_KEY` environment variable is the legacy path). Leave it empty only if
+  your agent accepts anonymous calls.
+
+**3. Verify from inside the container before dispatching:**
+
+```bash
+docker exec glassy curl -4 -s http://host.docker.internal:8642/health
+# {"status":"ok", ...}
+```
+
+A `curl` on your host proves nothing about this path — it must run *in the
+container*, which is where the server's call comes from.
+
+**4. Dispatch, and read it back:**
+
+```bash
+curl -sX POST http://localhost:3000/api/agents/<connection-id>/task \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"task": "Summarise what changed in the vault today"}'
+# → { "success": true, "response": "…the model's actual answer…", "sessionId": "…" }
+```
+
+The body key is **`task`**, not `prompt`. Every dispatch, status change and error
+is recorded and shown in the Agent Gateway panel (`GET /api/agents/activity`).
+
+**Two exceptions worth knowing:**
+
+- **Tailscale overlay** (`docker-compose.tailscale.yml`) — explicitly cannot reach
+  `host.docker.internal`; type the host's tailnet name or IP instead. The field
+  keeps whatever you type (it only follows the framework's default port while you
+  have not edited it).
+- **The discovery panel** can report "not reachable" while a configured connection
+  dispatches perfectly: `GET /api/agents/discover` probes a hardcoded
+  `127.0.0.1:8642` (#84). Trust the `curl` in step 3, not the probe.
+
+**On SSRF posture:** the hosted tier accepts only a small allowlist
+(`localhost`, `127.0.0.1`, `::1`, `host.docker.internal`); a **self-hosted**
+instance accepts any host, because you own the network — that is deliberate
+(`getAgentSsrfOptions` in `server/utils/urlValidator.js`), and it is what lets an
+appliance talk to a LAN or Tailscale address.
+
+> From 2.39.0 the appliance's framework list offers **OpenClaw and Hermes**, not
+> just Antigravity. Before that they were gated on the Clear instance identity,
+> which a self-hosted appliance never reports — so the local-agent recipe was not
+> expressible in the UI at all (#85).
+
+### Canvas pages and the embed allowlist
+
+A `canvas` note is a first-class page type that may embed **live content** —
+dashboards, charts, build logs — under an origin allowlist that the note renderer
+does **not** grant (`safe-markdown` still strips iframes and scripts from normal
+notes). Open one two ways: the note modal (from the Notes list), or the full-screen
+`#/canvas/<id>` link an agent hands you.
+
+The allowlist differs by instance **by design**:
+
+- **Self-host** defaults to LAN hostnames (`localhost`, `127.0.0.1`,
+  `host.docker.internal`), so a dashboard on the host or a LAN service embeds
+  without config. Extend it with `CANVAS_EMBED_ORIGINS` (comma-separated).
+- **Cloud** is locked: no third-party origin renders until an admin lists one.
+
+A canvas page that references a host **not** on the allowlist refuses to render and
+names the offending origin — a dashboard missing half its frames must not look like
+it rendered. The effective list is reported at `/api/capabilities` →
+`renderers.canvas.allowedOrigins`. Agents list and open canvas pages with
+`glassy_list_notes {type:"canvas"}` and `glassy_read_note`.
+
+---
 
 Live Obsidian vault sync is the primary reason to self-host. The cloud server cannot reach `127.0.0.1` on your machine; a local install can.
 
@@ -674,8 +909,7 @@ docker compose up -d
 Database migrations apply automatically on start. There is no downtime during a rolling update (the old container keeps serving until the new one is healthy).
 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
-`GLASSY_TAG=v2.36.0-beta.42`) — `docker compose` refuses to start without it.
-Only beta tags are published; there are no stable tags yet. **Do not use
+`GLASSY_TAG=v2.40.0`) — `docker compose` refuses to start without it. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the AI tools
 (MCP), Second Brain, Agent connections and API keys (BYOK) settings. See
