@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.40.0** (September 22, 2026).
+**v2.40.2** (September 25, 2026).
 
 > **The second brain is yours too.** Glassy is one workspace for the human AND
 > their agents: you get durable **memory** (notes authored by your pinned
@@ -95,7 +95,7 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 40 tools (live-verified, v2.40.0)
+### The 40 tools (live-verified, v2.40.2)
 
 | Category | Tools |
 |---|---|
@@ -461,11 +461,16 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 - **Data:** SQLite at `/app/data/notes.db` inside the container; backups
   are operator-managed via the Import/Export settings panel.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.0`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.2`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
-  features). **`v2.36.0-beta.41` has no GHCR image and needs none** — its tag
-  push landed inside a transient Actions outage, and beta.42 contains all of
-  beta.41's work plus the TOTP fix. Never point a pin at beta.41.
+  features). **Three versions in `CHANGELOG.md` have no GHCR image and must
+  never be pinned:** `v2.36.0-beta.41` (its tag push landed inside a transient
+  Actions outage, and beta.42 contains all of beta.41's work plus the TOTP
+  fix), `v2.39.0` (prepared as a release and deliberately not launched — its
+  canvas and bulk-ingest work shipped in `v2.40.0`) and `v2.40.1` (never tagged;
+  its work shipped in `v2.40.2`). Those headers are annotated in the changelog
+  itself, and `scripts/version-check.js` now fails a build that adds another one
+  silently. Pin a version the registry actually has.
 - **Sign-in with 2FA:** beta.42 widened TOTP acceptance from the exact 30-second
   step to ±1 step, so a code stays valid ~90s. Before beta.42 a *correct* code
   was rejected whenever the step boundary fell between reading it and submitting
