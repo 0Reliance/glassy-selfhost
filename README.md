@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.2>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.4>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -183,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.2`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.4`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -382,6 +382,37 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.40.4`** — *the membership signature stops being a secret that everyone has.*
+No behaviour change you will notice; this closes a security issue in how appliances
+verify membership.
+
+- The appliance used to verify the cloud's membership signature with a **symmetric**
+  key that had to be baked into the image — and the image is publicly pullable, so the
+  "secret" was public and any signature could be forged. It now uses **Ed25519**: the
+  cloud signs with a private key that never leaves it, and the image ships only a
+  **public** key. A public key in a public image is not an exposure.
+- Worth knowing because it explains an oddity: the old mechanism was **inert as well as
+  insecure**. The build arg defaulted to the literal string `unset`, so signed caches
+  never validated and every appliance has always re-verified on the 24-hour TTL.
+  Upgrading therefore **cannot regress anything** — you were already on that path.
+- A cached signature from an older build is recognised by shape and re-verified once,
+  with a log line saying so. That is expected, not tampering.
+
+**`v2.40.3`** — *the image can finally take an OS security patch.* Two CRITICAL GnuTLS
+CVEs (CVE-2026-33845, CVE-2026-42010) had published fixes that **no rebuild would ever
+pick up**: the Debian base already ships `libgnutls30`, and
+`apt-get install curl ca-certificates` does not upgrade a package that is merely
+present. Docker then caches that layer by its instruction text, so on any host with a
+warm build cache it survived even a corrected instruction. The runtime stage now runs an
+explicit `apt-get upgrade` behind a date-stamped cache key, so OS patches land within a
+day of publication instead of never.
+
+If you build your own image rather than pulling ours, **you have the same problem** —
+add `&& apt-get upgrade -y` to your runtime apt layer.
+
+Practical exposure was low (`libgnutls30` reaches the image via `curl`, a diagnostic
+tool; the Node runtime uses OpenSSL), so upgrade at your normal pace.
 
 **`v2.40.2`** — *an appliance serves its own pages, and a limit means what it
 says.* **If your install shows a completely blank page, upgrade to this.**
