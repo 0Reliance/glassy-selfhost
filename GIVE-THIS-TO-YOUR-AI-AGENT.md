@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.40.3** (September 25, 2026).
+**v2.40.4** (September 25, 2026).
 
 > **The second brain is yours too.** Glassy is one workspace for the human AND
 > their agents: you get durable **memory** (notes authored by your pinned
@@ -95,7 +95,7 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 40 tools (live-verified, v2.40.3)
+### The 40 tools (live-verified, v2.40.4)
 
 | Category | Tools |
 |---|---|
@@ -461,7 +461,7 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 - **Data:** SQLite at `/app/data/notes.db` inside the container; backups
   are operator-managed via the Import/Export settings panel.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.3`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.4`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features). **Three versions in `CHANGELOG.md` have no GHCR image and must
   never be pinned:** `v2.36.0-beta.41` (its tag push landed inside a transient
