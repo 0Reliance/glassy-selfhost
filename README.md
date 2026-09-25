@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.0>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.2>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -183,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.0`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.2`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -383,6 +383,45 @@ Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
 
+**`v2.40.2`** — *an appliance serves its own pages, and a limit means what it
+says.* **If your install shows a completely blank page, upgrade to this.**
+
+- **The blank screen (critical).** Every earlier build decided "is this request
+  from my own site?" against a hardcoded origin allowlist containing
+  `localhost:3000` and `127.0.0.1:3001`. A production browser bundle is emitted
+  with `crossorigin`, so it always sends an `Origin` header — which meant the
+  allowlist was the only thing consulted, and the appliance answered **403 to
+  requests for its own JavaScript and CSS**. Reach it on a custom `APP_PORT`, a
+  LAN address, a Tailscale hostname or your own domain and the page rendered
+  empty. The default `localhost:3000` install was never affected, which is why
+  this survived eleven releases: it passed by accident, not by design. Sameness is
+  now judged from the `Host` header the browser derives from the URL it is
+  fetching — not `req.host`, which Express takes from the caller-controlled
+  `X-Forwarded-Host` under `trust proxy` and which would have made the fix into a
+  cross-origin read.
+- **Boot survives its own workers.** An appliance could crash-loop on first boot
+  before anyone signed in: every cluster worker ran the default-admin seed as
+  "count the users, then insert", two workers both saw an empty database, and the
+  loser's unique-constraint error exited the process. Separately, two workers
+  adding the same column made the loser's `duplicate column name` warning skip
+  **every column after it**, silently.
+- **Rate limits are real.** `glassy_notify` advertised 10/minute and the login
+  limiter 20 per 15 minutes, but both windows lived in per-process memory.
+  Measured on a live 2-worker appliance: **40** failed logins got through against
+  a promise of 20. Both are now shared across workers and survive a restart.
+- **The MCP surface stops advertising what it is not serving.** A failed MCP mount
+  left `POST /mcp` answering `200` with the single-page app's HTML while
+  `/api/capabilities` claimed all 40 tools. It now answers `503 MCP_NOT_MOUNTED`
+  with a reason, and the manifest reports `mounted: false` beside the count.
+- **Deep links work.** A shadowed variable made every id-carrying route
+  (`#/notes/<id>`, `#/canvas/<id>`) unmatchable, silently falling back to the list.
+- **Honest diagnostics.** A registered-but-disabled external corpus no longer tells
+  you to register it; it names the real reason and how to re-enable it.
+
+After upgrading, **close and reopen the Glassy tab** — a service worker and CSP
+from the previous build can keep serving the stale shell after the container is
+fixed.
+
 **`v2.40.0`** — *the agent is a principal.* Your AI agents stop being anonymous
 callers and become named, verifiable coworkers:
 
@@ -441,9 +480,18 @@ operator-visible consequences:
   agent retry is safe); restore is owner-only and returns a real `403` instead of a
   hollow success.
 
-**`v2.36.0-beta.41` has no published image and needs none** — its tag push landed
-inside a transient CI outage, and beta.42 contains all of its work plus the 2FA
-fix. Do not pin beta.41.
+**Three changelog versions have no published image — never pin them.**
+
+- **`v2.36.0-beta.41`** — its tag push landed inside a transient CI outage, and
+  beta.42 contains all of its work plus the 2FA fix.
+- **`v2.39.0`** — prepared as a release and deliberately not launched; its canvas
+  page type and bulk vault ingest shipped in `v2.40.0`.
+- **`v2.40.1`** — never tagged; its work shipped in `v2.40.2`.
+
+Each header says so in the application repo's `CHANGELOG.md`, and
+`scripts/version-check.js` now fails a build that adds another untagged version
+silently — which is how all three came to exist in the first place. If a pin gives
+you `manifest unknown`, this is why: check the tag list rather than guessing.
 
 ### Automatic updates (optional)
 
