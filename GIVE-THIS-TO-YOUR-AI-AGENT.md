@@ -30,7 +30,7 @@ The rest of this brief is the practical detail.
 
 A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
-**MCP server** (40 tools — 39 on cloud, `glassy_notify` is self-host only; 4 prompts; 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
+**MCP server** (40 tools — 36 on cloud; `glassy_notify` and the three review tools are self-host only, because the review queue and owner inbox they terminate in are not served on cloud; 4 prompts; 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
 (extension + direct REST path), a local **Ollama** inference path, and an
 **agent gateway** for AI feature routing.
 
@@ -103,7 +103,7 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 | Memory (durable, yours) | `glassy_remember`, `glassy_recall` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
 | Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document` |
-| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` |
+| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` (self-host only) |
 | Vault (live Obsidian files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
@@ -227,13 +227,19 @@ away from what the app actually does.
 
 ## Asking the owner a question (2.38.0)
 
+**Self-host only.** All three review tools are gated: on cloud they are absent from
+`tools/list` and answer `403 FEATURE_NOT_AVAILABLE` if called by name, because the queue
+they terminate in is not served there and an owner cannot open it. On cloud, write the note
+and tell the owner where to look instead.
+
 Do not guess when a decision is the owner's. Ask, and keep working elsewhere
 while you wait:
 
 1. `glassy_request_review` with `question`, optional `choices` (2–10 distinct
    strings; default `["yes","no"]`), and — when the question is about a specific
-   item — `linked_type` (`note`|`document`) plus `linked_id`. The owner sees the
-   item rendered next to your question.
+   item — `linked_type` (`note`|`document`|`canvas`) plus `linked_id`. The owner sees the
+   item rendered next to your question. A canvas is addressed by its note id; the link
+   opens the canvas surface rather than the note editor.
 2. Poll `glassy_get_review` with the returned `id`. `status` stays `open` until
    the owner clicks a choice; then it is `answered` with `answer_choice`,
    `answer_comment` (optional), `answered_by` and `answered_at`.
