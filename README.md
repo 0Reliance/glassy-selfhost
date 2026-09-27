@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.4>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.5>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -382,6 +382,24 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.40.5`** — *the appliance tells clients what it can actually do.*
+
+- **Pairs with Companion extension v2.20.0.** The capability manifest now reports the
+  vault, and `/api/ext/me` reports your `obsidian_enabled` setting, so the extension
+  shows its 📁 Vault tab and Obsidian Bridge settings only when this appliance can
+  really serve them. Companion v2.20.0 also fixes its AI Tools (MCP) section, which
+  previously never appeared because it probed the wrong endpoint — **update the
+  extension alongside this image** or the MCP settings stay hidden.
+- **MCP tool calls are recorded** at a single choke point and shown in the activity
+  feed, so "what did the agent just do" is something you read rather than reconstruct.
+- **Bookmark delete is two-stage**, matching how notes already worked — a delete is
+  recoverable rather than immediate.
+- **Agent note edits are recoverable.** Version snapshots are taken in the service, so
+  a write that did not go through the main route still produces a restorable version.
+- **A disabled or failed MCP server now says so.** `/mcp/*` answers `503` with a JSON
+  `MCP_NOT_MOUNTED` reason instead of falling through to the single-page app and
+  returning an HTML page to a JSON-RPC client.
 
 **`v2.40.4`** — *the membership signature stops being a secret that everyone has.*
 No behaviour change you will notice; this closes a security issue in how appliances
