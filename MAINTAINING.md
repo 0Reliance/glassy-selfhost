@@ -18,7 +18,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 
 The installer repo's `docker-compose.yml` pulls the GHCR image
 `ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?…}`. **`GLASSY_TAG` is required and
-must name a released version** (e.g. `v2.40.0`): compose refuses to start
+must name a released version** (e.g. `v2.40.6`): compose refuses to start
 without it, and `latest` is the wrong value.
 
 ### Which tag to reference: `latest` is the hosted build, not the appliance

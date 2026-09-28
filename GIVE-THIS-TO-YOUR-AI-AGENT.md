@@ -529,4 +529,4 @@ You will get a verdict — **CONFIRMED / NOT CONFIRMED / WITHDRAWN / UNVERIFIED*
 the source it was checked against. If you were wrong, say so in the issue: the correction
 is kept and dated, because that is what makes the next report believable. The full
 contract is
-[`docs/investigations/2026-09-23-two-agent-field-intake-protocol.md`](https://github.com/0Reliance/glassy/blob/main/docs/investigations/2026-09-23-two-agent-field-intake-protocol.md).
+`docs/investigations/2026-09-23-two-agent-field-intake-protocol.md` in the Glassy source repository.

@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.5>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.6>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -164,7 +164,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
-| MCP server + Second Brain (40 tools on the appliance; 39 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
+| MCP server + Second Brain (40 tools on the appliance; 36 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
 | Named per-agent MCP keys (agent identity) | Single shared key | Yes — one named key per agent, pinned to a verified identity (`/api/mcp-keys`) |
 | Agent awareness lane (`glassy_notify`) + aging-review escalation | Not available | Yes — ≤10 notifications/min per key by design |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
@@ -183,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.4`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.6`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -382,6 +382,24 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.40.6`** — *a rule that is enforced is not a rule that is displayed.*
+
+- **The forced password change is now enforced by the server, not just shown by the page.**
+  Until this release an account carrying `password_must_change` was greeted by a full-screen
+  prompt, while a token that ignored it kept complete access to `/api/*`. The refusal is now
+  server-side — `403 PASSWORD_CHANGE_REQUIRED` — with `POST /api/auth/change-password` the one
+  exempt route, so the account that must change its password still can. On a fresh appliance
+  this is invisible: you were going to set your own password anyway.
+- **Setting your own password in the admin panel now satisfies the requirement.** Previously
+  only the change-password screen cleared the flag, so rotating a password from the admin panel
+  rotated it and left the account permanently flagged — harmless while the flag only chose which
+  screen you saw, and a lockout once the flag gated the API. An admin resetting *someone else*
+  still leaves the flag set, on purpose: that is the "we reset your access, choose your own"
+  flow the flag was introduced for.
+- **Pairs with Companion extension v2.20.1** (error classification now reads the HTTP status
+  code instead of inferring it from message text). The in-app extension page had been pointing
+  at v2.20.0 after v2.20.1 shipped; it now names the release that exists.
 
 **`v2.40.5`** — *the appliance tells clients what it can actually do.*
 
