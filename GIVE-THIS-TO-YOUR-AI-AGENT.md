@@ -30,9 +30,25 @@ The rest of this brief is the practical detail.
 
 A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
-**MCP server** (40 tools — 36 on cloud; `glassy_notify` and the three review tools are self-host only, because the review queue and owner inbox they terminate in are not served on cloud; 4 prompts; 3 listed resources + 6 URI templates — `resources/list` returns the three static ones: `glassy://tags`, `glassy://folders`, `glassy://status`; the rest are addressable templates like `glassy://notes/{id}`), an **Obsidian bridge**
-(extension + direct REST path), a local **Ollama** inference path, and an
-**agent gateway** for AI feature routing.
+**MCP server** with three surfaces, not one:
+
+- **40 tools** — 36 registered everywhere; `glassy_notify` and the three review
+  tools are self-host only, because the review queue and owner inbox they
+  terminate in are not served on cloud. Full table below.
+- **4 prompts** — server-authored instruction templates. Named and explained in
+  [*Prompts*](#the-4-prompts-a-separate-surface-from-tools) below.
+- **9 resources** — 3 static (these are all `resources/list` returns) plus **6 URI
+  templates that discovery will never show you**. Named in
+  [*Resources*](#the-9-resources-6-are-not-discoverable) below.
+
+…plus an **Obsidian bridge** (extension + direct REST path), a local **Ollama**
+inference path, and an **agent gateway** for AI feature routing.
+
+> **Read this before you assume the tool table is the whole system.** Two of the
+> three MCP surfaces are invisible to the way most agents explore: `prompts/list`
+> and `resources/list` are separate calls from `tools/list`, and six of the nine
+> resources are URI templates that `resources/list` deliberately does not return.
+> An agent that only reads `tools/list` will use a third of this instance.
 
 Everything lives on the operator's own machine. There is no cloud
 dependency except a one-time license check at boot.
@@ -126,6 +142,76 @@ project state live there.
 Read access is the default posture; write tools are available but the
 operator controls the key.
 
+### The 4 prompts (a separate surface from tools)
+
+`prompts/list` is a **different call** from `tools/list`. A prompt is not a
+function you invoke — it is an instruction template this server authors and hands
+your client via `prompts/get`, which returns *messages* rather than data. Three
+consequences worth knowing:
+
+- **They cost nothing.** No model call happens on this instance, so a prompt
+  never touches the operator's AI budget or the vault.
+- **They cannot fail against your data.** A prompt returns text even if the vault
+  is offline, the corpus is mid-reindex, or a note ID is wrong.
+- **Two of them steer you back into the tools.** `glassy_daily_brief` and
+  `glassy_daily_briefing` return instructions that tell you to call
+  `glassy_get_recent` and `glassy_get_schedule` — they are scaffolding for a
+  multi-step loop, not endpoints.
+
+| Prompt | Arguments | Use it when |
+|---|---|---|
+| `glassy_summarize` | `text` (required, ≤50 000 chars), `format` ∈ `bullet` \| `paragraph` \| `tweet` \| `title` (default `paragraph`), `maxLength` (20–500 words, default 200) | You need a *consistent* summarization instruction rather than improvising one. `title` caps at 10 words; `tweet` at 280 chars. |
+| `glassy_capture_prompt` | `url` (required, must parse as a URL), `contentType` ∈ `article` \| `video` \| `repo` \| `bookmark` (default `bookmark`) | You are about to save a URL and want the right extraction per type — `repo` asks for language/stars/license, `video` for creator and duration, `article` for thesis and 3–5 tags. |
+| `glassy_daily_brief` | `date` (`YYYY-MM-DD`, defaults to today), `focus` ∈ `all` \| `bookmarks` \| `notes` \| `vault` (default `all`) | End-of-day review. Returns instructions to fetch the day's items via `glassy_get_recent`, group by topic, and suggest connections. |
+| `glassy_daily_briefing` | `focus` (free text ≤500 chars, optional) | The owner wants their *day*, not their notes: a 5-line time briefing — meeting count, conflicts, first free block ≥30 min, one suggestion. Explicitly forbids inventing events. |
+
+Note the near-duplicate names: **`glassy_daily_brief`** is about your knowledge
+base, **`glassy_daily_briefing`** is about your calendar. They are different
+prompts with different `focus` enums — `all|bookmarks|notes|vault` versus free
+text. Calling the wrong one is the one mistake this table exists to prevent.
+
+### The 9 resources (6 are not discoverable)
+
+A resource is read **by URI**, with no tool call and no argument schema — useful
+when you already know the identifier and want the payload. `resources/list`
+returns **only the three static URIs**. The other six are `ResourceTemplate`s
+registered with `list: undefined`, which means discovery will never surface them
+and **you have to know the shape to use them**. This section is the only place
+that shape is written down.
+
+**Listable (returned by `resources/list`):**
+
+| URI | Returns |
+|---|---|
+| `glassy://tags` | Unified tag cloud across notes, bookmarks, documents and voice — each tag with its count and source types. |
+| `glassy://folders` | Bookmark collections and document folders with item counts: the owner's organizational hierarchy. |
+| `glassy://status` | Knowledge-base health — corpus indexing progress, embedding counts, sync status. **Read this first when search results look thin**; a partially indexed corpus is a data problem, not a query problem. |
+
+**URI templates (NOT returned by `resources/list` — construct them yourself):**
+
+| URI shape | Returns |
+|---|---|
+| `glassy://notes/{id}` | One note: full content, tags and metadata as JSON. |
+| `glassy://recent/{sourceType}` | Most recent items. `sourceType` ∈ `bookmarks`, `notes`, `all`. |
+| `glassy://kb/search/{query}` | Ranked search results across every source type. |
+| `glassy://vault/{path}` | A note from the **live** Obsidian vault, by vault-relative path — e.g. `glassy://vault/Notes/OAuth.md`. Needs Obsidian running or the Companion bridge. |
+| `glassy://graph/note/{path}` | The **2-hop** knowledge-graph neighborhood of a vault note — links *and* backlinks — as JSON, served from the indexed corpus. |
+| `glassy://calendar/today` | Today's events for visible calendars, as JSON. |
+
+Two subtleties that cost real debugging time:
+
+1. **`glassy://calendar/today` has no placeholder** but is still a template, so
+   it is absent from `resources/list` alongside the parameterized six. "It isn't
+   listed" never means "it doesn't exist" on this instance.
+2. **`glassy://vault/{path}` and `glassy://graph/note/{path}` are different
+   sources.** `vault` reads the *live* file through the Obsidian REST plugin and
+   fails when Obsidian is closed; `graph/note` reads the *indexed* corpus and
+   works offline but reflects the last reindex. For an edit you just made, use
+   `vault`. For link structure, use `graph/note`.
+
+Prefer the equivalent **tool** when you need filtering, pagination, or a write —
+resources are read-only and take no options beyond the URI.
+
 ### Present your work through the Public Window (beta.36)
 
 The intended loop when you produce an artifact the operator must LOOK at —
@@ -209,17 +295,36 @@ embed a third-party origin, and don't expect an arbitrary public URL to render.
 
 ```bash
 curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers | keys'
-# [ "ai-assistant-preview", "help-article", "keep", "note", "window", "writing" ]
+# [ "ai-assistant-preview", "canvas", "help-article", "keep", "note", "window", "writing" ]
 curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers.keep'
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers.canvas.allowedOrigins'
 ```
 
-Six renderer configs exist in this product — do not assume the note renderer's
-allowlist applies to the keep/bookmark render (that assumption has cost real
-debugging time). Each entry carries `allowTags`, `allowAttrs`,
-`discardBehavior` (`silent-drop` = the tag vanishes at render after a successful
-write; `prompt-only` = it constrains model output), `stripsAtRender`, and
-`warnsAtWrite` (only `note` warns today). `keep` also distinguishes validated
-embeds (`embeds: ["youtube","vimeo"]`) from user `<iframe>`s, which are stripped.
+**Seven** renderer configs exist in this product — do not assume the note
+renderer's allowlist applies to the keep/bookmark render (that assumption has
+cost real debugging time), and do not assume the note renderer's allowlist
+applies to *canvas* either, which is the point of this section. Each entry
+carries `allowTags`, `allowAttrs`, `discardBehavior` (`silent-drop` = the tag
+vanishes at render after a successful write; `prompt-only` = it constrains model
+output), `stripsAtRender`, and `warnsAtWrite` (only `note` warns today). `keep`
+also distinguishes validated embeds (`embeds: ["youtube","vimeo"]`) from user
+`<iframe>`s, which are stripped.
+
+`canvas` is the exception that proves the rule, and the reason the count is seven
+and not six: it has **empty** `allowTags`/`allowAttrs` because there is no tag
+allowlist to have — a canvas renders the operator's own raw HTML inside a
+sandboxed iframe, gated on `originPolicy: "allowlist"` instead, and it is the
+**one** surface with `userIframes: true`. The manifest attaches its *effective*
+per-instance allowlist as `renderers.canvas.allowedOrigins` (plus `locked` and
+`configured`), because that list depends on this deployment and cannot be frozen
+into the module.
+
+> **Corrected 2026-09-29:** this section previously understated the renderer
+> count and printed a `keys` example without `canvas` — inside the very section
+> about canvas, directly above the instruction to check
+> `renderers.canvas.allowedOrigins`. The live manifest always returned the true
+> set; only the prose and the example were wrong. If a `jq` output in this file
+> disagrees with your instance, **believe your instance** and re-run the command.
 
 Every value is read from the module that enforces it, and the renderer mirror is
 checked against the browser's own config by test, so the manifest cannot drift

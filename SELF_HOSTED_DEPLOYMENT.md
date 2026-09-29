@@ -677,12 +677,24 @@ the expensive failure is not the allowlist, it is that violation is *silent*:
 
 ```bash
 curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers | keys'
-# [ "ai-assistant-preview", "help-article", "keep", "note", "window", "writing" ]
+# [ "ai-assistant-preview", "canvas", "help-article", "keep", "note", "window", "writing" ]
 curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers.keep.discardBehavior'
 # "silent-drop"      <- the tag vanishes at render; the write already succeeded
 curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers."ai-assistant-preview".allowAttrs'
 # []                 <- no attributes survive there, not even class
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.renderers.canvas | {userIframes, originPolicy, allowedOrigins}'
+# canvas is the SEVENTH surface and the only one that permits user iframes
 ```
+
+There are **seven** surfaces, not six: `canvas` (#90 C4.2) joined the original
+six and is the one an agent is most likely to get wrong, because it inverts the
+rule this section exists to teach. It has **empty** `allowTags`/`allowAttrs` — not
+a stricter list, an absent one — because a canvas renders the operator's own raw
+HTML inside a sandboxed iframe and is gated on `originPolicy: "allowlist"`
+instead. `allowedOrigins` is attached per-instance at request time (self-host
+defaults to LAN hostnames; cloud is locked until an admin sets
+`CANVAS_EMBED_ORIGINS`), so it cannot live in the frozen module and will differ
+between your box and the example above.
 
 `discardBehavior` is `silent-drop` (the element disappears at render) or
 `prompt-only` (it constrains what the model may emit, not a sanitizer). The
