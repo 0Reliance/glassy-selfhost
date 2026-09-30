@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.6>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.40.7>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -183,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.6`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.7`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -382,6 +382,28 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.40.7`** — *the surfaces now describe themselves accurately, and one new surface exists.*
+
+- **New: a chrome-free presentation route, `#/present/<kind>/<id>`.** It renders one note,
+  canvas or document with no sidebar, header or widgets — for putting a single artifact in
+  front of someone without the workspace around it. `Esc` exits. It is **owner-only** by
+  design (the unauthenticated surface is still `#/w/<slug>/<noteId>`), it reuses the
+  existing renderers rather than adding one, and `/api/capabilities` publishes the route
+  and its valid kinds so an agent can build the URL instead of guessing it.
+- **Canvas notes now render in the Public Window.** A canvas opened through
+  `#/w/<slug>/<noteId>` used to fetch successfully and then display nothing, because the
+  window had a renderer for every note type except that one. It now uses the same canvas
+  renderer as the rest of the app. On an appliance the Public Window is forced
+  members-only, so this is visible to signed-in members rather than to anonymous visitors.
+- **The capability manifest advertised an embedding-reindex route that has never
+  existed.** It said `/api/kb/reindex`, which answers 404 on every method; the real route
+  is `POST /api/kb/backfill/reindex`. For an agent, a 404 on a repair path is
+  indistinguishable from “this instance has no reindex”. The value is now derived from
+  the constant the route registers with, so the two cannot part silently.
+- **`glassy_note_update`’s `is_public` description now names both presentation surfaces**
+  and states the appliance behaviour, so an agent deciding whether to publish a note is
+  told who will actually be able to see it.
 
 **`v2.40.6`** — *a rule that is enforced is not a rule that is displayed.*
 
