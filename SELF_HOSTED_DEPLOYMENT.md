@@ -68,7 +68,7 @@
 | Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP writes record the connecting client's `clientInfo.name`, falling back to `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
 | Bookmark authorship | ✅ | ✅ — same three columns (migration 0109, beta.43). Content writes go through `bookmarkService`. A takedown is not an edit |
 | Document authorship | ✅ | ✅ — same three columns (migration 0110, beta.43). Content create/update and the public toggle go through `documentService`. Archive, pin and account move stay narrow state transitions and do not stamp an editor |
-| Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43) |
+| Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43). A `canvas` note is judged by its own policy instead and returns `CANVAS_ORIGIN_BLOCKED` naming any origin outside `CANVAS_EMBED_ORIGINS` (2.40.7, #138). `PUT`/`PATCH` also return `IGNORED_FIELD` for a body key the endpoint does not write, naming the route or MCP field that does (2.40.7, #137) |
 | Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
 | Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
 | Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
@@ -697,16 +697,23 @@ defaults to LAN hostnames; cloud is locked until an admin sets
 between your box and the example above.
 
 `discardBehavior` is `silent-drop` (the element disappears at render) or
-`prompt-only` (it constrains what the model may emit, not a sanitizer). The
-`note` surface is the only one that also *warns at write time*
-(`warnsAtWrite: true`, via the `warnings` array on write responses), and `keep`
+`prompt-only` (it constrains what the model may emit, not a sanitizer). Two
+surfaces also *warn at write time* (`warnsAtWrite: true`, via the `warnings`
+array on write responses), each about its own policy and each publishing the codes
+it can emit as `warnCodes`: `note` warns `STRIPPED_AT_RENDER` (the tag allowlist),
+and `canvas` warns `CANVAS_ORIGIN_BLOCKED` (the origin allowlist — a canvas renders
+raw HTML in a sandboxed iframe, so its script/iframe are *not* stripped, and a
+non-allowlisted origin refuses the whole page). `keep`
 distinguishes validated **embeds** (youtube/vimeo, built from ids) from **user
 `<iframe>`s, which are stripped**.
 
 Every value is derived from the enforcing module. The mirrors are drift-checked
 against their sources by tests that parse the source files (`safe-markdown.js`,
 `keep.js`, `writing.js`, `AiWritingAssistant.jsx`, `HelpArticle.jsx`), so the
-manifest cannot silently disagree with what the app renders.
+manifest cannot silently disagree with what the app renders. The canvas origin scan
+is checked more strictly than that: `src/utils/canvasEmbedPolicy.js` is pure, so the
+server mirror is compared to it **behaviourally** over a corpus of snippets
+(`server/tests/utils/canvasOriginScan.test.js`) rather than by parsing text.
 
 ### Ask-and-answer loop for agents
 
@@ -791,8 +798,27 @@ appliance talk to a LAN or Tailscale address.
 A `canvas` note is a first-class page type that may embed **live content** —
 dashboards, charts, build logs — under an origin allowlist that the note renderer
 does **not** grant (`safe-markdown` still strips iframes and scripts from normal
-notes). Open one two ways: the note modal (from the Notes list), or the full-screen
-`#/canvas/<id>` link an agent hands you.
+notes). Open one four ways: the note modal (from the Notes list), the full-screen
+`#/canvas/<id>` link an agent hands you, the chrome-free `#/present/canvas/<id>`
+(2.40.7), and — since 2.40.7 — the Public Window at `#/w/<slug>/<noteId>` when the
+note is published.
+
+**On an appliance the window is not public.** `server/index.js` forces
+`instanceAccessMode: 'private'` and `publicWindowsMode: 'members_only'` on every
+boot when `INSTANCE_ID=self_hosted`, and the admin UI cannot re-open it — the
+appliance is single-owner by design. Measured on a self-host build: an anonymous
+visitor to `#/w/<slug>/<noteId>` is redirected to sign in, so a published canvas is
+seen by you and any members you add, not by the internet. (On the hosted cloud
+product the window *is* anonymous, and the canvas origin allowlist is locked empty
+there until an admin lists origins.)
+
+Either way the canvas renders inside the same opaque-origin sandbox
+(`allow-scripts allow-forms`, no `allow-same-origin`), and the LAN allowlist applies
+to it exactly as it does to your own view. Measured, not inferred: a canvas's own
+`<script>` does execute, and its `fetch()` to a Glassy API path is then **blocked by
+CORS** because the request's origin is `null` — so agent-authored canvas script
+cannot call your instance's API even though it runs. A canvas embedding a host
+outside the allowlist renders a refusal naming the offender instead of the page.
 
 The allowlist differs by instance **by design**:
 
@@ -806,6 +832,31 @@ names the offending origin — a dashboard missing half its frames must not look
 it rendered. The effective list is reported at `/api/capabilities` →
 `renderers.canvas.allowedOrigins`. Agents list and open canvas pages with
 `glassy_list_notes {type:"canvas"}` and `glassy_read_note`.
+**What a canvas can actually run (2.40.7, #140).** The canvas iframe is `srcDoc` +
+`sandbox="allow-scripts allow-forms"` **without** `allow-same-origin`, so its document has an
+*opaque origin* and inherits the app CSP. Two consequences, both measured in a browser rather
+than read off the config:
+
+- **Inline script executes.** The app mints a CSP nonce per response (`cspNonce` in
+  `middleware/security.js`, published in `script-src` and injected as `<meta name="csp-nonce">`),
+  and `CanvasNoteView` stamps it onto the canvas's own `<script>` tags. Before 2.40.7 canvas script
+  was silently dropped, because `script-src` allowed inline script only by build-time hash and no
+  hash can be precomputed for content authored at runtime. The sandbox is unchanged, so a canvas
+  script still cannot reach the parent document, `localStorage` (where the JWT lives) or cookies —
+  measured as a `SecurityError`, not assumed.
+- **Appliance data is frameable only through `/widget/*`.** A canvas cannot frame an ordinary
+  Glassy endpoint: those responses carry `frame-ancestors 'self'`, and an opaque origin is not
+  `self`. No CSP value can name one — `frame-ancestors *` was tried and a browser refused the frame
+  anyway, because `*` matches only network-scheme URLs. So `/widget/*` sends **no framing directive
+  at all** (no `X-Frame-Options`, no `frame-ancestors`), and is confined to content with nothing to
+  clickjack: public, GET-only, `script-src 'none'`, no user data, and a strict subset of the
+  equivalent `/api` route. Ships `health` and `instance`; the list is published at
+  `/api/capabilities` → `renderers.canvas.frameableWidgets`.
+
+An operator adding a widget should read the four rules at the top of `server/routes/widget.js`
+first: they are the security argument for the one relaxed surface in the product, and
+`widgetSurface.test.js` fails if the relaxation spreads to any other route.
+
 
 ---
 

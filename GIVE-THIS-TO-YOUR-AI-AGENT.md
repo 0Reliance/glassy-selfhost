@@ -111,7 +111,14 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 40 tools (live-verified, v2.40.4)
+### The 40 tools
+
+The count and the names are the **instance's**, not this document's — read them live with
+`GET /mcp/status` (or `capabilities.mcp.tools`) and treat any number written here as
+approximate. `scripts/check-mcp-claims.sh` fails CI when this file and the live registry
+part, which is why the heading no longer carries a version stamp: it carried one pinned to
+v2.40.4 and stayed on the page three releases later, and a stale stamp reads as a fresh
+guarantee.
 
 | Category | Tools |
 |---|---|
@@ -224,8 +231,34 @@ a design doc, a diagnostic report, a code-review summary:
    owner-view); an anonymous visitor is redirected to sign-in first and
    returned to the note afterwards.
 
+A `canvas` note renders on this route as of **2.40.7** — before that the window
+returned the canvas content and then rendered only the title and tags, so an agent
+following an older brief may have concluded the window was broken. A canvas that
+embeds an origin outside the instance's allowlist renders a refusal naming the
+offender rather than the page; check `renderers.canvas.allowedOrigins` first.
+
 No file archaeology for the operator, no "I wrote something somewhere" —
 you put the artifact in front of them, already inside their knowledge layer.
+
+### Hand over one artifact with no chrome (2.40.7)
+
+When the owner needs to LOOK at exactly one thing — the report you just wrote, the
+dashboard you just built — hand them `#/present/<kind>/<id>`, where `<kind>` is
+`note`, `canvas` or `document`. It renders the artifact and nothing else: no sidebar,
+no header, no back-link, no editor toolbar, no Save button to mis-click, no share or
+report affordances. `Esc` (or the small `×`) leaves.
+
+It is **owner-only**: a signed-out visitor is sent to sign in and returned to the
+artifact afterwards. That is the difference from `#/w/<slug>/<noteId>`, which is the
+public surface — use the window when someone else should see it, `#/present/` when the
+owner should.
+
+Read the kinds from the manifest instead of hardcoding them, because the manifest and
+the route parser read the same file:
+
+```bash
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.presentation'
+```
 Un-publish any time with `glassy_note_update { is_public: false }`.
 
 ## Obsidian bridge
@@ -269,6 +302,33 @@ into the memory lane. Use documents for long-form work — journals, plans,
 drafts — and notes for short captures; a document you update is searchable by
 your own later `glassy_search`.
 
+### A write tells you which fields it ignored (2.40.7)
+
+`warnings` on a note write response carries three codes, and they mean different things:
+
+| code | what it says |
+|---|---|
+| `STRIPPED_AT_RENDER` | the content **was stored**, and the note-body renderer will remove that tag |
+| `CANVAS_ORIGIN_BLOCKED` | the content **was stored**, and the canvas renderer will refuse the page over that origin |
+| `IGNORED_FIELD` | the field **was not stored** — this endpoint does not write it |
+
+The third is new, and it exists because `PATCH /api/notes/:id {"archived": true}` used
+to answer `200 {"ok":true,"warnings":[]}` and change nothing: `archived` has its own
+route, and the handler builds its patch from a fixed list, so any other key simply never
+existed. A 200 that quietly dropped a field is the same class as a 201 that stores a tag
+no renderer will show. The message names the door that does work — for `archived`, both
+`POST /api/notes/:id/archive` and `glassy_note_update {archived}`. `id` in a body is
+exempt: it is the path parameter echoed back, not a lost write.
+
+**Over MCP the gap is still silent — read the schema.** An MCP tool's arguments are
+validated by a zod schema that *strips unknown keys*, so a field `glassy_note_update`
+does not advertise is discarded before the handler sees it and the tool answers
+`success: true`. Making that loud is scoped as Task 1.3 of
+`docs/superpowers/plans/2026-09-24-surface-contract-integrity.md` and is not built yet.
+Until it is: the fields a tool advertises are the fields it writes, and
+`GET /mcp/tools` is where to check (#109 and #112 were both this bug).
+
+
 ## Read what the instance can do before you write (2.38.0)
 
 `GET /api/capabilities` describes the deployment: note types, limits, the
@@ -282,8 +342,11 @@ read is a fact you discover by getting a 201 that does nothing.
 A `canvas` note is the one surface that may embed live content (dashboards,
 charts, build logs) — normal notes cannot: their renderer strips `iframe`/`script`.
 Create one with `glassy_note_create {type:"canvas", content:"<html…>"}` (the content
-is HTML, not markdown), then hand the owner `#/canvas/<id>` for full-screen, or let
-them open it from Notes. List them with `glassy_list_notes {type:"canvas"}`, read
+is HTML, not markdown). It renders on **four** surfaces, all through the same
+renderer under the same embed policy: `#/canvas/<id>` for full-screen, the note
+modal from Notes, and — since 2.40.7 — the Public Window at
+`#/w/<owner-slug>/<noteId>` once the note is `is_public: true`, and the chrome-free
+`#/present/canvas/<id>`. List them with `glassy_list_notes {type:"canvas"}`, read
 with `glassy_read_note`.
 
 The embed policy is an **origin allowlist**, and it is per-instance: self-host
@@ -292,6 +355,24 @@ is locked until an admin lists origins (`CANVAS_EMBED_ORIGINS`). A canvas that
 references a non-allowlisted host refuses to render and names the offender — so
 check `renderers.canvas.allowedOrigins` in the capabilities manifest before you
 embed a third-party origin, and don't expect an arbitrary public URL to render.
+
+**Publishing a canvas widens its audience — how much depends on the instance.** On
+the hosted cloud product the window is unauthenticated, so your canvas script runs in
+a stranger's browser. On a **self-hosted appliance** it does not: the appliance forces
+`instanceAccessMode: 'private'` / `publicWindowsMode: 'members_only'` at boot, and an
+anonymous visitor to `#/w/…` is redirected to sign in, so the audience is the owner and
+any members they added.
+
+Whichever instance you are on, your canvas keeps an **opaque origin** — no cookies, no
+`localStorage`, no access to the parent page — and its `<script>` does execute (2.40.7
+stamps the page's CSP nonce into the sandboxed document). Measured consequence worth
+knowing: because the origin is `null`, a `fetch()` from your canvas to a Glassy API
+path is **blocked by CORS**, so canvas script cannot call the instance's API. Embed a
+`/widget/*` URL for live first-party data instead.
+
+So do not put credentials, internal hostnames, raw connection strings or unredacted
+diagnostics in a canvas you intend to publish, and check whether the instance you are
+on is public before assuming the window is private.
 
 ```bash
 curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.renderers | keys'
@@ -306,7 +387,10 @@ cost real debugging time), and do not assume the note renderer's allowlist
 applies to *canvas* either, which is the point of this section. Each entry
 carries `allowTags`, `allowAttrs`, `discardBehavior` (`silent-drop` = the tag
 vanishes at render after a successful write; `prompt-only` = it constrains model
-output), `stripsAtRender`, and `warnsAtWrite` (only `note` warns today). `keep`
+output), `stripsAtRender`, `warnsAtWrite`, and `warnCodes` — the warning codes that
+surface can put on a write response. **Two surfaces warn, each about its own policy:**
+`note` emits `STRIPPED_AT_RENDER` (the tag allowlist), and `canvas` emits
+`CANVAS_ORIGIN_BLOCKED` (the origin allowlist) — see the canvas section above. `keep`
 also distinguishes validated embeds (`embeds: ["youtube","vimeo"]`) from user
 `<iframe>`s, which are stripped.
 
@@ -318,6 +402,50 @@ sandboxed iframe, gated on `originPolicy: "allowlist"` instead, and it is the
 per-instance allowlist as `renderers.canvas.allowedOrigins` (plus `locked` and
 `configured`), because that list depends on this deployment and cannot be frozen
 into the module.
+
+**What a canvas write warns about (2.40.7).** A canvas is *not* a note body, so it
+does **not** get `STRIPPED_AT_RENDER` — that code describes the note renderer's tag
+allowlist, which never reads canvas content. No sanitizer strips your `<script>` or
+`<iframe>`. What a canvas *is* warned about is the
+gate that really applies: if the content references an absolute origin outside
+`renderers.canvas.allowedOrigins`, the write response carries
+`{code: "CANVAS_ORIGIN_BLOCKED", field: "content"}` naming the hosts, because the
+renderer then refuses the **whole page** rather than dropping one embed. Before 2.40.7
+a canvas write got the note body's warning instead, which said the opposite of the
+truth ("the note will not show it") while the manifest said `warnsAtWrite: false` —
+if you built tooling that deleted "invisible" canvas content on the strength of that
+warning, the content was live and the warning was wrong (#138).
+
+**What a canvas can and cannot do (2.40.7, all of it measured in a browser).** "Not stripped" is
+not the same as "will render" — a canvas renders inside `srcDoc` under
+`sandbox="allow-scripts allow-forms"`, deliberately *without* `allow-same-origin`, so its document
+has an **opaque origin** and inherits the app's CSP. That combination produced #140, and both halves
+are now fixed:
+
+- **Your inline `<script>` executes.** The server mints a CSP nonce per response and the renderer
+  stamps it on your script tags automatically — you write plain `<script>`, you do not need to know
+  the nonce. Before 2.40.7 every canvas script was silently dropped (`script-src` allows inline
+  script only by hash or nonce, and no hash can be precomputed for content authored at runtime).
+- **You can frame appliance data through `/widget/*`.** A canvas cannot frame an ordinary Glassy
+  endpoint: those responses say `frame-ancestors 'self'`, and an opaque origin is not `self` — no
+  CSP value can name one (`frame-ancestors *` does not work either; `*` matches only network-scheme
+  URLs). `/widget/health` and `/widget/instance` are the frameable surface: public, read-only,
+  script-free, no user data. Read the list from
+  `capabilities.renderers.canvas.frameableWidgets` rather than hardcoding it. A *relative* URL
+  (`src="/widget/health"`) always passes the origin gate; an absolute one must be on
+  `renderers.canvas.allowedOrigins`.
+- **First-party images work** — relative `/uploads/...`, absolute `http://<host>/uploads/...` and
+  `data:` URIs all render. (#140 reported these broken; that layer did not reproduce, and the brief
+  said so rather than quietly dropping it.)
+- **What you still cannot do:** frame an arbitrary `/api/*` endpoint (use `/widget/*`, or fetch and
+  render it yourself now that script runs), and reach anything outside the canvas. The sandbox is
+  unchanged, so from inside a canvas `window.parent.localStorage` throws `SecurityError` — no JWT, no
+  cookies, no parent DOM — and `postMessage` to the app is rejected, because both of the app's
+  message listeners compare origins and an opaque origin matches neither. `capabilities.renderers.canvas.inlineScript`
+  publishes all of this, including `sandboxOrigin: "opaque"`.
+
+If you designed around the 2.40.6 behaviour — baked-in snapshots because script would not run — that
+workaround still works, but it is no longer required.
 
 > **Corrected 2026-09-29:** this section previously understated the renderer
 > count and printed a `keys` example without `canvas` — inside the very section
@@ -376,6 +504,28 @@ A **collaborator's** delete is an *unfollow*, not a delete: the creator's note i
 untouched and only that user's access is removed. One intent, one call — the old
 `403 "use the other endpoint"` is gone.
 
+**Prefer archive when you are tidying your own output (2.40.7).** `glassy_note_update
+{id, archived: true}` files a note away and is fully reversible with
+`{archived: false}` — the note keeps its content, its id and its embeddings, stays
+readable with `glassy_read_note`, and simply stops appearing in `glassy_list_notes`
+unless you pass `include_archived: true`. Over REST the same flag is
+`POST /api/notes/:id/archive {"archived": true|false}`, and archived notes are listed
+by `GET /api/notes/archived`. This is the lane that was missing before 2.40.7: MCP
+could read the flag and could soft-delete, but the only cleanup an agent could perform
+was destructive and had no agent-reachable undo. Archiving is a state transition, not
+an edit — it does not re-embed the note and does not count against a content change —
+but it does record who filed it, so the owner can see that an agent did (#137).
+
+**The bin is excluded from every read lane (2.40.7).** Once you have soft-deleted a note it is not
+returned by `glassy_list_notes`, `glassy_read_note`, `glassy_search`, `glassy_recall` or
+`glassy_get_recent`, nor by REST `/api/notes`. `glassy_get_recent` was the last lane that leaked
+binned notes — it filtered `archived` but not `deleted_at`, which are two different flags — so a
+daily brief could resurrect notes you had already cleaned up (#139). Note that `archived` and
+deleted are **not** the same state: an archived note is live and readable, a deleted one is in the
+bin. Bookmarks have only one flag, `is_archived`, which *is* their trash. (`glassy_search` excludes
+binned notes by a different mechanism: deleting a note also removes its embeddings, so there is
+nothing left for the corpus index to match.)
+
 ### 3. Tags follow one canonical policy — this is the breaking one
 
 Bookmark tags adopted the note tag policy. The old bookmark/MCP helper stripped
@@ -397,6 +547,20 @@ keeps its space instead of becoming `releasenotes`. **If your agent
 pre-normalised tags to survive the old stripper, stop:** double-normalising is
 harmless for case but you may now be mangling tags that would have survived
 intact.
+
+**Filtering by tag is an EXACT whole-tag match (2.40.7).** `glassy_list_notes
+{tag: "…"}` matches a tag in full — case-insensitive, whitespace trimmed — so
+`tag:"memo"` returns the notes tagged `memo` and **not** the ones tagged
+`agent-memory`. Before 2.40.7 the match was a substring test applied in JS to the
+newest `limit×4` rows, which made the filter wrong in both directions at once: it
+over-returned (`tag:"pen"` answered every note tagged `open`; `tag:"memo"` answered
+26 rows when 17 carried it) and it under-returned (a matching note older than that
+window was invisible, and `hasMore:false` reported the bounded search as a complete
+answer). The predicate is in SQL now, so the window is gone and `hasMore` describes
+the query. **If you relied on prefix matching, enumerate tags with `glassy_get_tags`
+and filter on the values that exist** — a fragment that used to "work" was returning
+notes that did not carry it (#136).
+
 
 ### 4. Invalid tags are refused, not silently rewritten
 
@@ -595,6 +759,14 @@ Don't file "sync is broken" because a write didn't appear within 10s.
   etc.) blocked by CSP violations listing hosts the server no longer
   blocks, or the old UI showing. Clear site data only if it persists.
   Tracked upstream: 0Reliance/glassy#36.
+- **Two ways to put something in front of a human, and they are not interchangeable.**
+  `#/w/<slug>/<noteId>` is the Public Window: it renders every note type including
+  `canvas` (2.40.7), and it is the surface for when *other people* should see the work.
+  On a self-hosted appliance it is forced members-only at boot, so "public" means the
+  owner and any members — not the internet. `#/present/<kind>/<id>` is chrome-free and
+  owner-only: one artifact, no sidebar, no Save button, `Esc` to leave. Use it for review
+  handoff. Read `capabilities.presentation.kinds` for the valid kinds rather than
+  hardcoding them.
 
 ## Suggested first actions for an agent
 
@@ -602,6 +774,10 @@ Don't file "sync is broken" because a write didn't appear within 10s.
 2. `glassy_get_tags` + `glassy_get_folders` to map the namespace.
 3. `glassy_vault_read` a file the operator references.
 4. For scheduling work: `glassy_get_schedule` before proposing an event.
+5. When you have produced something the operator must LOOK at, hand over a URL rather
+   than a description: `#/present/<kind>/<id>` for one artifact with no chrome, or
+   publish it (`is_public: true`) and use `#/w/<slug>/<noteId>` when the audience is
+   wider than the owner.
 
 Be careful with `glassy_note_delete` / `glassy_bookmark_delete` /
 `glassy_vault_append` — they mutate the operator's real data. Prefer
