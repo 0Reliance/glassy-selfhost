@@ -3,7 +3,12 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.40.4** (September 25, 2026).
+**v2.40.7** (September 30, 2026). The numbers and surfaces in this brief are
+machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
+`scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
+against the code, and
+`server/tests/guards/docClaimFreshnessGuard.test.js` fails the build if a canvas
+surface the manifest publishes is not documented here.
 
 > **The second brain is yours too.** Glassy is one workspace for the human AND
 > their agents: you get durable **memory** (notes authored by your pinned
