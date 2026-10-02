@@ -546,6 +546,45 @@ The choices are stored and enforced: the owner's answer must be one you offered,
 so `answer_choice` is always one of your strings. A question with one option is
 refused (`INVALID_CHOICES`) — that is a statement, not a decision.
 
+### Saying what each choice means (on `main`, unreleased)
+
+Two optional fields exist so the owner is not guessing:
+
+- **`context`** — *why* you are asking: the situation, what you already tried, what is at
+  stake. It renders under the question in its own space, so the reasoning no longer has to be
+  folded into the same 2000 characters as the question.
+- **`choice_notes`** — a map of choice label to the one-line consequence of picking it:
+
+  ```json
+  { "publish": "goes live on the public window immediately",
+    "hold": "I keep editing; nothing is shown to anyone" }
+  ```
+
+  Each note renders **inside its own button**, so it cannot be read against the wrong choice.
+  The map may be partial — label the choices where the outcome actually differs and leave the
+  obvious ones alone. A consequence is capped at 200 characters on purpose: past that it has
+  stopped being a consequence and become a second question.
+
+Keys must be offered choices. A note for a label you did not put in `choices` is **refused**
+(`INVALID_CHOICE_NOTES`, listing what you sent against what is offered) rather than dropped —
+so a typo reaches you instead of vanishing between your tool call and the owner's screen. Both
+fields are additive: omit them and the card renders exactly as before, and `glassy_get_review`
+now returns `context` and `choice_notes` alongside what you sent.
+
+Prefer a consequence line over a longer question. "Ship the draft?" with `hold`/`publish` asks
+the owner to guess what each answer does; the same request with `choice_notes` filled in is a
+decision they can actually make.
+
+### Outcome: what happens after the answer
+
+`answered` is still the end of the request's own lifecycle — there is no field for you to
+declare what you did next, and there is no tool for it. That is deliberate. Every tool call you
+make is recorded independently in `mcp_tool_activity` with its real outcome
+(`ok` / `error` / `denied`), and the Agent Review surface already renders questions, answers and
+tool calls as one stream, because a self-reported version of the same events would be a second
+account of the loop that could disagree with the first. Describe your next step in `context` if
+it matters to the decision; do not expect to be believed on it separately.
+
 ### 2. `glassy_note_delete` soft-deletes
 
 The note goes to the bin; it is not destroyed, and its embeddings are cleaned up.
