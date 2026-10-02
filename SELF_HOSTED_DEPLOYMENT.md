@@ -126,6 +126,41 @@ docker exec glassy cat /app/data/.initial_admin_password
 > lines will fail login). To grab just the password:
 > `docker exec glassy sed -n 2p /app/data/.initial_admin_password`
 
+### Then change the password — the API is gated until you do
+
+Logging in with the seeded password works, but the account carries
+`password_must_change = 1`, and while that flag is set the server answers **403** to every
+other `/api/*` route:
+
+```json
+{"error":"This account must change its password before it can use the API.",
+ "code":"PASSWORD_CHANGE_REQUIRED","password_must_change":true}
+```
+
+`/api/auth/change-password` is the only exempt path, so a script that logs in and immediately
+probes the API sees a working `200` followed by a wall of `403`s and reasonably concludes the
+install is broken. It is not — complete step two:
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$(docker exec glassy sed -n 1p /app/data/.initial_admin_password)\",\"password\":\"$(docker exec glassy sed -n 2p /app/data/.initial_admin_password)\"}" \
+  | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+curl -s -X POST http://localhost:8080/api/auth/change-password \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"currentPassword":"<line 2 of the file>","newPassword":"<your own>"}'
+```
+
+The new password must be at least 8 characters with an uppercase, a lowercase and a digit; a
+`200` returns `{"message":"Password updated successfully."}`. Note the two different 403s — from
+*this* route a 403 means the **current password you sent was wrong**, not that the gate is still
+up. On success the flag clears immediately, your existing token remains valid (no re-login
+needed), and the credentials file is deleted — so read it once, before this step.
+
+For an AI agent doing post-install verification, the same sequence is written up in
+`GIVE-THIS-TO-YOUR-AI-AGENT.md` → *First boot as an agent*.
+
 ### Degraded mode (membership could not be verified)
 
 The appliance **always starts and works**. You buy and you own: if the cloud cannot be

@@ -58,6 +58,64 @@ inference path, and an **agent gateway** for AI feature routing.
 Everything lives on the operator's own machine. There is no cloud
 dependency except a one-time license check at boot.
 
+## First boot as an agent (a clean self-host install)
+
+**Do this before any verification probe, or you will misdiagnose a working install as broken.**
+
+On a fresh self-hosted install the seeded owner account carries `password_must_change = 1`, and
+the server refuses **every** authenticated `/api/*` call until that flag is cleared:
+
+```
+403 {"error":"This account must change its password before it can use the API.",
+     "code":"PASSWORD_CHANGE_REQUIRED","password_must_change":true}
+```
+
+`/api/auth/change-password` is the only exempt path. `POST /api/auth/login` is **not** behind the
+wall, so login still succeeds and hands you a perfectly good token — and then every call you make
+with it 403s. That is the trap: an agent that sees `200` from login and `403` from `/api/notes`
+reasonably concludes the install is broken. It isn't.
+
+The sequence, in order:
+
+```bash
+# 1. The generated password exists for exactly one purpose, and only until step 3.
+docker exec glassy cat /app/data/.initial_admin_password
+
+# 2. Log in (this works even with the flag set).
+curl -s -X POST http://localhost:8080/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"<from the seed file>","password":"<from the seed file>"}'   # -> { token, user }
+
+# 3. Clear the wall. Both fields required; the new password must be >=8 chars with
+#    an uppercase, a lowercase, and a digit.
+curl -s -X POST http://localhost:8080/api/auth/change-password \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"currentPassword":"<seed>","newPassword":"<yours>"}'
+```
+
+What the responses mean: `200 {"message":"Password updated successfully."}` and you are done;
+`400` means a field is missing or the new password is too weak; `401` means you are not
+authenticated; `403` here means the **current password you sent was wrong**, not the wall — the
+two are different 403s, so read the body rather than the status.
+
+Three details that will otherwise cost you an hour:
+
+- **Your existing token stays valid after the change.** Nothing is revoked: `auth` verifies only
+  the JWT signature and expiry (`server/middleware/auth.js:376`), and there is no token version
+  or `jti` blocklist, so a password change does not invalidate issued tokens. **No re-login is
+  required** — if you read elsewhere that it is, that is wrong. (Re-login anyway if you want a
+  clean identity, but nothing forces it.)
+- **The seed file is deleted by step 3.** `clearInitialPasswordFile()` runs on success, so a
+  recovery script cannot re-read it afterwards. Capture it once, before you change anything.
+- **You do not have to wait 15 seconds for the wall to drop.** The user row is cached for
+  `USER_CACHE_TTL_MS`, which would otherwise keep you getting `PASSWORD_CHANGE_REQUIRED` after a
+  successful change; the route calls `auth.invalidateUser()` so the clear takes effect
+  immediately.
+
+On the appliance this is a one-time thing for the owner, and it is deliberately strict: a rule
+that was displayed but not enforced was the original defect. If you are scripting an install,
+budget for it as step zero rather than discovering it as a wall of 403s.
+
 ## The single most useful fact
 
 **Point your MCP client at this instance and the entire workspace becomes
