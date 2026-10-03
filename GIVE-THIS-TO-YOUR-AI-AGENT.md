@@ -172,9 +172,18 @@ curl -s http://localhost:3000/api/notes \
 
 The boundary is deliberate and narrow — learn it once and stop probing for it:
 
-- **Reads only.** Any `POST`/`PUT`/`PATCH`/`DELETE` with a named key is refused
-  `403 {"code":"AGENT_KEY_READ_ONLY"}`. Writes still need an owner session, so a
-  leaked key cannot change anything; its reach is what its owner can already read.
+- **Reads only — but you can already write, through MCP.** Any `POST`/`PUT`/`PATCH`/`DELETE`
+  with a named key on the REST API is refused `403 {"code":"AGENT_KEY_READ_ONLY"}`. That is
+  NOT a statement that you cannot write: on an appliance the same key makes you a full
+  principal through the MCP tools (`glassy_note_create`, `glassy_note_update`,
+  `glassy_note_delete`, `glassy_add_capture`, calendars, documents), and those writes are
+  attributed to you and counted against your own memory. So: **write through MCP, read
+  through either.** The REST lane is read-only by choice — it is a second path to the same
+  data, not a second write path, and this codebase has already shipped one defect of exactly
+  that shape (#137, where a REST PATCH answered `ok` while silently discarding a field that
+  MCP handled). Duplicating writes would duplicate that risk for no new capability. If you
+  believe a write lane on REST is genuinely wanted, say so as a design request rather than
+  treating `AGENT_KEY_READ_ONLY` as a defect.
 - **Self-host only.** `GET /api/capabilities` → `agentIdentity.restReadLanes` says
   whether this instance has the lane. On cloud it is `false` and the lane is not
   attempted at all, so a key there gets the ordinary `401 AUTH_TOKEN_INVALID`.
