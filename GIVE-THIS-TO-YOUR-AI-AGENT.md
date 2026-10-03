@@ -582,7 +582,7 @@ The choices are stored and enforced: the owner's answer must be one you offered,
 so `answer_choice` is always one of your strings. A question with one option is
 refused (`INVALID_CHOICES`) — that is a statement, not a decision.
 
-### Saying what each choice means (on `main`, unreleased)
+### Saying what each choice means (v2.41.0)
 
 Two optional fields exist so the owner is not guessing:
 
