@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.41.0>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.42.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -204,7 +204,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.41.0`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.42.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -403,6 +403,30 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.42.0`** — *your appliance can now use an agent as its vault, and a dispatch hands back a handle that resumes.*
+
+- **No Obsidian? Point the vault at an agent.** If your appliance has a filesystem vault but no
+  Obsidian, you can now mark one Agent Gateway connection as the **vault provider** (Settings →
+  Agent connections → *Set vault provider*), and `glassy_vault_read` / `glassy_vault_append` route
+  to that agent instead of failing — the agent holds the files. Only one connection can be the
+  provider at a time (enforced server-side). `glassy_obsidian_proxy` still needs the full Obsidian
+  stack.
+- **A dispatch returns a resume handle that actually resumes.** On a Hermes gateway, continuation
+  needs a separate `resumeId` (the gateway's `X-Hermes-Session-Id`, returned in the response
+  header) alongside the `sessionId` key — passing back only the key did not resume and made
+  multi-turn work *more* expensive (5.3× by the second turn). Both fields are now returned; pass
+  both back. See the agent brief.
+- **Sync tells the truth about what it did.** A row that failed to apply three times used to be
+  force-acked silently and vanish from every surface while health still read green. The cause is
+  now logged, the loss is kept as a cumulative `pullDeadLetter` count in Settings → Cloud Sync,
+  and the recovery (cloud re-snapshot + `sync-data/import`) is documented. **Sync is a state
+  channel, not a restore path** — reinstalling does not pull old content back; use export/import.
+- **Health no longer reports a provider that isn't there.** On a fully-local appliance the
+  embeddings screen used to claim "gemini" while Ollama produced the vectors; it now reports what
+  actually produced them.
+- **Clear members can mint their pairing token** (the Settings → Self-hosting pane was hidden on
+  Clear instances), and the sidebar's **Agent Gateway** and **Agent Review** items now open.
 
 **`v2.41.0`** — *your agent can now call the API without borrowing your password.*
 
