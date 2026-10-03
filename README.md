@@ -22,7 +22,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.40.7>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.41.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -183,7 +183,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.40.7`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.41.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -382,6 +382,58 @@ docker compose up -d
 Database migrations run automatically on container start.
 
 ### What changed recently that you might notice
+
+**`v2.41.0`** — *your agent can now call the API without borrowing your password.*
+
+- **A named agent key works on the REST API, read-only.** Until now every script that
+  wanted `GET /api/notes` had to log in as **you**, with your email and password, to
+  obtain a session token — so your password sat in every integration's environment, the
+  script's reads looked like yours, and a reinstall (which rotates the signing secret)
+  broke all of them at once. The same `gky_mcp_…` key you already mint under
+  *Settings → Connections & data → AI tools (MCP)* now authenticates `GET /api/*`
+  directly:
+
+  ```bash
+  curl -s http://localhost:8080/api/notes -H "Authorization: Bearer gky_mcp_..."
+  ```
+
+  It is **reads only, on purpose**. Any `POST`/`PUT`/`PATCH`/`DELETE` carrying a key is
+  refused `403 AGENT_KEY_READ_ONLY` before the key is even checked, so a leaked key
+  cannot change anything — its reach is exactly what you can already read. The key stays
+  in the account it was minted under, an `X-Account-Id` header will not move it, a key in
+  a query string is never accepted, and the forced-password-change wall, the inactivity
+  lock and the account PIN lock all still apply to it. `GET /api/capabilities` reports
+  `agentIdentity.restReadLanes` so a script can check rather than probe.
+- **A fresh install no longer ships the bug-report widget turned on.** It was visible on
+  a brand-new appliance that nobody had configured, because the default was written by a
+  database migration at first boot rather than by the code that looked like it governed
+  it. New installs now start with it off and an admin turns it on under *Admin*. If you
+  installed earlier and want it off, the toggle is yours: a stored "on" is
+  indistinguishable from a deliberate choice, so nothing overwrites it. Where it is on,
+  an individual can still hide it for themselves, and that choice now definitively wins.
+- **Knowledge Base results scroll in their own region again.** A long result list used to
+  push the whole page, carrying the search box and the source pills off screen with it.
+  The same fix repaired six other full-height views that were resolving against an
+  unclamped parent — Feed, Canvas, Present, Upgrade, the Agent Gateway and GlassyKeep.
+- **The account menu on an appliance offers *Extension* instead of a dead *Store*.** There
+  is no store to open on a self-host box, and the browser-extension download had no entry
+  point at all. Hosted instances keep *Store*.
+- **An agent asking you to approve something can now say what each choice commits to.**
+  A review request may carry a separate `context` — why it is asking, what it already
+  tried — and a one-line consequence per choice, rendered inside its own button so it
+  cannot be read against the wrong one.
+- **Multi-turn dispatch now has a session handle that works.** `POST /api/agents/:id/task`
+  used to return the provider's per-call completion id in its `sessionId` field, so passing
+  that back started a *new* conversation every turn and re-paid the agent's full context.
+  It returns the real session key now, with the provider's id under
+  `metadata.completionId`.
+- **The first-boot password wall is documented for scripts, not just for people.** On a
+  fresh install the seeded owner must change its password before the API will serve
+  anything, but login itself is *not* behind that wall — so a script saw a successful
+  login and then `403` on every call, and reasonably concluded the install was broken.
+  `GIVE-THIS-TO-YOUR-AI-AGENT.md` now gives the exact three-call sequence and the two
+  different meanings of `403`.
+
 
 **`v2.40.7`** — *the surfaces now describe themselves accurately, and one new surface exists.*
 
