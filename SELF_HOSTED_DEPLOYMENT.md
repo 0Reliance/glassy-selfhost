@@ -60,7 +60,7 @@
 | Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
 | Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
-| Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name |
+| Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name. The same key also authenticates **read-only** `GET /api/*`, so scripts stop needing the owner's password |
 | Agent awareness lane (`glassy_notify`) | ❌ not available | ✅ — notifications + owner surface + 24h/72h review escalation; ≤10 notifications/min per key by design |
 | The approval badge on artifacts | ✅ | ✅ — the derived review state rides note reads, so you decide on the work itself |
 | Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
@@ -667,6 +667,24 @@ looking at the key. Named keys are self-host only — `/api/mcp-keys` answers 40
 `FEATURE_NOT_AVAILABLE` on cloud, and `/api/capabilities` reports
 `agentIdentity.mode` as `named-keys` here and `single-key` there.
 
+**Your scripts can stop using your password (#151).** The same named key
+authenticates `GET /api/*` on this instance, so a sync probe or a status check no
+longer has to `POST /api/auth/login` with the owner's email and password to obtain a
+JWT — and no longer breaks when a reinstall rotates `JWT_SECRET`, which invalidates
+every script session at once:
+
+```bash
+curl -s http://localhost:3000/api/notes -H "Authorization: Bearer gky_mcp_..."
+```
+
+The lane is read-only on purpose. A `POST`/`PUT`/`PATCH`/`DELETE` carrying a named
+key is refused `403 AGENT_KEY_READ_ONLY` before the key is even resolved, so a leaked
+key cannot modify anything — its reach is exactly what you can already read. The key
+resolves into the account it was minted under (an `X-Account-Id` header will not move
+it), and the first-boot password wall, the inactivity lock and the account PIN lock
+all still apply. `agentIdentity.restReadLanes` in `/api/capabilities` reports whether
+the lane exists; on cloud it is `false` and the lane is not attempted at all.
+
 ### What the instance can do (`/api/capabilities`)
 
 `/api/instance` answers *who am I*; `/api/capabilities` answers *what can this
@@ -801,11 +819,20 @@ container*, which is where the server's call comes from.
 curl -sX POST http://localhost:3000/api/agents/<connection-id>/task \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"task": "Summarise what changed in the vault today"}'
-# → { "success": true, "response": "…the model's actual answer…", "sessionId": "…" }
+# → { "success": true, "response": "…the model's actual answer…",
+#     "sessionId": "glassy_1727…", "metadata": { "completionId": "chatcmpl-…", … } }
 ```
 
 The body key is **`task`**, not `prompt`. Every dispatch, status change and error
 is recorded and shown in the Agent Gateway panel (`GET /api/agents/activity`).
+
+`sessionId` is the **session key**: pass it back as
+`{"task":"…","options":{"sessionId":"<that value>"}}` to continue the same
+conversation. It is not the provider's completion id — that is
+`metadata.completionId` — and it is `null` on transports that have no sessions
+(#149). Optional `options` keys are `timeout`, `model` and `sessionId`; anything
+the server refuses comes back in `warnings[]` as an `IGNORED_OPTION` naming the
+key, and the dispatch still runs.
 
 **Two exceptions worth knowing:**
 

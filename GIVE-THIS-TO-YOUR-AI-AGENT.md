@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.40.7** (September 30, 2026). The numbers and surfaces in this brief are
+**v2.41.0** (October 3, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -159,6 +159,42 @@ infer it from the key's prefix, which cannot distinguish the two. Read the
 `verified: false` means the instance is trusting a name you declared about yourself.
 That is fine for reading; it is why your writes are attributed to "MCP agent" rather
 than to you.
+
+### The same named key also reads the REST API (#151)
+
+On a **self-host** instance a named key authenticates `GET /api/*` directly, so a
+script no longer has to log in with the owner's email and password to get a JWT:
+
+```bash
+curl -s http://localhost:3000/api/notes \
+  -H "Authorization: Bearer gky_mcp_..."      # the same key you use for /mcp
+```
+
+The boundary is deliberate and narrow — learn it once and stop probing for it:
+
+- **Reads only.** Any `POST`/`PUT`/`PATCH`/`DELETE` with a named key is refused
+  `403 {"code":"AGENT_KEY_READ_ONLY"}`. Writes still need an owner session, so a
+  leaked key cannot change anything; its reach is what its owner can already read.
+- **Self-host only.** `GET /api/capabilities` → `agentIdentity.restReadLanes` says
+  whether this instance has the lane. On cloud it is `false` and the lane is not
+  attempted at all, so a key there gets the ordinary `401 AUTH_TOKEN_INVALID`.
+- **Your account is pinned.** The key resolves into the account it was minted under,
+  exactly as it does on MCP, and an `X-Account-Id` header will NOT move it. You cannot
+  roam accounts by editing a header.
+- **Every gate still applies.** `password_must_change` (the first-boot wall), the
+  inactivity lock and the account PIN lock are all enforced on this lane, so a key is
+  never a way around them.
+- **You are attributed.** Reads carry `auth_via: "named-key"` and your agent name
+  server-side, which is the point: your traffic is distinguishable from the owner's
+  instead of wearing their identity.
+- **Header only.** A key in a query string is never accepted — it would land in every
+  access log and proxy log on the way.
+
+What this replaces, and why it matters operationally: a JWT dies whenever the install
+rotates `JWT_SECRET`, which every clean install does, so scripted integrations used to
+break all at once and fall back to re-authenticating with the owner's raw password. A
+named key is rotated deliberately, one agent at a time, and revoking it does not touch
+anyone else.
 
 Claude Desktop example (the UI shows this exact snippet): paste into
 `~/.config/Claude/claude_desktop_config.json`:
@@ -795,6 +831,23 @@ Facts that make the recipe work, in case the fields are already filled oddly:
 - **`GET /api/agents/activity`** is where the dispatch log lives (action,
   `task_text`, `response_text`, timestamp). A dispatch that "did nothing" is
   usually visible there as an `error` row with the upstream message.
+- **The response's `sessionId` is a session KEY, not a receipt** (#149). Send it
+  back as `{"task":"…","options":{"sessionId":"<that value>"}}` to continue the
+  same conversation. It used to carry the provider's per-call completion id
+  (`chatcmpl-…`) instead, so echoing it back handed the gateway a key it had
+  never issued: every turn started a fresh session and re-seeded the gateway's
+  full system prompt, which reads from outside as "dispatch is stateless and
+  re-pays its whole context each turn". The per-call id now lives in
+  `metadata.completionId`, and antigravity/Gemini returns `sessionId: null`
+  because that transport has no sessions to resume. Whether your gateway really
+  resumes context from a key is a property of the gateway, not of Glassy — but
+  measure it with a key Glassy gave you, or you are measuring the wrong thing.
+- **`options` is validated, and what it refuses it tells you.** `timeout`
+  (positive ms, capped), `model` and `sessionId` are the recognized keys;
+  anything else — or a `timeout` of `"30s"`, which used to coerce to an
+  immediate abort — comes back as a `warnings[]` entry with
+  `code: "IGNORED_OPTION"` naming the key and the reason. The dispatch still
+  runs; nothing is dropped silently.
 - **SSRF posture differs by instance, deliberately:** the hosted tier accepts only
   `localhost`, `127.0.0.1`, `::1`, `host.docker.internal`; a **self-hosted**
   instance accepts any host (`getAgentSsrfOptions`, `server/utils/urlValidator.js`),
