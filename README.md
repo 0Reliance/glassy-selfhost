@@ -66,6 +66,26 @@ use the workspace — the random one is discarded after that.
 Registration is permanently disabled — this is a single-owner personal appliance.
 All premium features are unlocked automatically.
 
+## Giving this to an AI agent
+
+**[`GIVE-THIS-TO-YOUR-AI-AGENT.md`](GIVE-THIS-TO-YOUR-AI-AGENT.md) is in this repo's root, and it
+is the only document here written for an agent rather than for you.** Hand it over whole — it is
+self-contained and needs no other page open. It carries the MCP endpoint and Bearer auth, the full
+tool / prompt / resource tables, the write-path contract, and the operational facts an agent cannot
+infer from the API. Four of those facts have already cost a field agent an hour each:
+
+| The trap | What the brief says |
+|---|---|
+| Every authenticated call answers `403 PASSWORD_CHANGE_REQUIRED` on a fresh install, while login itself succeeds | The seeded owner carries `password_must_change`; login sits **outside** that wall and everything else behind it. The brief gives the exact three-call sequence, the password rules, and the fact that two different `403`s must be told apart by body rather than by status. |
+| A script needs the owner's email and password to read the API | It does not. A named agent key authenticates `GET /api/*` on an appliance — read-only by design, with any write refused `403 AGENT_KEY_READ_ONLY`. |
+| Passing a dispatch's `sessionId` back seems to do nothing | `sessionId` is the session key to pass back; the provider's per-call id is `metadata.completionId`. That was genuinely broken before v2.41.0 and is fixed. |
+| A tool field or route "doesn't exist" | Read `GET /api/capabilities` first. It states what *this* instance serves — tool count, cloud-gated tools, `agentIdentity.restReadLanes`, the presentation routes — so an agent learns a boundary instead of probing for it. |
+
+If your agent reports that one of these is wrong, treat it as a defect report rather than user
+error: the brief's last section explains what a useful report carries, and reports are how every
+fix above happened.
+
+
 ## Why sign in?
 
 This is your own copy of Glassy, running on your machine. Your notes,

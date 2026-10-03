@@ -278,4 +278,24 @@ that are about operability rather than reachability: it appears in `docker inspe
 output when support is debugging a live box, and it gives the var a working default
 if the user deletes the line from `.env`. Do not add one believing the var is
 otherwise invisible to the container — that misconception sent the #35 triage down
+
+### The front page stops pointing at the agent brief
+
+`GIVE-THIS-TO-YOUR-AI-AGENT.md` is synced into this repo's root by the auto-sync, so it is
+always present — but nothing ever forced `README.md` to mention it, and for the whole life of
+this repo the front page referenced it exactly once, inside a changelog entry. An agent handed
+this repository and not that file has to re-derive the first-boot password wall, the read-only
+named-key lane and the dispatch session contract from scratch. That is how #96, #149 and #151
+each arrived phrased as "the product is broken" when the real defect was that no surface the
+agent read had stated the rule.
+
+So: if you restructure `README.md`, keep **Giving this to an AI agent** above the fold, and keep
+the link a plain relative path — the brief is a sibling file in this repo, not a cross-repo URL,
+and a URL that points at `glassy` (private) would be a dead link for every reader of this one.
+
+The four traps in that section's table are not decoration. Each one was filed as a defect by an
+agent that had no way to know better, and each one cost a triage cycle to establish that the
+product was right and the documentation was missing. When you ship a capability whose correct use
+is not guessable from its name, add the row.
+
 the wrong path first.
