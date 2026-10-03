@@ -863,8 +863,18 @@ Facts that make the recipe work, in case the fields are already filled oddly:
   because that transport has no sessions to resume. Whether your gateway really
   resumes context from a key is a property of the gateway, not of Glassy — but
   measure it with a key Glassy gave you, or you are measuring the wrong thing.
+- **`resumeId` is a SEPARATE resume handle when the gateway has one (#149).** On
+  Hermes the gateway exposes two headers: `X-Hermes-Session-Key` (scopes long-term
+  memory — this is what `sessionId` carries) and `X-Hermes-Session-Id` (actually resumes
+  the conversation; the gateway returns it in the response header). The adapter reads it
+  out and returns it as `resumeId`, and you pass it back as
+  `{"task":"…","options":{"sessionId":"…","resumeId":"<that value>"}}`. Passing back only
+  the key resumes nothing AND lets memory accumulate under that key (the field
+  measurement saw 5.3× cost at turn 2); forwarding the id is flat at 1.0×. OpenClaw and
+  Antigravity return `resumeId: null` — for OpenClaw the `sessionId` IS the resume handle
+  (the `user` field), and Antigravity has no sessions.
 - **`options` is validated, and what it refuses it tells you.** `timeout`
-  (positive ms, capped), `model` and `sessionId` are the recognized keys;
+  (positive ms, capped), `model`, `sessionId` and `resumeId` are the recognized keys;
   anything else — or a `timeout` of `"30s"`, which used to coerce to an
   immediate abort — comes back as a `warnings[]` entry with
   `code: "IGNORED_OPTION"` naming the key and the reason. The dispatch still
