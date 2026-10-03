@@ -417,13 +417,19 @@ Database migrations run automatically on container start.
   curl -s http://localhost:8080/api/notes -H "Authorization: Bearer gky_mcp_..."
   ```
 
-  It is **reads only, on purpose**. Any `POST`/`PUT`/`PATCH`/`DELETE` carrying a key is
-  refused `403 AGENT_KEY_READ_ONLY` before the key is even checked, so a leaked key
-  cannot change anything — its reach is exactly what you can already read. The key stays
-  in the account it was minted under, an `X-Account-Id` header will not move it, a key in
-  a query string is never accepted, and the forced-password-change wall, the inactivity
-  lock and the account PIN lock all still apply to it. `GET /api/capabilities` reports
-  `agentIdentity.restReadLanes` so a script can check rather than probe.
+  It is **reads only over REST, on purpose — but not a limit on what the agent can do**. A
+  `POST`/`PUT`/`PATCH`/`DELETE` carrying a key over REST is refused `403 AGENT_KEY_READ_ONLY`
+  before the key is even checked; that does not mean "this agent cannot write" — the **same key
+  writes normally through the MCP tools** (`glassy_note_create`, `glassy_note_update`,
+  `glassy_note_delete`, `glassy_add_capture`, documents, events). The instruction to give an
+  agent is: **write through MCP, read through either.** The refusal is deliberate duplication
+  avoidance, not a security wall — REST writes would be a second implementation of a write path
+  that exists, and a past release shipped a bug of exactly that shape (a REST `PATCH` answering
+  `ok` while silently discarding a field the MCP path handled). The key stays in the account it
+  was minted under, an `X-Account-Id` header will not move it, a key in a query string is never
+  accepted, and the forced-password-change wall, the inactivity lock and the account PIN lock all
+  still apply to it. `GET /api/capabilities` reports `agentIdentity.restReadLanes` so a script
+  can check rather than probe.
 - **A fresh install no longer ships the bug-report widget turned on.** It was visible on
   a brand-new appliance that nobody had configured, because the default was written by a
   database migration at first boot rather than by the code that looked like it governed
