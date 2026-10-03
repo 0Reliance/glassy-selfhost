@@ -248,6 +248,18 @@ guarantee.
 Obsidian vault through the local REST API plugin — they work even when the
 Glassy UI is not focused.
 
+**No-Obsidian operators (agent-as-vault-provider, #158).** On a self-host, the
+operator may declare one Agent Gateway connection the *vault provider*
+(`config_json.vaultProvider: true`). Then `glassy_vault_read` / `glassy_vault_append`
+dispatch to that agent — which holds the filesystem — instead of failing on the missing
+Obsidian stack. The contract is deterministic: a `[glassy-vault-provider]` instruction
+naming the path and verb, answered with the file contents (read) or `OK`/an error (write),
+`NOT_FOUND` when absent. `glassy_obsidian_proxy` still requires the FULL Obsidian stack and
+does not use the provider. If you are told to reach a vault on such a setup, use
+`glassy_vault_read`/`glassy_vault_append` and let the provider agent do the filesystem
+work — do not invent an MCP shim behind `obsidian_url`. `GET /api/capabilities` reports
+`agentIdentity.agentVaultProvider` so you can check rather than guess.
+
 **Memory:** `glassy_remember` stores a durable memory (a note tagged
 `agent-memory`, authored by YOUR pinned identity); `glassy_recall` retrieves it
 (`scope: 'mine'` is your memories only; `scope: 'all-agents'` sees every agent's).

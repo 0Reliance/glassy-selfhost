@@ -1332,8 +1332,38 @@ operations.
   recordings. Deletes of bookmarks, collections, highlights, conversations,
   and pinned tags are best-effort — delete on the other instance too.
 
+### Sync is a state channel, not a restore path (0Reliance/glassy#154)
+
+**Reinstalling the appliance does not pull your existing content back.** The cloud
+holds a *queue of changes since a peer last pulled*, not a snapshot of your account. A
+fresh appliance joins with an empty cursor and receives only changes produced *after* it
+joined — content a previous appliance already consumed is not re-delivered, and the cloud
+queue legitimately reads empty while the new appliance pulls `0` rows forever. Every
+health surface reads green, because nothing is wrong: that *is* the expected fresh-install
+state.
+
+To move existing content onto a new appliance, use the restore path, not sync:
+
+- **If you still have the old data volume**, restore the backup file (see §8 "Backup &
+  restore").
+- **If the old appliance is gone**, export from the cloud and import locally:
+  `POST /api/sync/reset { "type": "<content type>" }` on the cloud returns a full snapshot
+  JSON, which `POST /api/sync-data/import` on the appliance applies with server-side
+  identity remap. Repeat per content type.
+
+A pull row that fails to apply repeatedly is force-acked after 3 attempts (not 10 — that
+is the *push* retry count above) and is **unrecoverable via sync**: it was the cloud's row,
+and the ack tells the cloud it was handled. This loss is now surfaced, not silent — the
+cycle reports it, `sync_state` keeps a cumulative `pull_dead_lettered` count, and
+**Settings → Cloud Sync** health shows `pullDeadLetter`. Recovery is the same cloud-side
+re-snapshot + import above. This is the one place sync deliberately trades visibility for
+availability; the alternative is the peer re-delivering an un-applyable row forever.
+
 ### Troubleshooting
 
+- **"0 rows pulled forever while every health surface is green":** expected on a
+  fresh install — sync is a state channel, not restore (see above). Use the
+  cloud-side export + `sync-data/import` to bring existing content over.
 - **Pending badge never drains:** check the cloud-side panel. Rows may be
   paused (type disabled) or dead-lettered (alert shown) — both are visible,
   neither loses data.
