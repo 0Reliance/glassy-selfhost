@@ -22,6 +22,40 @@ surface the manifest publishes is not documented here.
 
 The rest of this brief is the practical detail.
 
+## Start here — two things are called "vault", and five ways to be "an agent"
+
+The two words that trip up the most agents are **vault** and **agent**, because each means
+several different things here. Resolve both before you pick a tool.
+
+**"Vault" means three things.** Glassy is one workspace, but "vault" is overloaded:
+
+| When you hear "vault" | What it actually is | The tools |
+|---|---|---|
+| **Your Glassy Vault** (native context) | Glassy's *own* store — notes, documents, durable memory, and the searchable corpus. This is Glassy being your knowledge base, with no Obsidian anywhere. **If you use Glassy instead of Obsidian, this is your vault.** | `glassy_search`, `glassy_remember`, `glassy_recall`, `glassy_note_create`, `glassy_note_update`, `glassy_create_document` |
+| **The Obsidian Vault** (external bridge) | A *separate* Obsidian vault on the operator's machine, reached through the Local REST API plugin or the Companion bridge. | `glassy_vault_read`, `glassy_vault_append`, `glassy_obsidian_query`, `glassy_obsidian_proxy` |
+| **The vault-provider lane** (no Obsidian) | On a self-host with no Obsidian, `glassy_vault_read`/`glassy_vault_append` dispatch to the agent the operator marked the vault provider — that agent holds the filesystem. | `glassy_vault_read`, `glassy_vault_append` (routed to the provider) |
+
+The trap, named plainly: **`glassy_vault_read` does not read your Glassy Vault.** The
+`glassy_vault_*` tools reach the *Obsidian* store (or the vault-provider agent), never
+Glassy's own notes and memory. If you want Glassy's native context, use `glassy_search` /
+`glassy_remember` / `glassy_recall` / the `glassy_note_*` tools — those are the "use Glassy
+as your second brain" lane.
+
+**"Agent" means five roles**, and the credential the human handed you is how you tell which
+is yours:
+
+| You were given | You are | Your section |
+|---|---|---|
+| A `gky_mcp_…` key + `http://<host>:3010/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
+| A `baseUrl` + `token` the owner entered under Settings → Agent connections | An Agent Gateway connection — Glassy calls *you* | [Connecting an agent to the Agent Gateway](#connecting-an-agent-to-the-agent-gateway-live-verified-recipe-beta40) |
+| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-40-tools) |
+| A named agent key, on `GET /api/*` | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
+| The seed password, or you're installing | The owner | [First boot](#first-boot-as-an-agent-a-clean-self-host-install) |
+
+Whichever you are, read `GET /api/capabilities` first — it names what *this* instance
+actually serves, so the machine tells you your boundary instead of you guessing it from
+prose.
+
 > **Read this first if you were briefed on an older appliance.** beta.41 put
 > every note write behind one service, which changed four things an agent can
 > observe: your edits are now **attributed**, `glassy_note_delete`
@@ -235,7 +269,7 @@ guarantee.
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
 | Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document` |
 | Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` (self-host only) |
-| Vault (live Obsidian files) | `glassy_vault_read`, `glassy_vault_append` |
+| Obsidian Vault (live files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
 | Bookmarks | `glassy_bookmark_update`, `glassy_bookmark_delete` |
@@ -381,7 +415,13 @@ curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.presentation
 ```
 Un-publish any time with `glassy_note_update { is_public: false }`.
 
-## Obsidian bridge
+## The Obsidian Vault bridge (external, optional)
+
+This is the lane for reaching an *external* **Obsidian Vault** — the operator's own
+Obsidian files. It is **not** your Glassy Vault: Glassy's native notes, memory and corpus
+are a separate store you reach with `glassy_search` / `glassy_remember` / `glassy_recall` /
+`glassy_note_*`. Use this section only when the operator already lives in Obsidian; if you
+are using Glassy *instead of* Obsidian, skip it — your vault is Glassy itself.
 
 Two paths exist, both verified connected in beta.42:
 
