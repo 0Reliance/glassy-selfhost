@@ -908,6 +908,17 @@ minimum cycle gap (`MIN_CYCLE_GAP_MS`) overrides the 10-second fast-check.
 It is latency, not data loss — the 5-minute full cycle is the backstop.
 Don't file "sync is broken" because a write didn't appear within 10s.
 
+**Sync is a state channel, not a restore path.** Reinstalling, or re-syncing a
+fresh install, does **not** pull an account's cloud content back down — sync
+propagates *new* changes in both directions, it does not rehydrate history.
+To recover content on a device, use the owner's export/import (the sync engine's
+`sync/reset` re-snapshot + `sync-data/import` is the cloud-side answer, and only
+for a *confirmed* loss — see `SELF_HOSTED_DEPLOYMENT.md` §12). If a pull row was
+force-acked after three failed applies, it used to vanish silently while health
+still read green; that loss is now a cumulative **`pullDeadLetter`** count in the
+sync health, so a nonzero value is the thing to look at before concluding
+"content disappeared with no record".
+
 ## Ops facts an agent should know
 
 - **Health:** `GET /api/health` → `{"status":"ok", "version":"…"}`;
