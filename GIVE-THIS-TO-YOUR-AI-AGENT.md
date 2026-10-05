@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.42.0** (October 3, 2026). The numbers and surfaces in this brief are
+**v2.43.0** (October 5, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -48,7 +48,7 @@ is yours:
 |---|---|---|
 | A `gky_mcp_…` key + `http://<host>:3010/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
 | A `baseUrl` + `token` the owner entered under Settings → Agent connections | An Agent Gateway connection — Glassy calls *you* | [Connecting an agent to the Agent Gateway](#connecting-an-agent-to-the-agent-gateway-live-verified-recipe-beta40) |
-| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-40-tools) |
+| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-41-tools) |
 | A named agent key, on `GET /api/*` | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
 | The seed password, or you're installing | The owner | [First boot](#first-boot-as-an-agent-a-clean-self-host-install) |
 
@@ -71,7 +71,7 @@ A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
 **MCP server** with three surfaces, not one:
 
-- **40 tools** — 36 registered everywhere; `glassy_notify` and the three review
+- **41 tools** — 37 registered everywhere; `glassy_notify` and the three review
   tools are self-host only, because the review queue and owner inbox they
   terminate in are not served on cloud. Full table below.
 - **4 prompts** — server-authored instruction templates. Named and explained in
@@ -194,6 +194,14 @@ infer it from the key's prefix, which cannot distinguish the two. Read the
 That is fine for reading; it is why your writes are attributed to "MCP agent" rather
 than to you.
 
+**The config snippet prefers the named key (#161).** The snippet the operator pastes
+into your client (`GET /api/agents/:id/config`) used to always carry the anonymous
+instance key; it now prefers the operator's named key, accepts `?agentName=` to pin a
+specific one, and reports `key: named|legacy` (plus `agentName` when named) so the
+operator can see which principal you'll actually be. If the snippet says `key: legacy`,
+ask for a named key before writing anything — your writes will otherwise be attributed
+to "MCP agent" and `glassy_recall {scope:"mine"}` will come back empty.
+
 ### The same named key also reads the REST API (#151)
 
 On a **self-host** instance a named key authenticates `GET /api/*` directly, so a
@@ -253,7 +261,7 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 40 tools
+### The 41 tools
 
 The count and the names are the **instance's**, not this document's — read them live with
 `GET /mcp/status` (or `capabilities.mcp.tools`) and treat any number written here as
@@ -267,7 +275,7 @@ guarantee.
 | Search & retrieval | `glassy_search`, `glassy_obsidian_query`, `glassy_get_recent`, `glassy_get_backlinks`, `glassy_get_forward_links` |
 | Memory (durable, yours) | `glassy_remember`, `glassy_recall` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
-| Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document` |
+| Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document`, `glassy_delete_document` |
 | Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` (self-host only) |
 | Obsidian Vault (live files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
@@ -462,31 +470,49 @@ into the memory lane. Use documents for long-form work — journals, plans,
 drafts — and notes for short captures; a document you update is searchable by
 your own later `glassy_search`.
 
-### A write tells you which fields it ignored (2.40.7)
+### A write tells you which fields it ignored — and which values it changed (2.40.7, 2.43.0)
 
-`warnings` on a note write response carries three codes, and they mean different things:
+`warnings` on a note write response carries **four** codes, and they mean different things:
 
 | code | what it says |
 |---|---|
 | `STRIPPED_AT_RENDER` | the content **was stored**, and the note-body renderer will remove that tag |
 | `CANVAS_ORIGIN_BLOCKED` | the content **was stored**, and the canvas renderer will refuse the page over that origin |
 | `IGNORED_FIELD` | the field **was not stored** — this endpoint does not write it |
+| `VALUE_COERCED` | the field **was stored as a default** — the value you sent was not a valid option |
 
-The third is new, and it exists because `PATCH /api/notes/:id {"archived": true}` used
-to answer `200 {"ok":true,"warnings":[]}` and change nothing: `archived` has its own
-route, and the handler builds its patch from a fixed list, so any other key simply never
-existed. A 200 that quietly dropped a field is the same class as a 201 that stores a tag
-no renderer will show. The message names the door that does work — for `archived`, both
-`POST /api/notes/:id/archive` and `glassy_note_update {archived}`. `id` in a body is
-exempt: it is the path parameter echoed back, not a lost write.
+`IGNORED_FIELD` exists because `PATCH /api/notes/:id {"archived": true}` used to answer
+`200 {"ok":true,"warnings":[]}` and change nothing: `archived` has its own route, and the
+handler builds its patch from a fixed list, so any other key simply never existed. The
+message names the door that does work — for `archived`, both `POST /api/notes/:id/archive`
+and `glassy_note_update {archived}`. `id` in a body is exempt (it is the path parameter).
 
-**Over MCP the gap is still silent — read the schema.** An MCP tool's arguments are
-validated by a zod schema that *strips unknown keys*, so a field `glassy_note_update`
-does not advertise is discarded before the handler sees it and the tool answers
-`success: true`. Making that loud is scoped as Task 1.3 of
-`docs/superpowers/plans/2026-09-24-surface-contract-integrity.md` and is not built yet.
-Until it is: the fields a tool advertises are the fields it writes, and
-`GET /mcp/tools` is where to check (#109 and #112 were both this bug).
+`VALUE_COERCED` (2.43.0) is the same honesty rule applied to *values* instead of *keys*:
+`transparency`, `border_style` and `content_format` are enumerated, and a value outside the
+enum (e.g. `transparency: "glasss"`) is **normalized to a default** — not rejected, so old
+rows and sync upserts survive — but the response now *says so* instead of silently storing
+the default. The valid enums are published at `capabilities.notes.contentFormats` and the
+message names the allowed set.
+
+**Over MCP this is loud too now (2.43.0).** The `glassy_note_update` /
+`glassy_update_document` schemas are `.passthrough()` with `openWorldHint: true`, so an
+unknown key reaches the handler and is reported as `IGNORED_FIELD` instead of being
+stripped by zod into a confident `success: true`. The fields a tool advertises are the
+fields it writes — `GET /mcp/tools` is still the authoritative list, but a key that is
+*not* advertised now comes back as a warning rather than vanishing.
+
+### Which fields an agent can write (2.43.0)
+
+`glassy_note_update` accepts the full organisational field set REST PATCH writes — `title`,
+`content`, `tags`, `color`, `images`, `items`, `pinned`, `timestamp`, `show_border`,
+`border_style`, `transparency`, `content_format`, `is_public`, `is_hidden`,
+`reminder_at`, `background_image`, `needs_review`, `archived`. Three REST columns are
+deliberately **not** reachable over MCP, and each now surfaces as `IGNORED_FIELD` with a
+hint rather than a silent drop: `type` and `position` (PUT-only) and `is_announcement`
+(admin-gated — an owner-scoped agent lane carries no admin identity). `glassy_update_document`
+accepts `cover_image` and `transparency` in addition to its earlier fields. A new guard
+(`mcpFieldParityGuard`) fails CI if this list and the service column list ever drift apart
+again — the exact defect #163/#169/#171 reported.
 
 
 ## Read what the instance can do before you write (2.38.0)
@@ -494,8 +520,12 @@ Until it is: the fields a tool advertises are the fields it writes, and
 `GET /api/capabilities` describes the deployment: note types, limits, the
 renderer allowlists **per surface**, what each renderer silently drops, accepted
 upload types, the embedding chunk size and dimensions, the review-loop limits,
-and the live MCP tool list. Read it instead of probing — every fact you cannot
-read is a fact you discover by getting a 201 that does nothing.
+the live MCP tool list, the valid `contentFormats`/`transparency`/`border_style`
+enums, and — since 2.43.0 — a `navigation` block (`routes` → section key,
+`sections` → header title) that publishes the app's own section names so you can
+reason about where your work belongs without reverse-engineering the bundle.
+Read it instead of probing — every fact you cannot read is a fact you discover
+by getting a 201 that does nothing.
 
 ## Canvas pages — publishing a live surface (2.39.0)
 
@@ -849,9 +879,11 @@ threads and stale briefs:
 
 Remaining known self-host quirks worth knowing:
 
-- **#31** Monthly Obsidian periodic requests can 400 if the bridge token
-  doesn't match the plugin (see Settings → Obsidian); refresh the token
-  from the panel if you see `400 Invalid token`.
+- **#31 / #166** Obsidian periodic notes: a **disabled** period (monthly/quarterly/
+  yearly switched off in the plugin) now answers `200 {exists:false, periodEnabled:false}`
+  instead of a hard `400` — a config state, not a failure. A `400 Invalid token` still
+  means the bridge token doesn't match the plugin (see Settings → Obsidian); refresh the
+  token from the panel.
 - **#25** `check-url`/fetch validation rejects `localhost` targets in a
   few legacy call sites on self-host; use `127.0.0.1` or the tailnet host
   where possible.
@@ -909,10 +941,17 @@ Facts that make the recipe work, in case the fields are already filled oddly:
   the conversation; the gateway returns it in the response header). The adapter reads it
   out and returns it as `resumeId`, and you pass it back as
   `{"task":"…","options":{"sessionId":"…","resumeId":"<that value>"}}`. Passing back only
-  the key resumes nothing AND lets memory accumulate under that key (the field
-  measurement saw 5.3× cost at turn 2); forwarding the id is flat at 1.0×. OpenClaw and
+  the key resumes nothing AND lets memory accumulate under that key (an earlier field
+  measurement saw 5.3× cost at turn 2, but it did NOT reproduce on v2.42.0 — treat it as
+  unverified); forwarding the id is flat at 1.0×. OpenClaw and
   Antigravity return `resumeId: null` — for OpenClaw the `sessionId` IS the resume handle
   (the `user` field), and Antigravity has no sessions.
+- **How to actually verify resume (#162):** "pass the handles back and see whether the agent
+  continues" does NOT discriminate — recall is also served by the gateway's long-term memory,
+  so a dispatch with an EMPTY `options` object (or `{sessionId}` alone) still recalls. To prove
+  the resume lane works, plant a fresh random code that only the session could carry (not in any
+  durable memory), forward the handles, and check the agent reproduces that exact code on the next
+  turn. A green from "it remembered something" proves memory, not resume.
 - **`options` is validated, and what it refuses it tells you.** `timeout`
   (positive ms, capped), `model`, `sessionId` and `resumeId` are the recognized keys;
   anything else — or a `timeout` of `"30s"`, which used to coerce to an
