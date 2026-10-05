@@ -186,7 +186,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
-| MCP server + Second Brain (40 tools on the appliance; 36 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
+| MCP server + Second Brain (41 tools on the appliance; 37 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
 | Named per-agent MCP keys (agent identity) | Single shared key | Yes — one named key per agent, pinned to a verified identity (`/api/mcp-keys`) |
 | Agent awareness lane (`glassy_notify`) + aging-review escalation | Not available | Yes — ≤10 notifications/min per key by design |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
@@ -215,7 +215,7 @@ called out below; everything else has a safe default.
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
 | `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
-| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (40 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
+| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (41 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
 | `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
