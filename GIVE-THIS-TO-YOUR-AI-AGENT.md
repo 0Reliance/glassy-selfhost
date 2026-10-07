@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.43.0** (October 5, 2026). The numbers and surfaces in this brief are
+**v2.44.0** (October 7, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -48,7 +48,7 @@ is yours:
 |---|---|---|
 | A `gky_mcp_…` key + `http://<host>:3010/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
 | A `baseUrl` + `token` the owner entered under Settings → Agent connections | An Agent Gateway connection — Glassy calls *you* | [Connecting an agent to the Agent Gateway](#connecting-an-agent-to-the-agent-gateway-live-verified-recipe-beta40) |
-| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-41-tools) |
+| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-42-tools) |
 | A named agent key, on `GET /api/*` | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
 | The seed password, or you're installing | The owner | [First boot](#first-boot-as-an-agent-a-clean-self-host-install) |
 
@@ -71,7 +71,7 @@ A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
 **MCP server** with three surfaces, not one:
 
-- **41 tools** — 37 registered everywhere; `glassy_notify` and the three review
+- **42 tools** — 37 registered everywhere; `glassy_notify` and the four review
   tools are self-host only, because the review queue and owner inbox they
   terminate in are not served on cloud. Full table below.
 - **4 prompts** — server-authored instruction templates. Named and explained in
@@ -261,7 +261,7 @@ Claude Desktop example (the UI shows this exact snippet): paste into
 }
 ```
 
-### The 41 tools
+### The 42 tools
 
 The count and the names are the **instance's**, not this document's — read them live with
 `GET /mcp/status` (or `capabilities.mcp.tools`) and treat any number written here as
@@ -276,7 +276,7 @@ guarantee.
 | Memory (durable, yours) | `glassy_remember`, `glassy_recall` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
 | Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document`, `glassy_delete_document` |
-| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review` (self-host only) |
+| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review`, `glassy_report_review_outcome` (self-host only) |
 | Obsidian Vault (live files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
@@ -423,6 +423,52 @@ curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.presentation
 ```
 Un-publish any time with `glassy_note_update { is_public: false }`.
 
+### Hand over a LIVE note to a chat surface (render lane)
+
+The deep links above require an owner session, and a desktop host (a chat
+transcript, an MCP host UI) often has a `file://` renderer origin that can never
+satisfy CORS. For those, the instance exposes a **read-only render lane**: a
+scoped, revocable, expiry-bounded token that serves ONE note's sanitized rendered
+HTML, frameable by any surface.
+
+- The owner's host mints a token with owner credentials:
+  `POST /api/render-token/note/:id` → `{ token, expiresAt, url }` (the raw token is
+  shown once; only its hash is stored).
+- The host frames `GET /widget/render/<token>`. It is GET-only, script-free
+  (`script-src 'none'`), strips scripts/media and external images (an IP-leak
+  guard), and carries no frame-ancestors/X-Frame-Options so an opaque-origin frame
+  can show it.
+- Revoke with `DELETE /api/render-token/note/:id`.
+
+As an agent, you do not usually mint this yourself — you hand the owner the deep
+link and the owner's host mints the render token. If you must show content in a
+surface that cannot host a live fetch, the blessed fallback is a **mirror file**:
+write a local HTML copy of the note and render it through the host's own
+authenticated file bridge. Prefer the render lane when you can; it is the LIVE note,
+not a copy.
+
+### The parameterized deep links an agent needs
+
+The screen-level route map (`#/notes`, `#/today`, …) cannot express the three
+parameterized families an agent hands an owner most often. They are published
+under `capabilities.navigation.deepLinks` (read from the same map the app uses):
+
+```bash
+curl -s https://app.glassy.fyi/api/capabilities | jq '.capabilities.navigation.deepLinks'
+# { "#/notes/:id": "…", "#/present/:kind/:id": "…", "#/w/:slug/:id": "…" }
+```
+
+Read them from the manifest rather than hardcoding — that is how you avoid re-asking
+for a route that already shipped.
+
+### Before you file an issue
+
+Run a **premise-check** first: confirm the behaviour against the live manifest and
+the brief before filing, and say which surface you measured and what you expected. A
+report that a feature "does not exist" when it is merely undiscoverable re-opens
+already-shipped work; a "bug" that is a working-as-designed boundary is a design
+question, not a defect — name which it is.
+
 ## The Obsidian Vault bridge (external, optional)
 
 This is the lane for reaching an *external* **Obsidian Vault** — the operator's own
@@ -560,6 +606,27 @@ knowing: because the origin is `null`, a `fetch()` from your canvas to a Glassy 
 path is **blocked by CORS**, so canvas script cannot call the instance's API. Embed a
 `/widget/*` URL for live first-party data instead.
 
+**Opening a link from a canvas (service-launcher tiles).** The canvas sandbox has no
+`allow-popups`, so `target="_blank"`/`window.open()` inside the canvas is blocked and a
+plain `<a href>` self-navigates (loads the target inside the board). To open a URL in a
+new tab, post a message to the host and let it open the tab through the same origin
+allowlist:
+
+```html
+<a onclick="parent.postMessage({type:'glassy-canvas-link-out', url:'https://dash.local'},'*')">Launch</a>
+```
+
+The host verifies the message came from THIS canvas and that the URL's hostname is on
+`CANVAS_EMBED_ORIGINS`, then opens it with `noopener,noreferrer`. Non-allowlisted and
+non-http(s) URLs are refused.
+
+**Showing the appliance's own images in a canvas.** `/uploads/*` carries
+`Cross-Origin-Resource-Policy: same-origin`, which an opaque-origin canvas can never
+satisfy — so a first-party image fails to decode inside a canvas. Use the
+`/widget/image/<path>` lane for the appliance's own stored images (read-only, image
+files only, `CORP: cross-origin` so the canvas can decode them) instead of base64-embedding
+a copy.
+
 So do not put credentials, internal hostnames, raw connection strings or unredacted
 diagnostics in a canvas you intend to publish, and check whether the instance you are
 on is public before assuming the window is private.
@@ -650,7 +717,7 @@ away from what the app actually does.
 
 ## Asking the owner a question (2.38.0)
 
-**Self-host only.** All three review tools are gated: on cloud they are absent from
+**Self-host only.** All four review tools are gated: on cloud they are absent from
 `tools/list` and answer `403 FEATURE_NOT_AVAILABLE` if called by name, because the queue
 they terminate in is not served there and an owner cannot open it. On cloud, write the note
 and tell the owner where to look instead.
@@ -702,15 +769,21 @@ Prefer a consequence line over a longer question. "Ship the draft?" with `hold`/
 the owner to guess what each answer does; the same request with `choice_notes` filled in is a
 decision they can actually make.
 
-### Outcome: what happens after the answer
+### Deadline and outcome — the closed loop
 
-`answered` is still the end of the request's own lifecycle — there is no field for you to
-declare what you did next, and there is no tool for it. That is deliberate. Every tool call you
-make is recorded independently in `mcp_tool_activity` with its real outcome
-(`ok` / `error` / `denied`), and the Agent Review surface already renders questions, answers and
-tool calls as one stream, because a self-reported version of the same events would be a second
-account of the loop that could disagree with the first. Describe your next step in `context` if
-it matters to the decision; do not expect to be believed on it separately.
+Two additions let a review carry a time dimension and close the loop in *history*:
+
+- **`deadline`** — an ISO 8601 datetime by which the decision is needed (e.g.
+  `"2026-10-07T23:59:00Z"`). Optional; absent means "whenever". The owner's card shows it
+  and flags it overdue once passed. "Should I ship tonight or wait?" is not answerable as
+  posed without one.
+- **`glassy_report_review_outcome`** — after the owner answers, report what you then DID
+  with `{ id, outcome }`, so the review reads as a closed control loop ("I said 'publish',
+  the agent published note X") rather than a one-way feedback queue. Refused
+  (`NOT_ANSWERED`) until the owner has answered; a second call overwrites the previous
+  outcome (you changed what you did). This is self-reported on purpose — the independent
+  record of your tool calls already lives in `mcp_tool_activity` — but the outcome is the
+  one place the *decision* and the *action it caused* are shown together.
 
 ### 2. `glassy_note_delete` soft-deletes
 
@@ -1012,7 +1085,7 @@ sync health, so a nonzero value is the thing to look at before concluding
 - **Data:** SQLite at `/app/data/notes.db` inside the container; backups
   are operator-managed via the Import/Export settings panel.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.40.4`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.44.0`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features). **Three versions in `CHANGELOG.md` have no GHCR image and must
   never be pinned:** `v2.36.0-beta.41` (its tag push landed inside a transient

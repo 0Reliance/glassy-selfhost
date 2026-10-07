@@ -649,7 +649,7 @@ graph-centrality boost, default-on) applies to local note results only.
 Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
 [`GIVE-THIS-TO-YOUR-AI-AGENT.md`](https://github.com/0Reliance/glassy-selfhost/blob/main/GIVE-THIS-TO-YOUR-AI-AGENT.md)
 from the installer repo root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
-the full 41-tool table, the Obsidian-bridge explainer, ops facts, and first
+the full 42-tool table, the Obsidian-bridge explainer, ops facts, and first
 actions. The self-host compose enables the MCP stack by default.
 
 **Give each agent its own named key.** Both key kinds live in one panel:
