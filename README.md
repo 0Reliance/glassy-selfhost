@@ -49,8 +49,9 @@ recover it even if the Docker log buffer has rolled:
 # Option A — grep the logs (only works on the very first boot, see note below):
 docker compose logs glassy | grep -A2 "Default admin created"
 
-# Option B — read the credentials file (survives container recreation, deleted
-# after your first password change):
+# Option B — read the credentials file (TWO lines: your email on line 1, the random
+# password on line 2 — sign in with line 2, not the whole file; survives container
+# recreation, deleted after your first password change):
 docker exec glassy cat /app/data/.initial_admin_password
 ```
 
@@ -834,6 +835,24 @@ stop other writers first. Set `BACKUP_ENCRYPTION_KEY` in `.env` before
 restoring an encrypted (`.enc`) backup.
 
 ## Troubleshooting
+
+### The container name is already in use (`/glassy`)
+
+`deploy/selfhost/docker-compose.yml` sets **`container_name: glassy`** so the
+commands in this README (and the restore helper) always address the same
+container by name. If a compose project from a different directory already
+created that container — the error reads `Conflict. The container name "/glassy"
+is already in use` — remove the old one first (your data is on the host volume,
+not the container) and bring it up again from THIS directory:
+
+```bash
+docker stop glassy && docker rm glassy
+docker compose up -d
+```
+
+Run every compose command from the SAME directory (where `docker-compose.yml` +
+`.env` live) so the project name — and therefore the container names — stay
+consistent.
 
 ### Port 3000 already in use
 
