@@ -39,7 +39,7 @@
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
-| Sync media transfer (note images, custom backgrounds, voice audio) | Serves available owner-authorized files | Appliance downloads missing files on eligible pull cycles (beta.40); not two-way file replication or checksum-verified transfer. Instance-wide `mediaMissing` counts voice/note images only |
+| Sync media transfer (voice audio, note images, note backgrounds, document covers, custom backgrounds) | Serves available owner-authorized files | Appliance downloads missing files on eligible pull cycles (beta.40); not two-way file replication or checksum-verified transfer. Instance-wide `mediaMissing` counts every managed source in the `MEDIA_SOURCES` registry (`server/services/sync/mediaIntegrity.js`) — voice audio, note images, note backgrounds, document cover images, and custom backgrounds |
 | Custom backgrounds (upload, 3 renditions, dedup by hash) | ✅ (tier-capped) | ✅ unlocked + synced (beta.40: rows via migration 0107 triggers, bytes via media transfer) |
 | Data export (JSON, Obsidian ZIP, GDPR) | ✅ | ✅ |
 | Live Obsidian vault sync | ❌ (server ≠ localhost) | ✅ |
@@ -68,7 +68,7 @@
 | Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP writes record the connecting client's `clientInfo.name`, falling back to `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
 | Bookmark authorship | ✅ | ✅ — same three columns (migration 0109, beta.43). Content writes go through `bookmarkService`. A takedown is not an edit |
 | Document authorship | ✅ | ✅ — same three columns (migration 0110, beta.43). Content create/update and the public toggle go through `documentService`. Archive, pin and account move stay narrow state transitions and do not stamp an editor |
-| Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43). A `canvas` note is judged by its own policy instead and returns `CANVAS_ORIGIN_BLOCKED` naming any origin outside `CANVAS_EMBED_ORIGINS` (2.40.7, #138). `PUT`/`PATCH` also return `IGNORED_FIELD` for a body key the endpoint does not write, naming the route or MCP field that does (2.40.7, #137) |
+| Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43). A `canvas` note is judged by its own policy instead and returns `CANVAS_ORIGIN_BLOCKED` naming any origin outside `CANVAS_EMBED_ORIGINS` (2.40.7, #138). `PUT`/`PATCH` also return `IGNORED_FIELD` for a body key the endpoint does not write, naming the route or MCP field that does (2.40.7, #137). And an invalid **value** for an enumerated organisational field (`transparency`, `border_style`, `content_format`) is stored as the column's default with a `VALUE_COERCED` warning naming the field and the valid set (2.43.0) — `''`, `null` or omitted are the clear/unchanged spellings and never coerce |
 | Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
 | Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
 | Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
@@ -699,8 +699,18 @@ curl -s http://localhost:3000/api/capabilities | jq '.capabilities.notes.rendere
 It reports, read from the code that enforces each value: note types, image/item
 limits, the renderer allowlists per SURFACE, document limits + route shapes,
 accepted upload MIME types (and that video is not served), upload cache
-lifetimes, the embedding chunk size and dimensions, the review-loop limits, and
-the live MCP tool list.
+lifetimes, the embedding chunk size and dimensions, the review-loop limits, the
+live MCP tool list — and the app's own **navigation** map (2.44.0, from the same
+`shared/navigation.json` the sidebar/header render): `navigation.routes` maps a hash
+route to its section key, `navigation.sections` gives the key's header title, and
+`navigation.deepLinks` publishes the parameterized link families (#176) an agent
+needs to land an owner on an artifact (`/#/notes/:id` et al.) — so you can reason
+about where work belongs without reverse-engineering the bundle:
+
+```bash
+curl -s http://localhost:3000/api/capabilities | jq '.capabilities.navigation.routes | length'
+# 29 — but read the map itself; the set grows with the app and the file is the single source
+```
 
 **The split rule is in the manifest** (v2.40.0): every capability that differs
 between the appliance and cloud is gated on the instance identity and reported,
@@ -967,6 +977,19 @@ curl -X PATCH http://localhost:3000/api/users/profile \
 Self-host sets `allowAnyHost` in the SSRF validator, and `host.docker.internal` is on the agent allowlist, so both forms are accepted. Afterwards `GET /api/obsidian/status` should return `"connected": true, "authenticated": true` — the same check the hidden Test Connection button performs.
 
 > **⚠️ Windows + WSL2 users:** `host.docker.internal` inside the container resolves to the **WSL2 VM**, not the Windows host. The container cannot reach Obsidian running on Windows `127.0.0.1` this way. Use the **browser extension bridge** (steps above). See [`deploy/selfhost/README.md` § Obsidian vault sync](../deploy/selfhost/README.md#obsidian-vault-sync) for the full WSL2 setup guide.
+
+### Periodic notes are a read lane, and a disabled period is a state, not an error
+
+`GET /api/obsidian/periodic/:period?date=YYYY-MM-DD` relays one Obsidian Periodic
+Notes period — `daily`, `weekly`, `monthly`, `quarterly`, `yearly` — to the plugin.
+Three endings, each a plain `200`: the period's note `content`; `{exists:false}` when
+no note exists for that date yet; and — when the user has **disabled that period in
+the plugin** — `{exists:false, periodEnabled:false}` (v2.44.0, #166). The third ending
+is the one a poll loop needs for its own reasoning: the plugin answers the relayed
+request with `400 40060`, which is real but is a *configuration* state, not an auth
+or network fault, so the relay maps it onto the same non-error shape as a missing
+note and you can stop retrying until the period is switched back on — without the
+browser logging a recurring `400` on every poll.
 
 ### Troubleshooting Obsidian connectivity
 

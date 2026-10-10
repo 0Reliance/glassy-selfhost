@@ -824,9 +824,19 @@ returned by `glassy_list_notes`, `glassy_read_note`, `glassy_search`, `glassy_re
 binned notes — it filtered `archived` but not `deleted_at`, which are two different flags — so a
 daily brief could resurrect notes you had already cleaned up (#139). Note that `archived` and
 deleted are **not** the same state: an archived note is live and readable, a deleted one is in the
-bin. Bookmarks have only one flag, `is_archived`, which *is* their trash. (`glassy_search` excludes
-binned notes by a different mechanism: deleting a note also removes its embeddings, so there is
-nothing left for the corpus index to match.)
+bin. Bookmarks have only one flag, `is_archived`, which *is* their trash. (`glassy_search` holds
+the same guarantee against the corpus index: a deletion may leave an embedding row behind, so the
+READ path now re-checks every candidate's backing row and drops any whose note/document/bookmark is
+deleted or orphaned — the old "deleting also removes its embeddings, so nothing is left to match"
+explanation was optimistic, and field measurement (#181) proved leftovers do accumulate.)
+
+**Archived vs. search — the contract, stated once (#182).** `glassy_search` excludes **archived**
+sources by default, consistent with `glassy_list_notes` / `glassy_get_recent` /
+`glassy_recall`, and takes `include_archived: true` as an explicit opt-in when you
+deliberately want filed-away context — the same opt-in the list tools already expose.
+Archived items keep their content, id and embeddings (readable via `glassy_read_note`),
+so the opt-in is a strong, deliberate door into them, not an accident. Deleted items are
+always excluded, on both the text leg and the semantic leg, regardless of the flag.
 
 ### 3. Tags follow one canonical policy — this is the breaking one
 
