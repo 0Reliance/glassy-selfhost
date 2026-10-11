@@ -1,5 +1,11 @@
 # Glassy — self-hosted
 
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.45.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
+[![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
+[![Membership](https://img.shields.io/badge/membership-Clear%20%7C%20Pro%20required-f59e0b?style=flat-square)](https://glassy.fyi/pricing)
+
 <!-- MAINTAINERS: See MAINTAINING.md for the sync process between this
      directory and the glassy-selfhost installer repo. Any change to
      files here MUST be synced to github.com/0Reliance/glassy-selfhost. -->
