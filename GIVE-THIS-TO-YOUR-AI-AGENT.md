@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.45.0** (October 10, 2026). The numbers and surfaces in this brief are
+**v2.45.0** (October 11, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -306,7 +306,27 @@ work — do not invent an MCP shim behind `obsidian_url`. `GET /api/capabilities
 `agent-memory`, authored by YOUR pinned identity); `glassy_recall` retrieves it
 (`scope: 'mine'` is your memories only; `scope: 'all-agents'` sees every agent's).
 Recall before acting on a long-running task — the owner's preferences and
-project state live there.
+project state live there. **The lifecycle facts that keep the store usable**
+(all measured in the field; none of them said in the tools' names):
+
+- **A just-written memory is not instantly searchable.** Embedding is
+  asynchronous, so there is a short window where the write succeeded and
+  `glassy_search` does not return it. A search that misses a memory you just
+  committed is a timing fact, not a reliability defect — wait for the embed
+  and search again before concluding it is gone.
+- **Archive rather than delete your own output.** `archived` is a reversible
+  flag you can clear yourself (`{archived: false}`); delete moves the note to
+  the bin and **restore is owner-only** — from your side a delete is
+  permanent. This asymmetry is the whole reason to prefer archive for tidying.
+- **Namespace fixtures, and tear them down in the same session.** A store
+  that accumulated 295 of 332 fixture notes in the field degraded search
+  ranking for the real entries. Tag test/dogfooding memories distinctly
+  (`walk-*`-style names) and delete/archive them before you finish.
+- **A ranked hit is a candidate, not a fact.** As of v2.45.0 `glassy_search`
+  drops candidates whose backing row is gone and merges same-source hits that
+  both legs labeled differently (#181, #188) — but citing a source as evidence
+  still costs one `glassy_read_note` / `glassy_vault_read` to confirm it
+  exists and says what the snippet claimed.
 
 Read access is the default posture; write tools are available but the
 operator controls the key.
@@ -546,6 +566,33 @@ unknown key reaches the handler and is reported as `IGNORED_FIELD` instead of be
 stripped by zod into a confident `success: true`. The fields a tool advertises are the
 fields it writes — `GET /mcp/tools` is still the authoritative list, but a key that is
 *not* advertised now comes back as a warning rather than vanishing.
+
+### The read lane has its own honesty channel: `degraded[]`
+
+Writes carry `warnings[]` (above); **reads degrade visibly too.** When the embedding
+(semantic) lane returns less trust than it intended, the response reports it in-band
+instead of silently thinning out: `glassy_search` carries a `degraded[]` array
+(`server/mcp/tools/search.mjs`, surfaced "only when degraded" — absence means the lane
+was healthy), and `POST /api/kb/query` returns the same shape as
+`diagnostics.degraded`. The recorded live example:
+
+```json
+"degraded": [{
+  "leg": "semantic",
+  "code": "SEMANTIC_GATE_COLLAPSE",
+  "detail": "only 3 of 56 candidate chunks survived the semantic gate at minScore 0.4 (5.4% kept).",
+  "minScore": 0.4, "requestedMinScore": 0.4, "gateAdapted": false,
+  "hint": "This is a gate problem, not a \"nothing matched\" problem. The cosine floor is
+           an absolute value and cosine ranges differ per embedding model, so a model
+           change or runtime change can move the whole distribution below a fixed
+           cutoff. Check OLLAMA_EMBEDDING_MODEL / the active embedding provider…"
+}]
+```
+
+A thin result set with a non-empty `degraded[]` is **a gate problem, not a 'nothing
+matched' problem** — read the `hint`, check `/api/monitoring/ready` →
+`embeddingHealth`, and report both facts. Never summarize a degraded search as a
+plain "no results".
 
 ### Which fields an agent can write (2.43.0)
 
@@ -1092,8 +1139,18 @@ sync health, so a nonzero value is the thing to look at before concluding
 - **Local LLM:** server-side Ollama at `http://host.docker.internal:11434`
   (10 models) — used by AI features; WebGPU local models download through
   the browser (now that #30 is fixed).
-- **Data:** SQLite at `/app/data/notes.db` inside the container; backups
-  are operator-managed via the Import/Export settings panel.
+- **Data + backups:** SQLite at `/app/data/notes.db` inside the container. The
+  appliance runs its OWN backup schedule — a daily dump at **02:00** (files named
+  `notes-<date>T02-00-00.db`) plus on-demand dumps (fully timestamped names), all in
+  `/app/data/backups/`, ~7 days retained. Restore is
+  `docker compose exec glassy node server/utils/backup.js --restore <backup-file>`
+  (see the docs site's *Backups and Data Management* for the drill that proves a
+  restore works). `/app/data/backups` lives in the **same** Docker volume as the live
+  database, so a volume-level failure takes both together; the operator's off-volume
+  copy is their own unit/job, and a dead one looks identical to a green one to a
+  byte-level drift check — verify the artifact landed, not just that the schedule
+  ran. The Import/Export settings panel is the operator's separate *manual* snapshot
+  lane, not this schedule.
 - **Ports:** 3010 (HTTP app) in this deployment.
 - **Updates:** pinned `GLASSY_TAG` (currently `v2.45.0`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
