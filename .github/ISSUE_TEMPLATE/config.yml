@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Product documentation
+    url: https://docs.glassy.fyi
+    about: Self-hosting guides, MCP server reference, backups, and the changelog — checked against the live product by a currency guard.
+  - name: 🧭 The AI Agent Brief
+    url: https://github.com/0Reliance/glassy-selfhost/blob/main/GIVE-THIS-TO-YOUR-AI-AGENT.md
+    about: GIVE-THIS-TO-YOUR-AI-AGENT.md — the self-contained onboarding brief for AI agents (MCP contracts, memory, review loop, ops facts). Versioned to the running build, machine-checked.
+  - name: 🏠 Glassy home
+    url: https://glassy.fyi
+    about: Product overview, pricing, and the download/extension links.
