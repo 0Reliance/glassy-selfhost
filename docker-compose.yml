@@ -60,6 +60,7 @@ services:
       # fusion, MCP_BRIDGE enables Companion token exchange, KB_UI shows the
       # knowledge base route in the sidebar. All default true on self-host.
       - ENABLE_CORPUS_INDEXER=${ENABLE_CORPUS_INDEXER:-true}
+      - ENABLE_CORPUS_RECONCILER=${ENABLE_CORPUS_RECONCILER:-true}
       - ENABLE_KB_QUERY=${ENABLE_KB_QUERY:-true}
       - ENABLE_MCP_SERVER=${ENABLE_MCP_SERVER:-true}
       - ENABLE_HYBRID_SEARCH=${ENABLE_HYBRID_SEARCH:-true}
