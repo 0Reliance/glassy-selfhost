@@ -221,6 +221,7 @@ called out below; everything else has a safe default.
 | `INSTANCE_ACCESS_MODE_DEFAULT` | `private` | Hides all public surfaces from logged-out visitors. An admin account is seeded automatically on first boot. |
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
 | `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
+| `ENABLE_CORPUS_RECONCILER` | `true` | Hourly convergence sweep — indexes anything a write path missed (synced rows, older content, failed embeds). Opt out only with a strict embedding-API budget. |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
 | `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (42 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_HYBRID_SEARCH` | `true` | Enables BM25 + vector fusion search (best result quality). |
