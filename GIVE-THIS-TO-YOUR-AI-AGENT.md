@@ -313,7 +313,11 @@ project state live there. **The lifecycle facts that keep the store usable**
   asynchronous, so there is a short window where the write succeeded and
   `glassy_search` does not return it. A search that misses a memory you just
   committed is a timing fact, not a reliability defect — wait for the embed
-  and search again before concluding it is gone.
+  and search again before concluding it is gone. On 2.46.0+ a silently-failed
+  embed also HEALS within the hour: the corpus reconciler sweeps anything a
+  write path missed at :15 past each hour (operator opt-out:
+  `ENABLE_CORPUS_RECONCILER=false`), so a search that keeps missing committed
+  content is worth one retry after the next pass.
 - **Archive rather than delete your own output.** `archived` is a reversible
   flag you can clear yourself (`{archived: false}`); delete moves the note to
   the bin and **restore is owner-only** — from your side a delete is
