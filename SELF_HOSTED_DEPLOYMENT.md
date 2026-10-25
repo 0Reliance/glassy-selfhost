@@ -29,12 +29,12 @@
 | Capability | Cloud (`app.glassy.fyi`) | Self-hosted |
 |---|---|---|
 | Notes, tags, folders, trash | ✅ | ✅ |
-| GlassyKeep (Markdown knowledge base) | Pro only | ✅ unlocked |
-| GlassyCalc (spreadsheet) | Pro only | ✅ unlocked |
+| GlassyKeep (Markdown knowledge base) | Every account (D4) | ✅ unlocked |
+| GlassyCalc (spreadsheet) | Every account (D4) | ✅ unlocked |
 | Custom themes | Pro only | ✅ unlocked |
-| Voice Studio | Pro only | ✅ unlocked |
+| Voice Studio | Every account (D4) | ✅ unlocked |
 | Knowledge base (KB) | Pro only | ✅ unlocked |
-| MCP server + Second Brain | Pro only | ✅ unlocked |
+| MCP server + Second Brain | Every account — single-key MCP lane, tier-rated (R4); notify/review tools withheld | ✅ unlocked (all 42 tools, named keys) |
 | Agent Gateway (OpenClaw / Hermes) | Pro only | ✅ unlocked — LAN/Tailscale `baseUrl`s allowed on self-host (beta.40, #37); cloud keeps the strict allowlist |
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
@@ -58,7 +58,7 @@
 | Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access, and the signed-in owner views their own window (session attached client-side, beta.36) |
 | Social previews (OG tags on `/w/:slug`) | ✅ | ✅ mounted, 401 to anonymous crawlers — private mode is enforced before the User-Agent branch |
 | Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
-| Follow external RSS publications | ✅ Pro/Clear unlimited, free ≤10 | ✅ unlimited (local) |
+| Follow external RSS publications | ✅ every account (D4: no follow cap in code — storage-bound) | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
 | Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name. The same key also authenticates **read-only** `GET /api/*`, so scripts stop needing the owner's password |
 | Agent awareness lane (`glassy_notify`) | ❌ not available | ✅ — notifications + owner surface + 24h/72h review escalation; ≤10 notifications/min per key by design |
@@ -72,7 +72,7 @@
 | Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
 | Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
 | Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
-| Memory layer (semantic + keyword + graph) | One lane for all content | One lane (2.37): notes, bookmarks, documents and vault files share ONE memory system — `content_embeddings`, `vault_fts`, and the `note_links` graph. Trashed or archived content is never indexed, and deleting content removes its index rows. The graph accepts every content type — a note's `[[wikilink]]` to another note or document becomes an edge, and the graph MCP tools take node keys (`note:<id>`, `document:<id>`) as well as vault paths |
+| Memory layer (semantic + keyword + graph) | One lane for all content | One lane (2.37): notes, bookmarks, documents and vault files share ONE memory system — `content_embeddings`, `vault_fts`, and the `note_links` graph. Trashed or archived content is never indexed, and deleting content removes its index rows. The graph accepts every content type — a note's `[[wikilink]]` to another note or document becomes an edge, and the graph MCP tools take node keys (`note:<id>`, `document:<id>`) as well as vault paths. **Memory Lane A (v2.51.0+):** the client generates embeddings on-device (WebGPU/WASM via `mxbai-embed-xsmall`, 384-dim) and uploads them into its own namespace via `POST /api/embeddings/upload`; the server is store + scorer. Convergence runs on the owner's next client visit (upload-on-visit sweep, bounded 20 rows per visit). The C-shim (server-generated gemini/768-dim) remains the transitional lane while `ENABLE_FIRST_PARTY_EMBEDDINGS=true` (default); flip to false only after writers have converged. Namespace pins are per `(source_type, model)`, so 384-dim client vectors never meet 768-dim shim vectors. |
 | Memory rebuild | Automatic | Automatic (2.37): whenever content arrives — including via Cloud Sync — its memory (embeddings, full-text, graph edges) builds on that machine. No manual reindex. `POST /api/kb/backfill/reindex` remains the one-call repair path for a model change or a missed batch; `POST /api/kb/backfill` seeds types in bulk |
 
 ---
@@ -462,7 +462,20 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml exec ollama ol
 
 The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`deploy/selfhost/docker-compose.ollama.yml`](../deploy/selfhost/docker-compose.ollama.yml)).
 
-### Bulk-ingesting an existing vault (`#89`)
+### Memory Lane A — client-owned embeddings (v2.51.0+)
+
+Lane A moves embedding generation from the server to the client's device. The client generates 384-dim vectors on-device (WebGPU with WASM fallback via `mxbai-embed-xsmall`) and uploads them into its own namespace via `POST /api/embeddings/upload`. The server becomes store + scorer: it validates provenance (declared model on the server allowlist, dims match canonical dims, vector length matches dims), enforces ownership (the source row must belong to the authenticated caller), enforces namespace pins (first write establishes the width; a mismatched write raises), and upserts on `(source_type, source_id, chunk_index, model)`.
+
+**How it works operationally:**
+
+- `ENABLE_FIRST_PARTY_EMBEDDINGS` defaults `true` — the C-shim (server-generated gemini/768-dim) remains the transitional lane and behaves byte-identically to before.
+- Flip it to `false` **only after your writers have converged** to Lane A (≥ 98% of client-written rows carry a client-namespace vector across one full hourly reconciler cycle). When false, server-side embedding generation raises `EMBEDDINGS_LANE_DISABLED` (409), headless rows take the `pending_client` path, and the owner's next client visit converges them.
+- The convergence sweep runs on the owner's next client visit (`useLaneAConvergence`, mounted at App bootstrap): it asks `POST /api/embeddings/namespace-status` which rows are pending per source type (defaults now include `voice_transcript`; `vault_file` is excluded — its content arrives externally via Obsidian sync), fetches each row's text via `GET /api/embeddings/client-content/:sourceType/:sourceId`, embeds locally, and uploads. Bounded to 20 rows per visit so a long-absent client converges over several visits, never one blocking burst.
+- KB search with a client query vector: `useKbSearch` embeds the query on-device (only when a model is already loaded — a search never downloads a model) and attaches it to `POST /api/kb/query`. The server runs the semantic leg entirely inside the client's namespace with zero server-side generation and zero cloud-AI spend. Without a local vector, the request uses the server lane as before.
+- Namespace pins are per `(source_type, model)`, so a 384-dim client vector never meets a 768-dim shim vector. The scoped re-index escape hatch (`DELETE /api/embeddings/namespace`) drops one namespace's rows and resets its pins.
+
+**Flag flip order (release-train action, not yet executed):** glassydev first (verify search quality + convergence), then Clear → local prod → pozi200; retire the embedding key from the env only after the fleet has run the sunset through a full reconciler cycle. See `docs/superpowers/specs/2026-10-25-memory-lane-a-design.md` for the full design and `docs/DEPLOYMENT_RUNBOOK.md` for the Stripe catalog preflight that must be green before any commerce-affecting deploy.
+
 
 The Obsidian bridge indexes files as they change; it cannot seed a vault that
 already exists. For that, the instance has a bulk ingest:

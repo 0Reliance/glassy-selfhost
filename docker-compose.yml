@@ -27,11 +27,14 @@ services:
       - API_KEY_ENCRYPTION_KEY=${API_KEY_ENCRYPTION_KEY:?set API_KEY_ENCRYPTION_KEY}
       - APP_URL=${APP_URL:-http://localhost:3000}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
-      # Membership gate: your Glassy account email (Clear or Pro).
+      # Membership gate: your Glassy account email (any tier — free included,
+      # D3 2026-10: self-hosting is open to every account).
       # The appliance verifies this against the cloud on first boot and
-      # caches the result for 30 days. Required — container will not start
-      # without a verified membership.
-      - GLASSY_MEMBER_EMAIL=${GLASSY_MEMBER_EMAIL:?set GLASSY_MEMBER_EMAIL to your Glassy membership email}
+      # caches the result (30 days signed). The runtime NEVER refuses to start
+      # ("you buy and you own"): an unverified appliance boots in degraded
+      # mode — fully functional locally with the cloud relationship reported
+      # unconfirmed via GET /api/instance → membershipState.
+      - GLASSY_MEMBER_EMAIL=${GLASSY_MEMBER_EMAIL:?set GLASSY_MEMBER_EMAIL to your Glassy account email}
       # Self-host pairing token (required). Generate one in your Glassy
       # account under Settings → Self-hosting and paste it here.
       #   • Public/Pro: https://app.glassy.fyi/#/settings?g=account&s=selfhost

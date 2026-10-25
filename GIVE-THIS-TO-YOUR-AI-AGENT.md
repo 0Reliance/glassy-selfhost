@@ -168,6 +168,25 @@ Both kinds of key live in **one** panel: **Settings → Connections & data → A
 instance key is at the top, named agent keys below it. Either can be revoked from
 there, and both are scoped to this instance only.
 
+### Two origins — appliance (full power) and cloud (the on-the-go lane)
+
+The same MCP server serves **two origins** with deliberately different shapes.
+`GET /api/capabilities` tells you which one you are talking to (`mcp.mounted`,
+`mcp.cloudGatedTools`, `agentIdentity.mode`) — read it before assuming.
+
+| | **Appliance** (`http://<host>:3010/mcp`) | **Cloud** (`https://app.glassy.fyi/mcp`, `https://clear.glassy.fyi/mcp`) |
+|---|---|---|
+| Key model | Named per-agent keys + instance key — ask for a named key if you will write | **Single user-scoped key** — the account owner's own key, minted in Settings → AI tools (MCP). Named keys are not offered here |
+| Identity | Named keys are pinned and verified; the instance key is self-declared | Self-declared (`identityMode: "self-declared"`, `verified: false`) — you act as the account owner's MCP client |
+| Tools | All 42 | 37 — `glassy_notify` and the review-queue tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
+| Budget | No tool-call budget — the owner's hardware | Tier-rated by `mcpTierLimiter`: free accounts 120 calls/hour, paid accounts 1,200/hour |
+| Search corpus | The owner's corpus, locally indexed | The owner's corpus, indexed server-side (embeddings run on the operator's shim, not a user allowance) |
+
+The cloud lane exists so an agent you run while traveling can reach the same
+workspace from any machine — not as a second identity. One key per account,
+replacing on re-mint; if the owner rotates it, your calls fail auth until they
+hand you the new key.
+
 ### Two kinds of key — and only one makes you a principal
 
 Both look like `gky_mcp_…`. **They are the same shape** — both come from the same
@@ -1187,6 +1206,36 @@ sync health, so a nonzero value is the thing to look at before concluding
   owner-only: one artifact, no sidebar, no Save button, `Esc` to leave. Use it for review
   handoff. Read `capabilities.presentation.kinds` for the valid kinds rather than
   hardcoding them.
+
+## If the owner asks about the Zero Reliance Pair (one-time SKU)
+
+The Pair is how a home appliance syncs to an instance the owner runs themselves —
+two machines talking to each other, with no Glassy server in the data path.
+
+- **It is a one-time capability purchase, not a plan.** The webhook grants the
+  entitlement key `zero_reliance_pair` (perpetual for beta and v1 buyers). A Clear
+  membership covers the same setup *while the membership is active*; it writes no
+  grant, so the two states are independent. A pair already configured keeps
+  running if a membership lapses — only configuring NEW pairs needs the grant.
+- **Where it is bought:** the in-app store (`#/store` on the cloud), which calls
+  `POST /api/commerce/checkout/one-time` with `{ "type": "zero_reliance_pair" }`.
+  That route is authenticated, so there is no guest checkout lane for it.
+- **Never hardcode a Stripe price id.** `server/utils/stripePricing.js` holds the
+  lookup keys (`ZERO_RELIANCE_PAIR` → `zero_reliance_pair_v1`); the server
+  resolves them against the live catalog at boot. `loadStripeCatalog()` throws if
+  ANY key is missing — one absent key breaks **every** one-time purchase, not
+  just the missing one, and the test suite cannot see it because tests stub the
+  catalog. Derive the price with the probe, never from a written-down number.
+- **Catalog preflight (run before any release or after touching Stripe):**
+  `node scripts/check-stripe-catalog.js --require`. Fails closed on a missing
+  key; with no key configured it SKIPs so dev machines are not blocked. Inside a
+  container: `docker exec <app-container> node /app/scripts/check-stripe-catalog.js --require`.
+  A price id in a doc is a claim; the probe is the evidence.
+- **The setup walkthrough is `deploy/selfhost/PAIRING.md`** (also surfaced at
+  Settings → Zero Reliance Pair). The pairing token is minted on the owner's own
+  instance and never reaches Glassy servers.
+- **Do not tell the owner the Pair changes membership verification.** It does
+  not: one setting names the sync peer, the other names the membership oracle.
 
 ## Suggested first actions for an agent
 
