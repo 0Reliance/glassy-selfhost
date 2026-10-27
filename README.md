@@ -1,10 +1,10 @@
 # Glassy — self-hosted
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.46.1-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.52.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
 [![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
-[![Membership](https://img.shields.io/badge/membership-Clear%20%7C%20Pro%20required-f59e0b?style=flat-square)](https://glassy.fyi/pricing)
+[![Account](https://img.shields.io/badge/account-any%20Glassy%20account-22c55e?style=flat-square)](https://glassy.fyi/pricing)
 
 <!-- MAINTAINERS: See MAINTAINING.md for the sync process between this
      directory and the glassy-selfhost installer repo. Any change to
@@ -19,16 +19,17 @@ The image is published to the **public** GitHub Container Registry
 
 ## Quick start
 
-> **Self-hosting requires an active Glassy membership** (Clear or Pro). Sign up at
-> [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.today](https://glassy.today)
-> before continuing — the appliance will not start without a verified membership.
+> **Self-hosting is open to every Glassy account** — free included (D3, 2026-10-24).
+> Sign up at [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.today](https://glassy.today);
+> the pairing token is the anchor, not the tier, and the container never refuses to start
+> over verification.
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.46.1>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.52.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -46,8 +47,8 @@ docker compose up -d --quiet-pull   # ~1.2 GB image; suppresses per-layer progre
 > [releases page](https://github.com/0Reliance/glassy-selfhost/releases) for the
 > newest version. `docker compose` will refuse to start until `GLASSY_TAG` is set.
 
-On first boot the appliance verifies your membership AND pairing token against
-the cloud, creates your local account using your membership email, and prints
+On first boot the appliance verifies your account AND pairing token against
+the cloud, creates your local account using that email address, and prints
 the initial password once. The password is **also written to a file** so you can
 recover it even if the Docker log buffer has rolled:
 
@@ -102,10 +103,12 @@ documents, and tags stay on this device — **your data remains offline**.
 Sign-in uses your membership email and a local password — note content is
 never sent to our servers.
 
-Self-hosting requires a Glassy membership (Clear or Pro). Your membership
-is verified against the cloud **once at boot** and cached for 30 days, so
-the appliance works fully offline within that window. This is what keeps
-the project sustainable while self-hosting scales.
+Self-hosting is open to **every Glassy account** — free included. The appliance
+verifies your account **and** your pairing token against the cloud once at boot
+and caches the signed answer for 30 days, so it works fully offline within that
+window. The token is the anchor: someone who merely knows your email cannot
+stand up an appliance on your account. No tier is required, and the container
+never refuses to start over verification.
 
 **Sign-in is required during our Kickstarter launch.** Once our published
 Kickstarter goals are met, sign-in on the appliance becomes **optional** —
@@ -128,16 +131,19 @@ in Settings → API Keys). No note content or usage data is ever sent to us.
 Glassy self-host is a **single-owner appliance**. Here's what happens the first
 time you start it, and every time after:
 
-**1. Membership + pairing-token check (once every 30 days, at boot).** The
+**1. Account + pairing-token check (once every 30 days, at boot).** The
 appliance sends your email **and** your `GLASSY_SELFHOST_TOKEN` to
 `app.glassy.fyi` — no password, no note content, no personal data. The cloud
-replies with a signed yes/no: *"does this email have an active Clear or Pro
-membership, and does the token match the one in the account?"* The token is
+replies with a signed yes/no: *"does this account exist, and does the token
+match the one stored in the account?"* — the tier travels in the signed payload
+for the badge, and gates nothing (any account self-hosts). The token is
 required so that someone who merely knows your email cannot spin up an
-unlocked instance using your membership. The result is cached locally for 30
+unlocked instance on your account. The result is cached locally for 30
 days (signed) or 24 hours (unsigned fallback), so the appliance works fully
 offline within that window. If the cloud can't be reached and no usable cache
-exists, the container refuses to start.
+exists, the appliance starts in **degraded mode** — every local feature works,
+and `GET /api/instance` reports `membershipState: "degraded"` until the next
+successful check. The container never refuses to start over verification.
 
 You generate the pairing token in your Glassy account on the cloud:
 **Settings → Self-hosting → Generate token**.
@@ -207,12 +213,12 @@ called out below; everything else has a safe default.
 
 | Variable | Description |
 | --- | --- |
-| `GLASSY_MEMBER_EMAIL` | Your Clear or Pro membership email. Verified against the cloud on first boot; cached for 30 days. |
+| `GLASSY_MEMBER_EMAIL` | Your Glassy account email — any account, free included. Checked against the cloud at boot; cached for 30 days. |
 | `GLASSY_SELFHOST_TOKEN` | Pairing token from Settings → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
-| `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your membership and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
+| `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.46.1`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.52.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
