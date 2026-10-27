@@ -65,20 +65,19 @@ other**; it never reaches Glassy's servers.
 This is the step the walkthrough used to leave out, and without it every cycle
 fails with `401 SYNC_AUTH_INVALID`.
 
-The **home appliance presents the token; the VPS validates it.** The appliance
-reads it from one place only — the `GLASSY_SYNC_TOKEN` environment variable —
-so on the **home appliance**:
+The **home appliance presents the token; the VPS validates it.** Two ways, newest
+first (2026-10-27):
 
-```bash
-# .env next to docker-compose.yml, or the equivalent for your install
-GLASSY_SYNC_TOKEN=<the token you just minted on the VPS>
-```
+- **Settings → Cloud Sync → "Pair token" on the home appliance** — paste the
+  token and click away. It is stored **encrypted**, resolved at every cycle, and
+  the automated scheduler starts itself: **no restart, no .env.**
+- **`.env` (bootstrap/recovery)**: set `GLASSY_SYNC_TOKEN=<the token>` and
+  restart the appliance container. The token is read at boot there — editing
+  `.env` alone does nothing until the restart. (A token saved in Settings WINS
+  over the env value from its next cycle.)
 
-Then **restart the appliance container** (`docker compose up -d --force-recreate`
-or your usual restart). The token is read at boot: unlike the peer URL there is
-no Settings field for it, and editing `.env` alone does nothing until the
-container restarts. Rotating the token later means minting a new one on the VPS
-and repeating this step.
+Rotating later means minting a new token on the VPS and repeating whichever
+path you used.
 
 ## Step 3 — Point your home appliance at your instance
 
@@ -93,9 +92,10 @@ On your **home appliance**, either:
 The membership-verification var (`GLASSY_VERIFY_CLOUD_URL`) is untouched — one
 variable names the peer, the other names the oracle.
 
-> **Two variables, two lifetimes.** The peer URL is per-cycle (Settings works,
-> no restart). The sync token is boot-time (`.env` + restart). Confusing the two
-> is what makes a correct-looking pairing fail every cycle.
+> **Two credentials, two lifetimes.** The peer URL is per-cycle (Settings works,
+> no restart). The pair token is per-cycle now TOO (Settings, stored encrypted,
+> no restart); only the `.env` fallback path is boot-time (`.env` + restart).
+> Confusing the two is what makes a correct-looking pairing fail every cycle.
 
 ## Step 4 — Verify
 
