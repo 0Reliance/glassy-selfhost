@@ -1025,6 +1025,8 @@ browser logging a recurring `400` on every poll.
 All persistent data lives in the `glassy-data` Docker volume (the `notes.db` SQLite file).
 
 > **Built-in automatic backups.** Glassy already takes a daily SQLite backup at 02:00 into `/app/data/backups` (inside the volume, ~7 days retained) — no setup needed. For encrypted, off-machine copies use the backup CLI (`node server/utils/backup.js`, controlled by `BACKUP_ENCRYPTION_KEY` / `BACKUP_RETENTION_DAYS`). See [`deploy/selfhost/README.md` § Data persistence, backups & restore](../deploy/selfhost/README.md). The full-volume snapshot below is the simplest way to capture everything (DB, uploads, and generated backups) in one archive.
+>
+> **Freshness is checkable** since v2.53.0: `node scripts/check-backup-freshness.js /data/backups` reports the age of the newest nightly backup (exit 0 fresh / 1 stale>26h / 2 missing or `--strict`), and `GET /api/health` carries `backup: {newest, ageHours, stale}` — a green directory no longer has to be trusted on faith. Every schema migration also takes an automatic `VACUUM INTO` snapshot of the live DB before it begins (3 kept), so an interrupted migration leaves a pre-migration copy beside the database.
 
 ### Backup
 
@@ -1338,9 +1340,13 @@ operations.
 
 ### Security model
 
-- The channel authenticates with its **own** sync token (`GLASSY_SYNC_TOKEN`)
-  — separate from the self-host pairing token and your login session. Rotate
-  or revoke it any time from **Settings → Cloud Sync** on the cloud side.
+- The channel authenticates with its **own** sync token — the peer-minted
+  credential stored now in **Settings → Cloud Sync → "Pair token"** (encrypted
+  at rest with the API-key machinery, resolved at every cycle — no restart) or,
+  as the bootstrap/recovery path, `GLASSY_SYNC_TOKEN` in `.env` (a saved
+  Settings token wins from its next cycle). Separate from the self-host pairing
+  token (`GLASSY_SELFHOST_TOKEN`) and your login session. Rotate or revoke the
+  cloud-issued token any time from **Settings → Cloud Sync** on the cloud side.
 - S2S change and media-serving endpoints check the sync token's owner.
   Do not generalize this to all local diagnostics: beta.40's missing-media
   scan and download-candidate collection are instance-wide. Health counters
@@ -1409,8 +1415,9 @@ availability; the alternative is the peer re-delivering an un-applyable row fore
   clouds) are skipped during migration; live rows are attributed from their
   source table and are unaffected.
 - **Appliance says "no peers connected yet":** the cloud side hasn't seen a
-  handshake since the token was set — verify `GLASSY_SYNC_TOKEN` and
-  `GLASSY_VERIFY_CLOUD_URL`, then **Sync now**.
+  handshake since the credential was set — verify the Pair token
+  (Settings → Cloud Sync shows whether one is stored, encrypted) or the
+  `GLASSY_SYNC_TOKEN` env fallback, `GLASSY_VERIFY_CLOUD_URL`, then **Sync now**.
 
 ---
 

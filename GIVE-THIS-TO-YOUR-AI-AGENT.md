@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.46.1** (October 17, 2026). The numbers and surfaces in this brief are
+**v2.53.0** (October 27, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -1040,8 +1040,15 @@ Remaining known self-host quirks worth knowing:
 - **#25** `check-url`/fetch validation rejects `localhost` targets in a
   few legacy call sites on self-host; use `127.0.0.1` or the tailnet host
   where possible.
-- Cloud sync is intentionally OFF unless `GLASSY_SYNC_TOKEN` is set
-  (`/api/sync-token` reports `envTokenSet: false`).
+- Cloud sync is intentionally OFF until a credential exists: the peer-minted
+  sync token pasted in Settings → Cloud Sync (stored **encrypted** on the
+  `sync_peers` row, resolved per cycle — no restart) or the bootstrap/legacy
+  `GLASSY_SYNC_TOKEN` env var. `/api/sync-token/settings` reports `hasToken`
+  and `GET /api/sync-token/health` reports `credentialSource: settings | env |
+  null` (never a value); the S2S budget's unit is a CYCLE — the peer's
+  `syncLane` manifest fields (`cycleHeader`, `freeCyclesPerHour`,
+  `maxRequestsPerCycle`, `SYNC_CYCLE_TOO_LARGE`) describe it, and a 429 always
+  carries `Retry-After` plus `retry_after_ms`.
 
 ## Connecting an agent to the Agent Gateway (live-verified recipe, beta.40)
 
