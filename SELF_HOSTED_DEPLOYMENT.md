@@ -235,7 +235,8 @@ up the email, confirms the membership is active, and verifies the token matches
 the one stored hashed in your account. It returns one of:
 
 - `{ valid: true, tier: "clear_lifetime", ts, nonce, signature }` — active
-  membership + token match. `signature` is an HMAC over `(email|tier|ts|nonce)`
+  membership + token match. `signature` is an Ed25519 signature over
+  `(email|tier|ts|nonce)`
   so the cached result cannot be forged on your disk.
 - `{ valid: false }` — any failure (no account, no membership, missing/mismatched
   token). The endpoint deliberately does **not** distinguish reasons to prevent
@@ -327,13 +328,13 @@ Your .env: GLASSY_MEMBER_EMAIL=you@example.com
 - The pairing token prevents anyone who merely knows your email from spinning
   up an unlocked instance using your membership. Keep it private; rotate it if
   it leaks.
-- The membership cache is HMAC-signed by the cloud; a forged cache file on your
+- The membership cache is Ed25519-signed by the cloud; a forged cache file on your
   disk will fail signature verification and degrade to a 24h TTL (or be rejected
   if unsigned and older than 7 days past expiry).
 - The `JWT_SECRET` in your `.env` is the only signing key for session tokens.
   Rotate it by editing `.env` and restarting (this invalidates all existing sessions).
 - The membership cache file (`.membership_cache.json`) contains your email, the
-  tier string, a timestamp, a nonce, and an HMAC signature — no passwords, no
+  tier string, a timestamp, a nonce, and an Ed25519 signature — no passwords, no
   tokens, no secrets beyond the signature itself.
 
 ---
