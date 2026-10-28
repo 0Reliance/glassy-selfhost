@@ -1344,9 +1344,10 @@ operations.
   credential stored now in **Settings → Cloud Sync → "Pair token"** (encrypted
   at rest with the API-key machinery, resolved at every cycle — no restart) or,
   as the bootstrap/recovery path, `GLASSY_SYNC_TOKEN` in `.env` (a saved
-  Settings token wins from its next cycle). Separate from the self-host pairing
-  token (`GLASSY_SELFHOST_TOKEN`) and your login session. Rotate or revoke the
-  cloud-issued token any time from **Settings → Cloud Sync** on the cloud side.
+  Settings token wins from its next cycle). Separate from the self-host
+  membership token (`GLASSY_SELFHOST_TOKEN`) and your login session. Rotate or
+  revoke the receiver-issued token any time from **Settings → Cloud Sync** on
+  the receiving instance — cloud or self-hosted.
 - S2S change and media-serving endpoints check the sync token's owner.
   Do not generalize this to all local diagnostics: beta.40's missing-media
   scan and download-candidate collection are instance-wide. Health counters

@@ -6,8 +6,11 @@
 > This is the walkthrough behind Settings → Zero Reliance Pair on the cloud.
 > Any Glassy account can do this: since D3 (2026-10-24) the **pairing token is
 > the anchor, not the membership** — no tier is checked anywhere on the sync
-> path. (The cloud Settings *pane* is still shown to Pair holders and active
-> Clear members; the manual steps below need no entitlement at all.)
+> path. (The cloud Settings *pane* is shown to Pair holders, active Clear
+> members, and — since 2026-10-27 — lapsed Clear members now see a courtesy
+> card there instead of the row silently vanishing: a pair already configured
+> keeps running, and the card names both restoration paths. The manual steps
+> below need no entitlement at all.)
 
 ## What you are building
 
@@ -69,8 +72,9 @@ The **home appliance presents the token; the VPS validates it.** Two ways, newes
 first (2026-10-27):
 
 - **Settings → Cloud Sync → "Pair token" on the home appliance** — paste the
-  token and click away. It is stored **encrypted**, resolved at every cycle, and
-  the automated scheduler starts itself: **no restart, no .env.**
+  token and choose **Save Cloud Sync settings**. It is stored **encrypted**,
+  resolved at every cycle, and the automated scheduler starts itself:
+  **no restart, no .env.**
 - **`.env` (bootstrap/recovery)**: set `GLASSY_SYNC_TOKEN=<the token>` and
   restart the appliance container. The token is read at boot there — editing
   `.env` alone does nothing until the restart. (A token saved in Settings WINS
