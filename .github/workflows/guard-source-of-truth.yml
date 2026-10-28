@@ -55,7 +55,7 @@ jobs:
           # Must stay in lockstep with SYNC_PAIRS in
           # glassy/scripts/check-selfhost-sync.js, which is verified upstream by
           # server/tests/selfhostSync.test.js.
-          CI_OWNED='docker-compose.yml docker-compose.https.yml docker-compose.ollama.yml docker-compose.watchtower.yml Caddyfile .env.example SELF_HOSTED_DEPLOYMENT.md GIVE-THIS-TO-YOUR-AI-AGENT.md'
+          CI_OWNED='docker-compose.yml docker-compose.https.yml docker-compose.ollama.yml docker-compose.watchtower.yml Caddyfile .env.example PAIRING.md SELF_HOSTED_DEPLOYMENT.md GIVE-THIS-TO-YOUR-AI-AGENT.md'
 
           if [ "$EVENT" = 'pull_request' ]; then
             RANGE="$PR_BASE..$HEAD_SHA"

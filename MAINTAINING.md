@@ -18,7 +18,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 
 The installer repo's `docker-compose.yml` pulls the GHCR image
 `ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?…}`. **`GLASSY_TAG` is required and
-must name a released version** (e.g. `v2.40.6`): compose refuses to start
+must name a released version** (e.g. `v2.55.0`): compose refuses to start
 without it, and `latest` is the wrong value.
 
 ### Which tag to reference: `latest` is the hosted build, not the appliance
@@ -27,7 +27,7 @@ Two workflows publish images, and they do **not** build the same thing:
 
 | Workflow | Trigger | Tags | Self-host build flags |
 |---|---|---|---|
-| `publish-image.yml` | version tag | `v2.40.0` | **yes** — `INSTANCE_ID=self_hosted` + all four `VITE_ENABLE_*` |
+| `publish-image.yml` | version tag | `v2.55.0` | **yes** — `INSTANCE_ID=self_hosted` + all four `VITE_ENABLE_*` |
 | `release-image.yml` | every push to `main` | `latest`, `main` | **no** — built without them |
 
 So `:latest` and `:main` move constantly and always carry the *hosted* bundle.
@@ -61,6 +61,10 @@ change to them in the `glassy` repo, you must sync them to
 the above on every push to `main`: `.env.example`, the base `docker-compose.yml`,
 three of the four overlays (`https`, `ollama`, `watchtower`), `Caddyfile`,
 `SELF_HOSTED_DEPLOYMENT.md` and `GIVE-THIS-TO-YOUR-AI-AGENT.md`.
+
+**`PAIRING.md` is CI-owned too.** Its source of truth is
+`glassy/deploy/selfhost/PAIRING.md`; both release workflows copy it and
+`check-selfhost-sync.js` compares it byte-for-byte.
 
 **`docker-compose.tailscale.yml` is the one exception.** It *does* exist upstream
 at `glassy/deploy/selfhost/docker-compose.tailscale.yml` and the two copies are
@@ -121,7 +125,7 @@ CI-owned file is rejected by `guard-source-of-truth.yml`, so following the old
    `:main` and `:latest` are **hosted** builds without the self-host feature
    flags, so a green check against them proves nothing about the appliance:
    ```bash
-   TAG=v2.40.0   # the release you just published
+   TAG=v2.55.0   # the release you just published
    docker pull "ghcr.io/0reliance/glassy-dash:${TAG}"
    docker inspect "ghcr.io/0reliance/glassy-dash:${TAG}" \
      --format '{{index .Config.Labels "org.opencontainers.image.revision"}}'
@@ -161,7 +165,7 @@ After pushing to `glassy` `main` and the GHCR build completes:
 ```bash
 # The appliance build is the VERSIONED tag. :main / :latest are the hosted
 # variant and omit the self-host feature flags — checking them proves nothing.
-TAG=v2.40.0
+TAG=v2.55.0
 docker pull "ghcr.io/0reliance/glassy-dash:${TAG}"
 
 # Check the revision label matches the commit you pushed

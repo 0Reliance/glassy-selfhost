@@ -1,6 +1,6 @@
 # Glassy — self-hosted
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.53.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.55.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
 [![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
@@ -29,7 +29,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.53.0>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.55.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -218,7 +218,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.53.0`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.55.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -341,11 +341,11 @@ OBSIDIAN_NETWORK_ALLOWLIST=192.168.1.10,glassy.tail-net.ts.net
 
 Cloud Sync keeps notes, documents, bookmarks, voice recordings,
 conversations, pinned tags, collections, highlights, and custom backgrounds
-two-way in sync between this appliance and your
-Glassy cloud account (app.glassy.fyi or clear.glassy.fyi). It is separate
-from the self-host pairing token — sync uses its own per-peer token that you
-generate and rotate independently from Settings → Cloud Sync on the cloud
-side.
+two-way in sync between this appliance and a receiving Glassy instance — your
+cloud account (app.glassy.fyi or clear.glassy.fyi), or a private VPS in a Zero
+Reliance Pair. It is separate from the self-host membership token: sync uses
+its own per-peer token that you generate and rotate independently from
+Settings → Cloud Sync on the receiving instance.
 
 Beta.40 adds appliance-side downloads of missing note images and custom-background
 renditions after row sync. Voice audio uses a separate download path. The server
@@ -355,19 +355,18 @@ cycles; this is not two-way file replication. Back up appliance-origin media.
 
 ### Enabling Cloud Sync
 
-1. In your **Glassy cloud account** (app.glassy.fyi or clear.glassy.fyi), open
-   **Settings → Cloud Sync** and click **Generate token**. Copy the raw token
-   (it is shown only once).
-2. In this appliance's `.env`, paste the token and set the cloud URL:
-   ```bash
-   GLASSY_SYNC_TOKEN=<paste-token-from-cloud>
-   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi   # or https://clear.glassy.fyi
-   ```
-3. Restart the container: `docker compose up -d`. The scheduler starts on
-   boot when `GLASSY_SYNC_TOKEN` is set and `INSTANCE_ID=self_hosted`.
-4. Verify in the self-hosted web app at **Settings → Cloud Sync** — you should
-   see the peer connection status, pending outbound count, and per-type
-   cursor state. Click **Sync now** to trigger an immediate cycle.
+1. On the **receiving** instance — your cloud account, or the private VPS in a
+   Pair — open **Settings → Cloud Sync** and click **Generate**. Copy the raw
+   token (it is shown only once).
+2. On the **sending appliance**, paste it into **Settings → Cloud Sync → "Pair
+   token"**, enter the receiver in **Syncs to**, and save. The token is stored
+   **encrypted** and both values take effect from the next cycle, **no
+   restart**. (Bootstrap/recovery alternative: put the token and peer URL in
+   `.env` as `GLASSY_SYNC_TOKEN` and `GLASSY_SYNC_PEER_URL` and restart; a token
+   saved in Settings wins from its next cycle onward.)
+3. Verify in the self-hosted web app at **Settings → Cloud Sync** — you should
+   see the peer connection status, `credentialSource`, pending outbound count,
+   and per-type cursor state. Click **Sync now** to trigger an immediate cycle.
 
 ### Tuning the scheduler (optional)
 
@@ -382,13 +381,13 @@ reach the peer within ~10 seconds.
 
 ### Per-type, direction, and conflict controls
 
-In the cloud-side Settings → Cloud Sync panel you can:
+In **Settings → Cloud Sync** on each side you can:
 - Toggle individual content types on/off (notes, documents, bookmarks, voice,
   conversations, pinned tags, etc.). Disabled types pause in the outbox —
   they're held (not lost) and flow again when you re-enable them.
-- Set the sync direction for the pairing (push-only, pull-only, or two-way).
+- Set the sync direction on the sending appliance (push-only, pull-only, or two-way).
 - Set the conflict policy: `most-recent` (last-writer-wins, the default) or
-  `cloud-wins` (always apply the incoming cloud version).
+  `cloud-wins` (always apply the incoming version).
 
 Deletes sync fully for notes, documents, folders, and voice recordings. For
 bookmarks, collections, highlights, conversations, and pinned tags, deletes are
