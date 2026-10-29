@@ -379,27 +379,38 @@ Replace `target@example.com` with the sub-account's email and `NewPassword123!` 
 
 ### Option B — Docker exec (admin locked out)
 
-If the admin account itself is inaccessible, use `docker exec` to reset the password directly in the database. The runtime image already includes `bcryptjs`, so no host-side tools are needed:
+If the admin account itself is inaccessible, reset the password directly in the database with a one-off container. The runtime image already includes `sqlite3` and `bcryptjs`, so no host-side tools are needed. Run this from your `glassy-selfhost` folder so it uses **your pinned image** (never `latest`, which is the hosted build):
 
 ```bash
 # Stop the container first to avoid write conflicts:
 docker compose down
 
-# Reset the admin password (replace TempPass123! with your new password
-# and your GLASSY_MEMBER_EMAIL with the actual admin email):
+# Your pinned version, read from .env:
+TAG=$(grep '^GLASSY_TAG=' .env | cut -d= -f2)
+
+# Reset the admin password (replace TempPass123! with a temporary password
+# and your.member@email.com with your GLASSY_MEMBER_EMAIL):
 docker run --rm -v glassy-selfhost_glassy-data:/app/data \
-  --entrypoint node ghcr.io/0reliance/glassy-dash:latest -e "
-const Database = require('better-sqlite3');
+  --entrypoint node "ghcr.io/0reliance/glassy-dash:${TAG}" -e "
+const sqlite3 = require('sqlite3');
 const bcrypt = require('bcryptjs');
-const db = new Database('/app/data/notes.db');
+const db = new sqlite3.Database('/app/data/notes.db');
 const hash = bcrypt.hashSync('TempPass123!', 12);
-db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(hash, 'your.member@email.com');
-console.log('Password reset for your.member@email.com');
-db.close();
+db.run(
+  'UPDATE users SET password_hash = ?, password_must_change = 1 WHERE email = ?',
+  [hash, 'your.member@email.com'],
+  function (err) {
+    if (err) { console.error('Reset failed:', err.message); process.exit(1); }
+    console.log(this.changes === 1 ? 'Password reset — you will be asked to change it at login.' : 'No user has that email — nothing changed.');
+    db.close();
+  }
+);
 "
 
 docker compose up -d
 ```
+
+The image ships `sqlite3`, not `better-sqlite3`. The script says plainly when the email matches no user rather than reporting success, and it sets the change-password-at-login flag, so the temporary password is replaced on first sign-in.
 
 > **The volume path differs by Docker backend.** On Docker Desktop (WSL2/macOS), the volume is inside the Docker VM — don't try to access it via `/var/lib/docker/volumes` on the host. The `docker run` command above works on all platforms because it mounts the named volume directly.
 >

@@ -266,19 +266,29 @@ break all at once and fall back to re-authenticating with the owner's raw passwo
 named key is rotated deliberately, one agent at a time, and revoking it does not touch
 anyone else.
 
-Claude Desktop example (the UI shows this exact snippet): paste into
-`~/.config/Claude/claude_desktop_config.json`:
+Client setup — each client takes a different shape (the settings panel shows all three):
+
+- **Claude Desktop** launches local (stdio) servers only; a `url` entry in
+  `claude_desktop_config.json` is ignored. Reach Glassy through the `mcp-remote` bridge
+  (Node.js required); the key goes in an env var because Claude Desktop on Windows does not
+  escape spaces inside `args`. Add `"--allow-http"` to `args` for a plain-http appliance
+  reached by anything other than `localhost`/`127.0.0.1`. Restart Claude Desktop after editing.
 
 ```json
 {
   "mcpServers": {
     "glassy": {
-      "url": "http://localhost:3010/mcp",
-      "headers": { "Authorization": "Bearer gky_mcp_..." }
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:3010/mcp", "--header", "Authorization:${GLASSY_AUTH}"],
+      "env": { "GLASSY_AUTH": "Bearer gky_mcp_..." }
     }
   }
 }
 ```
+
+- **Claude Code:** `claude mcp add --transport http glassy http://localhost:3010/mcp --header "Authorization: Bearer gky_mcp_..."`
+- **Cursor** reads `url` + `headers` directly:
+  `{"mcpServers": {"glassy": {"url": "http://localhost:3010/mcp", "headers": {"Authorization": "Bearer gky_mcp_..."}}}}`
 
 ### The 42 tools
 
