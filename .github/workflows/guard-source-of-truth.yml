@@ -43,6 +43,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Assert the canon (pin + embeddings default)
+        run: |
+          set -euo pipefail
+          pin=$(grep -oE '^GLASSY_TAG=v[0-9]+\.[0-9]+\.[0-9]+$' .env.example | head -1 | cut -d= -f2)
+          readme_pin=$(grep -oE 'e\.g\. v[0-9]+\.[0-9]+\.[0-9]+' README.md | head -1 | awk '{print $2}')
+          if [ -z "$pin" ]; then echo "::error::.env.example has no GLASSY_TAG pin"; exit 1; fi
+          if [ "$pin" != "$readme_pin" ]; then
+            echo "::error::README pin ($readme_pin) != .env.example pin ($pin)"; exit 1
+          fi
+          grep -q '^ENABLE_FIRST_PARTY_EMBEDDINGS=false$' .env.example || {
+            echo "::error::.env.example must ship ENABLE_FIRST_PARTY_EMBEDDINGS=false"; exit 1; }
+          grep -q 'installer ships it `false`' SELF_HOSTED_DEPLOYMENT.md || {
+            echo "::error::SELF_HOSTED_DEPLOYMENT.md must state the installer embeddings default false"; exit 1; }
+          echo "canon: pin $pin; embeddings lane default false"
+
       - name: Reject human edits to CI-owned installer files
         env:
           EVENT: ${{ github.event_name }}
