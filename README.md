@@ -1,6 +1,6 @@
 # Glassy — self-hosted
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.56.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.57.0-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
 [![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
@@ -29,7 +29,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.56.0>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.57.0>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -218,7 +218,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.56.0`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.57.0`), never `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
