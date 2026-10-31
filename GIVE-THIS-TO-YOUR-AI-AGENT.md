@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.57.0** (October 30, 2026). The numbers and surfaces in this brief are
+**v2.58.0** (October 30, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -1192,7 +1192,7 @@ sync health, so a nonzero value is the thing to look at before concluding
   ran. The Import/Export settings panel is the operator's separate *manual* snapshot
   lane, not this schedule.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.57.0`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.58.0`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features). **Three versions in `CHANGELOG.md` have no GHCR image and must
   never be pinned:** `v2.36.0-beta.41` (its tag push landed inside a transient
