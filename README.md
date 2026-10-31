@@ -199,7 +199,7 @@ GLASSY_MEMBER_EMAIL (your email)
 | Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
 | Ollama local AI | No | Yes |
 | Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
-| MCP server + Second Brain (42 tools on the appliance; 37 on cloud) | Not offered on cloud | Yes — unthrottled, no tool-call rate limits |
+| MCP server + Second Brain (42 tools on the appliance; 37 on cloud) | Yes — 37 tools, single shared key, 120/1,200 calls per hour | Yes — 42 tools, unthrottled, no tool-call rate limits |
 | Named per-agent MCP keys (agent identity) | Single shared key | Yes — one named key per agent, pinned to a verified identity (`/api/mcp-keys`) |
 | Agent awareness lane (`glassy_notify`) + aging-review escalation | Not available | Yes — ≤10 notifications/min per key by design |
 | Data location | Cloud VM | Your machine (`glassy-data` volume) |
