@@ -31,11 +31,11 @@
 | Notes, tags, folders, trash | ✅ | ✅ |
 | GlassyKeep (Markdown knowledge base) | Every account (D4) | ✅ unlocked |
 | GlassyCalc (spreadsheet) | Every account (D4) | ✅ unlocked |
-| Custom themes | Pro only | ✅ unlocked |
+| Custom themes | Purchased theme pack (add-on) | ✅ unlocked |
 | Voice Studio | Every account (D4) | ✅ unlocked |
-| Knowledge base (KB) | Pro only | ✅ unlocked |
+| Knowledge base (KB) | Every account — the `#/kb` workspace reads the same MCP lane | ✅ unlocked |
 | MCP server + Second Brain | Every account — single-key MCP lane, tier-rated (R4); notify/review tools withheld | ✅ unlocked (all 42 tools, named keys) |
-| Agent Gateway (OpenClaw / Hermes) | Pro only | ✅ unlocked — LAN/Tailscale `baseUrl`s allowed on self-host (beta.40, #37); cloud keeps the strict allowlist |
+| Agent Gateway (OpenClaw / Hermes) | ❌ — appliance only, by design | ✅ unlocked — LAN/Tailscale `baseUrl`s allowed on self-host (beta.40, #37); cloud keeps the strict allowlist |
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
