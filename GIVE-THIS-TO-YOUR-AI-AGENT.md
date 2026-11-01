@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.60.0** (October 31, 2026). The numbers and surfaces in this brief are
+**v2.60.1** (November 1, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -324,6 +324,15 @@ guarantee.
 `glassy_obsidian_query` and `glassy_obsidian_proxy` reach the operator's
 Obsidian vault through the local REST API plugin — they work even when the
 Glassy UI is not focused.
+
+**Reference codes.** Every note and document has a short, human-readable `ref`
+(an 8-character code like `7K3MQPZ2`) alongside its full `id`. The owner can
+click-to-copy it from the card's hover badge and hand it to you. Wherever a
+tool takes an `id` for a note or document — `glassy_read_note`,
+`glassy_read_document`, `glassy_note_update`, `glassy_update_document` — you
+may pass the `ref` instead (bare, or `note:`/`doc:`-prefixed, e.g.
+`note:7K3MQPZ2`). List/read/recall responses surface the `ref` so you can cite
+the short code back to the owner rather than the full UUID.
 
 **No-Obsidian operators (agent-as-vault-provider, #158).** On a self-host, the
 operator may declare one dispatch connection the *vault provider*
