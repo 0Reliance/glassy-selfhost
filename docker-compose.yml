@@ -11,7 +11,7 @@ services:
     # ⚠️ GLASSY_TAG must be a pinned version, NOT `latest`. The floating `latest`
     # tag is the HOSTED build: release-image.yml rebuilds it without the
     # self-host build-time flags (VITE_ENABLE_MCP_SERVER/KB_UI/AGENT_GATEWAY/
-    # BYOK), so on `latest` the AI tools (MCP), Second Brain, Agent connections
+    # BYOK), so on `latest` the Agent access (MCP), Second Brain, Agent dispatch
     # and API keys (BYOK) settings are hidden and a "You are on the cloud"
     # banner appears on your own appliance. Versioned tags carry all flags.
     # See DEPLOYMENT_RUNBOOK.md "GHCR tag semantics".
@@ -69,6 +69,7 @@ services:
       - ENABLE_HYBRID_SEARCH=${ENABLE_HYBRID_SEARCH:-true}
       - ENABLE_MCP_BRIDGE=${ENABLE_MCP_BRIDGE:-true}
       - ENABLE_AGENT_GATEWAY=${ENABLE_AGENT_GATEWAY:-true}
+      - AGENT_SESSION_RETENTION_DAYS=${AGENT_SESSION_RETENTION_DAYS:-90}
       # ── Appliance-only capabilities ────────────────────────────────
       # These two are DEFAULT-OFF in code (server/config/featureFlags.js)
       # because on the cloud they are either a billing bypass or a hosted-only
@@ -78,7 +79,7 @@ services:
       #                            BYOK_DISABLED for every provider-key write
       #                            while the UI (baked VITE_ENABLE_BYOK=true in
       #                            versioned images) still shows the section.
-      #   ENABLE_CALENDAR_AUTOMATION — without it event-triggered Agent Gateway
+      #   ENABLE_CALENDAR_AUTOMATION — without it event-triggered agent dispatch
       #                            dispatch is silently skipped by the
       #                            scheduler (it is permanently OFF on the
       #                            hosted instances by product decision).

@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.58.0** (October 30, 2026). The numbers and surfaces in this brief are
+**v2.60.0** (October 31, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -47,7 +47,7 @@ is yours:
 | You were given | You are | Your section |
 |---|---|---|
 | A `gky_mcp_…` key + `http://<host>:3010/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
-| A `baseUrl` + `token` the owner entered under Settings → Agent connections | An Agent Gateway connection — Glassy calls *you* | [Connecting an agent to the Agent Gateway](#connecting-an-agent-to-the-agent-gateway-live-verified-recipe-beta40) |
+| A dispatch connection the owner added under Settings → Agent dispatch | A dispatch target — Glassy calls *you* over a harness transport | [Connecting an agent as a dispatch target](#connecting-an-agent-as-a-dispatch-target) |
 | The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-42-tools) |
 | A named agent key, on `GET /api/*` | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
 | The seed password, or you're installing | The owner | [First boot](#first-boot-as-an-agent-a-clean-self-host-install) |
@@ -163,8 +163,8 @@ URL:     http://<host>:3010/mcp
 Auth:    Authorization: Bearer <mcp-key>
 ```
 
-Both kinds of key live in **one** panel: **Settings → Connections & data → AI tools
-(MCP)**. ("Connections & data" is the group; "AI tools (MCP)" is the panel.) The
+Both kinds of key live in **one** panel: **Settings → Connections & data → Agent
+access (MCP)**. ("Connections & data" is the group; "Agent access (MCP)" is the panel.) The
 instance key is at the top, named agent keys below it. Either can be revoked from
 there, and both are scoped to this instance only.
 
@@ -176,7 +176,7 @@ The same MCP server serves **two origins** with deliberately different shapes.
 
 | | **Appliance** (`http://<host>:3010/mcp`) | **Cloud** (`https://app.glassy.fyi/mcp`, `https://clear.glassy.fyi/mcp`) |
 |---|---|---|
-| Key model | Named per-agent keys + instance key — ask for a named key if you will write | **Single user-scoped key** — the account owner's own key, minted in Settings → AI tools (MCP). Named keys are not offered here |
+| Key model | Named per-agent keys + instance key — ask for a named key if you will write | **Single user-scoped key** — the account owner's own key, minted in Settings → Agent access (MCP). Named keys are not offered here |
 | Identity | Named keys are pinned and verified; the instance key is self-declared | Self-declared (`identityMode: "self-declared"`, `verified: false`) — you act as the account owner's MCP client |
 | Tools | All 42 | 37 — `glassy_notify` and the review-queue tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
 | Budget | No tool-call budget — the owner's hardware | Tier-rated by `mcpTierLimiter`: free accounts 120 calls/hour, paid accounts 1,200/hour |
@@ -212,6 +212,12 @@ infer it from the key's prefix, which cannot distinguish the two. Read the
 `verified: false` means the instance is trusting a name you declared about yourself.
 That is fine for reading; it is why your writes are attributed to "MCP agent" rather
 than to you.
+
+**A named key may be read-only (W-2).** The operator can mint a key with scope
+`read` — it can query, search, list and recall, but every write tool answers a
+machine-readable `scope_denied` (`errorClass: "scope_denied"`). `glassy://status`
+reports the scope. A read-only principal is the right choice for an agent the owner is
+still getting to know; a full key (`read` + `write`) is the default and unchanged.
 
 **The config snippet prefers the named key (#161).** The snippet the operator pastes
 into your client (`GET /api/agents/:id/config`) used to always carry the anonymous
@@ -320,7 +326,7 @@ Obsidian vault through the local REST API plugin — they work even when the
 Glassy UI is not focused.
 
 **No-Obsidian operators (agent-as-vault-provider, #158).** On a self-host, the
-operator may declare one Agent Gateway connection the *vault provider*
+operator may declare one dispatch connection the *vault provider*
 (`config_json.vaultProvider: true`). Then `glassy_vault_read` / `glassy_vault_append`
 dispatch to that agent — which holds the filesystem — instead of failing on the missing
 Obsidian stack. The contract is deterministic: a `[glassy-vault-provider]` instruction
@@ -1060,10 +1066,60 @@ Remaining known self-host quirks worth knowing:
   `maxRequestsPerCycle`, `SYNC_CYCLE_TOO_LARGE`) describe it, and a 429 always
   carries `Retry-After` plus `retry_after_ms`.
 
-## Connecting an agent to the Agent Gateway (live-verified recipe, beta.40)
+## Connecting an agent as a dispatch target
 
-Settings → Agent connections → add a **Hermes** connection. Two fields trip
-everyone up:
+Dispatch is the opposite direction from MCP: Glassy starts a session on you,
+sends a turn, and consumes normalized events. The catalog is
+`shared/agentHarnesses.json`; the operator guide is
+[`docs/AGENT_HARNESSES.md`](docs/AGENT_HARNESSES.md). A harness has a
+**role** (knowledge, dispatch, or both), a **transport**, a **placement**, and an
+**approval boundary**.
+
+| Transport | What the owner selects | What you must expose |
+|---|---|---|
+| `agents-api` | Claude Managed Agents, OpenAgentCore/OpenAI Agents API | `POST /v1/sessions` + `POST /v1/sessions/:id/events` + SSE (Anthropic), or `/v1/agents/sessions` (OpenAI shape) |
+| `acp` | OpenCode ACP, MiniMax `mcode acp` | JSON-RPC stdio: `initialize`, `session/new`, `session/prompt`, permission requests |
+| `app-server` | Codex App Server | JSON-RPC stdio: `initialize`, `thread/start`, `turn/start`, notifications, approvals |
+| `http` | OpenCode `serve`, Hermes, OpenClaw, Gemini API | The provider's HTTP session/message endpoint |
+| `cli` | Claude Code, `codex exec`, `mcode exec`, `gemini -p` | A headless executable on the server's `PATH`; no shell |
+
+The session API (all owner-scoped, under `/api/agents`):
+
+```bash
+# 1. create a session on the connection's transport
+POST /api/agents/:connectionId/sessions   {"title":"…"}
+# 2. send a turn
+POST /api/agents/sessions/:sessionId/turns {"input":"…","options":{…}}
+# 3. read it back
+GET  /api/agents/sessions/:sessionId            # session + events + approvals
+GET  /api/agents/sessions/:sessionId/events     # JSON; add ?stream=1 for SSE
+POST /api/agents/sessions/:sessionId/approvals/:approvalId {"decision":"approve"|"deny"}
+POST /api/agents/sessions/:sessionId/cancel
+```
+
+A turn returns `200` when it completes. If an `acp` or `app-server` transport
+asks for permission, it returns **`202` with `pendingApproval: true`**: the
+`approval.requested` event is already persisted, the prompt continues in the
+background, and the owner decides in the panel. A transport that cannot do
+interactive approvals reports `approvals: false`; do not wait for a card that
+will never arrive.
+
+Normalized event types: `session.created`, `turn.started`, `message.delta`,
+`message.completed`, `tool.call`, `tool.result`, `approval.requested`,
+`approval.resolved`, `turn.completed`, `session.idle`, `error`.
+
+Placement is part of the contract: `local` transports (`acp`, `app-server`,
+`cli`) are refused on every hosted instance (Clear included); `self_hosted_sandbox`
+and `cloud` go through `agents-api`. The executable and argv of a local transport
+come from `shared/agentHarnesses.json`, never from request config, and the child
+receives an allowlisted environment rather than the server's. The
+`GET /api/agents/harnesses` response is the authoritative catalog, and
+`GET /api/capabilities` carries the `agentGateway` block.
+
+### Legacy HTTP gateways (Hermes / OpenClaw)
+
+Settings → Agent dispatch → add a **Hermes** or **OpenClaw** connection. Two
+fields trip everyone up:
 
 1. **baseUrl** must be reachable *from the Glassy container*, not from your
    browser: `http://host.docker.internal:<port>` where `<port>` is the agent
@@ -1077,10 +1133,11 @@ everyone up:
 
 Verify from inside the container before dispatching:
 `curl -4 http://host.docker.internal:<port>/health` → `{"status":"ok",…}`.
-Dispatch is `POST /api/agents/:id/task` with body `{"task": "…"}` — the key
-is `task`, not `prompt`. Note `GET /api/agents/discover` probes a hardcoded
-`127.0.0.1:8642` and may report "not reachable" even when your configured
-connection dispatches fine (#84).
+The legacy one-shot is `POST /api/agents/:id/task` with body `{"task": "…"}` —
+the key is `task`, not `prompt`. Prefer the session API above; the shim now
+creates a real session for stateful transports. `GET /api/agents/discover` is a
+convenience probe, not the dispatch path: a configured connection can dispatch
+while discovery reports "not reachable".
 
 Facts that make the recipe work, in case the fields are already filled oddly:
 
@@ -1088,12 +1145,14 @@ Facts that make the recipe work, in case the fields are already filled oddly:
   (`extra_hosts: ['host.docker.internal:host-gateway']`). The bundled appliance
   compose has it; **the Tailscale overlay does not** — on `docker-compose.tailscale.yml`
   use the host's tailnet name or IP instead.
-- **Ports by framework:** Hermes `8642` (default profile; profile installs often
-  `8643`), OpenClaw `18789`. Antigravity is the cloud framework — it needs a
-  Google API key and no local gateway at all.
+- **Ports by harness:** Hermes `8642` (default profile; profile installs often
+  `8643`), OpenClaw `18789`, OpenCode `4096` with `opencode serve`. Codex
+  App Server and `mcode acp` speak stdio and need no port. Antigravity is the
+  legacy Gemini API adapter — a cloud model API, not a full harness.
 - **`GET /api/agents/activity`** is where the dispatch log lives (action,
-  `task_text`, `response_text`, timestamp). A dispatch that "did nothing" is
-  usually visible there as an `error` row with the upstream message.
+  `task_text`, `response_text`, timestamp); the Agents workspace renders the same
+  history as a session timeline. A dispatch that "did nothing" is usually an
+  `error` row there with the upstream message.
 - **The response's `sessionId` is a session KEY, not a receipt** (#149). Send it
   back as `{"task":"…","options":{"sessionId":"<that value>"}}` to continue the
   same conversation. It used to carry the provider's per-call completion id
@@ -1133,9 +1192,11 @@ Facts that make the recipe work, in case the fields are already filled oddly:
   instance accepts any host (`getAgentSsrfOptions`, `server/utils/urlValidator.js`),
   which is what allows a LAN or Tailscale address. Don't "fix" a self-host baseUrl
   to loopback to satisfy a validator — that is the bug, not the fix.
-- **From 2.39.0** the appliance's framework selector offers OpenClaw and Hermes.
-  Before that they were gated on the Clear instance identity, which an appliance
-  never reports, so only Antigravity was selectable (#85).
+- **The catalog is data, not a hardcoded vendor list.** Read
+  `GET /api/agents/harnesses` or `shared/agentHarnesses.json` to see the
+  harnesses, their roles, transports and placements. A GUI-only editor may have
+  knowledge access and no dispatch entry — that is the honest state, not a
+  missing adapter.
 
 ## Embeddings: switching models and the reindex recovery path
 
@@ -1192,7 +1253,7 @@ sync health, so a nonzero value is the thing to look at before concluding
   ran. The Import/Export settings panel is the operator's separate *manual* snapshot
   lane, not this schedule.
 - **Ports:** 3010 (HTTP app) in this deployment.
-- **Updates:** pinned `GLASSY_TAG` (currently `v2.58.0`); do not float
+- **Updates:** pinned `GLASSY_TAG` (currently `v2.60.0`); do not float
   `latest` on self-host (it is the hosted build and omits self-host
   features). **Three versions in `CHANGELOG.md` have no GHCR image and must
   never be pinned:** `v2.36.0-beta.41` (its tag push landed inside a transient

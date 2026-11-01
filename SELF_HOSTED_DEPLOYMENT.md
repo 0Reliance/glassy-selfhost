@@ -35,7 +35,8 @@
 | Voice Studio | Every account (D4) | ✅ unlocked |
 | Knowledge base (KB) | Every account — the `#/kb` workspace reads the same MCP lane | ✅ unlocked |
 | MCP server + Second Brain | Every account — single-key MCP lane, tier-rated (R4); notify/review tools withheld | ✅ unlocked (all 42 tools, named keys) |
-| Agent Gateway (OpenClaw / Hermes) | ❌ — appliance only, by design | ✅ unlocked — LAN/Tailscale `baseUrl`s allowed on self-host (beta.40, #37); cloud keeps the strict allowlist |
+| Agent harnesses — dispatch | Hosted `agents-api` only when `ENABLE_AGENT_GATEWAY` is enabled; local subprocess transports are refused | ✅ unlocked — all transports; LAN/Tailscale `baseUrl`s allowed on self-host (#37); cloud keeps the strict allowlist |
+| Agent harnesses — knowledge (MCP) | ✅ single-key lane; notify/review tools withheld | ✅ named keys, all tools |
 | Companion browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
@@ -678,8 +679,8 @@ the full 42-tool table, the Obsidian-bridge explainer, ops facts, and first
 actions. The self-host compose enables the MCP stack by default.
 
 **Give each agent its own named key.** Both key kinds live in one panel:
-**Settings → Connections & data → AI tools (MCP)** ("Connections & data" is the
-group, "AI tools (MCP)" is the panel). The instance key sits at the top; the *Named
+**Settings → Connections & data → Agent access (MCP)** ("Connections & data" is the
+group, "Agent access (MCP)" is the panel). The instance key sits at the top; the *Named
 agent keys* section below it mints one key per agent, each pinned to a verified
 identity, and is the only place a named key can be revoked.
 
@@ -812,31 +813,59 @@ Agents can ask you a question and wait for a click: `glassy_request_review`
 linked item rendered next to them. Answers sync between paired seats, so a
 question asked on one machine can be answered on the other.
 
-### Dispatching tasks to your own agent (Agent Gateway)
+### Dispatching tasks to your own agent (agent harnesses)
 
-The Agent Gateway sends a task to an agent framework you run, and puts the
-answer where you can read it. On the appliance it is **enabled by default**
+The dispatch direction sends a task to an agent you run, and puts the answer
+where you can read it. On the appliance it is **enabled by default**
 (`ENABLE_AGENT_GATEWAY=true` in `deploy/selfhost/docker-compose.yml`), and the
-**Agent Gateway** nav item appears because the instance is self-hosted.
+**Agent dispatch** settings pane appears because agent access is available.
+
+There are two directions, and they are not interchangeable:
+
+- **Knowledge (MCP)** — the agent calls *into* Glassy. Configure it in
+  **Settings → Connections & data → Agent access (MCP)**. This is the 42-tool
+  Second Brain lane, with a named key per agent on the appliance.
+- **Dispatch** — Glassy calls *into* the agent. Configure it in **Settings →
+  Connections & data → Agent dispatch**: choose a harness, then a transport,
+  then a placement. Sessions, turns, events and approvals are in the **Agents**
+  workspace.
+
+The registry is `shared/agentHarnesses.json`; the operator guide is
+[`docs/AGENT_HARNESSES.md`](AGENT_HARNESSES.md). The short version:
+
+| Harness | Local transport | Hosted transport |
+|---|---|---|
+| Claude | Claude Code CLI | Claude Managed Agents (`agents-api`) |
+| Codex | Codex App Server; CLI | OpenAgentCore / OpenAI Agents API |
+| OpenCode | `opencode serve` HTTP; ACP | — |
+| MiniMax Code | `mcode acp`; `mcode exec` | OpenAgentCore (`agents-api`) |
+| Hermes / OpenClaw | HTTP gateway | — |
+| Gemini CLI | `cli` | — |
+| Cursor / Windsurf / Cline / Zed / VS Code | knowledge only | knowledge only |
 
 **The whole difficulty is one sentence: the Glassy SERVER makes the call, not your
 browser.** Everything below follows from that.
 
-**1. Run the agent's gateway on the host.** Note the port it listens on. Defaults:
-Hermes `8642` (profile installs commonly land on `8643`), OpenClaw `18789`.
-Antigravity is the cloud option — it talks to Google and needs no local gateway.
+**1. Run the agent runtime on the host.** Note the address it listens on.
+Hermes `8642` (profile installs commonly land on `8643`), OpenClaw `18789`,
+OpenCode `4096` with `opencode serve --port 4096`. `codex app-server` and
+`mcode acp` speak stdio and need no listening port.
 
-**2. Settings → Agent connections → Framework: Hermes (or OpenClaw).**
+**2. Add the connection under Settings → Agent dispatch.**
 
-- **Base URL** — pre-filled with `http://host.docker.internal:<port>`, and that is
-  the right answer: the appliance's compose maps `host.docker.internal` to the host
-  gateway (`extra_hosts: ['host.docker.internal:host-gateway']`, line 120).
-  `http://127.0.0.1:8642` **can never work** — inside the container that address is
-  the container itself.
-- **Bearer Token** — the **agent gateway's own** key, not a Glassy key. For Hermes
-  it is `api_server.key` in the agent profile's `config.yaml` (not `.env`; the
-  `API_SERVER_KEY` environment variable is the legacy path). Leave it empty only if
-  your agent accepts anonymous calls.
+- Choose the **harness** first; the form offers only its transports.
+- For HTTP harnesses, **Base URL** is pre-filled with
+  `http://host.docker.internal:<port>`, and that is the right answer: the
+  appliance's compose maps `host.docker.internal` to the host gateway
+  (`extra_hosts: ['host.docker.internal:host-gateway']`). `http://127.0.0.1:8642`
+  **can never work** — inside the container that address is the container itself.
+- **Bearer Token** for Hermes/OpenClaw is the **agent gateway's own** key, not a
+  Glassy key. For Hermes it is `api_server.key` in the agent profile's
+  `config.yaml` (not `.env`; the `API_SERVER_KEY` environment variable is the
+  legacy path). Leave it empty only if your agent accepts anonymous calls.
+- For an ACP / App Server / CLI transport, use the registry preset; the
+  executable and argv are not request-supplied. The preset command must exist
+  inside the Glassy container's `PATH`.
 
 **3. Verify from inside the container before dispatching:**
 
@@ -858,26 +887,40 @@ curl -sX POST http://localhost:3000/api/agents/<connection-id>/task \
 #     "sessionId": "glassy_1727…", "metadata": { "completionId": "chatcmpl-…", … } }
 ```
 
-The body key is **`task`**, not `prompt`. Every dispatch, status change and error
-is recorded and shown in the Agent Gateway panel (`GET /api/agents/activity`).
+The body key in the legacy shim is **`task`**, not `prompt`. Every dispatch,
+status change and error is recorded and shown in the Agents workspace and the
+activity feed (`GET /api/agents/activity`). New callers should use the session
+routes instead of the one-shot shim:
+
+```bash
+# create a session on the connection's transport
+curl -sX POST http://localhost:3000/api/agents/<connection-id>/sessions \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"title": "Vault review"}'          # → { session: { id, external_id, … } }
+
+# send a turn; 202 + pendingApproval means an approval is waiting
+curl -sX POST http://localhost:3000/api/agents/sessions/<session-id>/turns \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"input": "Summarise what changed in the vault today"}'
+```
 
 `sessionId` is the **session key**: pass it back as
-`{"task":"…","options":{"sessionId":"<that value>"}}` to continue the same
-conversation. It is not the provider's completion id — that is
-`metadata.completionId` — and it is `null` on transports that have no sessions
-(#149). Optional `options` keys are `timeout`, `model` and `sessionId`; anything
-the server refuses comes back in `warnings[]` as an `IGNORED_OPTION` naming the
-key, and the dispatch still runs.
+`{"task":"…","options":{"sessionId":"<that value>"}}` on the legacy shim, or use
+the session id in the new routes. It is not the provider's completion id — that
+is `metadata.completionId` — and it is `null` on transports that have no sessions
+(#149). Optional `options` keys are `timeout`, `model`, `sessionId` and
+`resumeId`; anything the server refuses comes back in `warnings[]` as an
+`IGNORED_OPTION` naming the key, and the dispatch still runs.
 
 **Two exceptions worth knowing:**
 
 - **Tailscale overlay** (`docker-compose.tailscale.yml`) — explicitly cannot reach
   `host.docker.internal`; type the host's tailnet name or IP instead. The field
-  keeps whatever you type (it only follows the framework's default port while you
+  keeps whatever you type (it only follows the harness's default port while you
   have not edited it).
-- **The discovery panel** can report "not reachable" while a configured connection
-  dispatches perfectly: `GET /api/agents/discover` probes a hardcoded
-  `127.0.0.1:8642` (#84). Trust the `curl` in step 3, not the probe.
+- **The discovery panel** is a convenience probe, not the dispatch path. A
+  configured connection can dispatch while discovery reports "not reachable".
+  Trust the `curl` in step 3 and `GET /api/agents/:id`.
 
 **On SSRF posture:** the hosted tier accepts only a small allowlist
 (`localhost`, `127.0.0.1`, `::1`, `host.docker.internal`); a **self-hosted**
@@ -885,10 +928,9 @@ instance accepts any host, because you own the network — that is deliberate
 (`getAgentSsrfOptions` in `server/utils/urlValidator.js`), and it is what lets an
 appliance talk to a LAN or Tailscale address.
 
-> From 2.39.0 the appliance's framework list offers **OpenClaw and Hermes**, not
-> just Antigravity. Before that they were gated on the Clear instance identity,
-> which a self-hosted appliance never reports — so the local-agent recipe was not
-> expressible in the UI at all (#85).
+> Local subprocess transports (`acp`, `app-server`, `cli`) are refused on every
+> hosted instance with `403 LOCAL_TRANSPORT_REQUIRES_SELF_HOST`. The
+> harness catalog is shared, but the execution boundary is not.
 
 ### Canvas pages and the embed allowlist
 
@@ -1086,8 +1128,8 @@ Database migrations apply automatically on start. There is no downtime during a 
 `GLASSY_TAG` is **required** and must name a released version (e.g.
 `GLASSY_TAG=v2.40.7`) — `docker compose` refuses to start without it. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
-to `main` without the self-host build-time flags, which hides the AI tools
-(MCP), Second Brain, Agent connections and API keys (BYOK) settings. See
+to `main` without the self-host build-time flags, which hides the Agent access
+(MCP), Second Brain, Agent access/dispatch and API keys (BYOK) settings. See
 `DEPLOYMENT_RUNBOOK.md` → "GHCR tag semantics".
 
 **Hands-off updates (optional).** With `GLASSY_TAG` pinned to an immutable
