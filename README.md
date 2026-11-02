@@ -234,10 +234,12 @@ called out below; everything else has a safe default.
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
 | `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
 
-> **Registration is permanently disabled.** The server enforces this at the
-> route level regardless of any env var or admin setting. The seeded `admin`
-> account is the owner. Sub-accounts (multiple workspaces under the one owner)
-> are fully supported via Settings → Accounts.
+> **Single-user by default; multi-user with a seat pack.** An unlicensed appliance is
+> single-user: registration is refused and the seeded `admin` is the only account.
+> A **seat pack** (Family 10 · Team 50 · Studio 100, one-time) lifts that to a multi-user
+> workspace: the admin creates users up to the seat count, and the server refuses past it
+> (`403 SEAT_LIMIT`). Sub-accounts (multiple workspaces under one person) are free and
+> never consume seats.
 
 ### Optional
 
