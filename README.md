@@ -71,7 +71,8 @@ docker exec glassy cat /app/data/.initial_admin_password
 Sign in at **http://localhost:3000** with your membership email and that password.
 You will be **immediately prompted to set a permanent password** before you can
 use the workspace — the random one is discarded after that.
-Registration is permanently disabled — this is a single-owner personal appliance.
+Registration is closed by default — the seeded `admin` is the only account until a
+one-time **seat pack** (Family 10 · Team 50 · Studio 100) opens it to more users.
 All premium features are unlocked automatically.
 
 ## Giving this to an AI agent
@@ -128,8 +129,8 @@ in Settings → API Keys). No note content or usage data is ever sent to us.
 
 ### How your account works
 
-Glassy self-host is a **single-owner appliance**. Here's what happens the first
-time you start it, and every time after:
+Glassy self-host is **single-user by default, multi-user with a seat pack**. Here's
+what happens the first time you start it, and every time after:
 
 **1. Account + pairing-token check (once every 30 days, at boot).** The
 appliance sends your email **and** your `GLASSY_SELFHOST_TOKEN` to
