@@ -487,7 +487,7 @@ Lane A moves embedding generation from the server to the client's device. The cl
 - KB search with a client query vector: `useKbSearch` embeds the query on-device (only when a model is already loaded — a search never downloads a model) and attaches it to `POST /api/kb/query`. The server runs the semantic leg entirely inside the client's namespace with zero server-side generation and zero cloud-AI spend. Without a local vector, the request uses the server lane as before.
 - Namespace pins are per `(source_type, model)`, so a 384-dim client vector never meets a 768-dim shim vector. The scoped re-index escape hatch (`DELETE /api/embeddings/namespace`) drops one namespace's rows and resets its pins.
 
-**Flag flip order (release-train action, not yet executed):** glassydev first (verify search quality + convergence), then Clear → local prod → pozi200; retire the embedding key from the env only after the fleet has run the sunset through a full reconciler cycle. See `docs/superpowers/specs/2026-10-25-memory-lane-a-design.md` for the full design and `docs/DEPLOYMENT_RUNBOOK.md` for the Stripe catalog preflight that must be green before any commerce-affecting deploy.
+**Flag flip order (release-train action, not yet executed):** glassydev first (verify search quality + convergence), then Clear → local prod → the production host; retire the embedding key from the env only after the fleet has run the sunset through a full reconciler cycle. See `docs/superpowers/specs/2026-10-25-memory-lane-a-design.md` for the full design and `docs/DEPLOYMENT_RUNBOOK.md` for the Stripe catalog preflight that must be green before any commerce-affecting deploy.
 
 
 The Obsidian bridge indexes files as they change; it cannot seed a vault that

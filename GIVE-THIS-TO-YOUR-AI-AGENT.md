@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.62.3** (November 4, 2026). The numbers and surfaces in this brief are
+**v2.62.4** (November 5, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -1112,6 +1112,11 @@ asks for permission, it returns **`202` with `pendingApproval: true`**: the
 background, and the owner decides in the panel. A transport that cannot do
 interactive approvals reports `approvals: false`; do not wait for a card that
 will never arrive.
+
+For Claude Managed Agents (`agents-api`), *which* tools pause for approval is set in
+the **agent definition at Anthropic**, not in Glassy: give the tool a permission
+policy of `always_ask` (agent update is `POST /v1/agents/{agent_id}`). Glassy stores
+no per-tool policy; it relays the provider's `requires_action` as the approval card.
 
 Normalized event types: `session.created`, `turn.started`, `message.delta`,
 `message.completed`, `tool.call`, `tool.result`, `approval.requested`,
