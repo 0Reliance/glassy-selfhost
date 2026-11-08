@@ -425,6 +425,26 @@ Glassy supports a **secret recovery key** (a local fallback independent of email
 
 ## 6. AI providers (BYOK + Ollama)
 
+### Where your AI runs
+
+AI on your appliance runs on what you bring, in three places you can mix:
+**this device** (models that run in your browser, free), **your own server**
+(Ollama, free), and **your own key** (billed by that provider). Glassy provides
+no AI on an appliance and never bills for it.
+
+- **Answers, writing help and tags** use a key you saved in Settings → API keys
+  if you have one, and your Ollama otherwise.
+- **Search by meaning** uses one model per workspace; see
+  [The search model](#the-search-model).
+- **Voice notes.** With a saved key that can transcribe, your key does it.
+  Otherwise the recorder offers to download Whisper once (about 150 MB) and
+  transcribe on this device. If neither is available, the recording is kept and
+  you can transcribe it later. The recorder says which way it will use before you
+  record.
+- **On-device work runs only while Glassy is open** in a tab on that device. It
+  catches up a few items per visit, so a large library takes several visits; your
+  own server or key reads the whole library at once.
+
 ### BYOK (bring your own API key)
 
 Cloud system keys are not loaded on the self-hosted appliance. To use cloud AI:
