@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.63.0** (November 8, 2026). The numbers and surfaces in this brief are
+**v2.64.0** (November 8, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -49,7 +49,7 @@ is yours:
 | A `gky_mcp_…` key + `http://<host>:3010/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
 | A dispatch connection the owner added under Settings → Agent dispatch | A dispatch target — Glassy calls *you* over a harness transport | [Connecting an agent as a dispatch target](#connecting-an-agent-as-a-dispatch-target) |
 | The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-42-tools) |
-| A named agent key, on `GET /api/*` | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
+| A named agent key, on `GET /api/*` (and writes to notes and documents, 2.64.0) | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api-151) |
 | The seed password, or you're installing | The owner | [First boot](#first-boot-as-an-agent-a-clean-self-host-install) |
 
 Whichever you are, read `GET /api/capabilities` first — it names what *this* instance
@@ -239,18 +239,16 @@ curl -s http://localhost:3000/api/notes \
 
 The boundary is deliberate and narrow — learn it once and stop probing for it:
 
-- **Reads only — but you can already write, through MCP.** Any `POST`/`PUT`/`PATCH`/`DELETE`
-  with a named key on the REST API is refused `403 {"code":"AGENT_KEY_READ_ONLY"}`. That is
-  NOT a statement that you cannot write: on an appliance the same key makes you a full
-  principal through the MCP tools (`glassy_note_create`, `glassy_note_update`,
-  `glassy_note_delete`, `glassy_add_capture`, calendars, documents), and those writes are
-  attributed to you and counted against your own memory. So: **write through MCP, read
-  through either.** The REST lane is read-only by choice — it is a second path to the same
-  data, not a second write path, and this codebase has already shipped one defect of exactly
-  that shape (#137, where a REST PATCH answered `ok` while silently discarding a field that
-  MCP handled). Duplicating writes would duplicate that risk for no new capability. If you
-  believe a write lane on REST is genuinely wanted, say so as a design request rather than
-  treating `AGENT_KEY_READ_ONLY` as a defect.
+- **Writes: notes and documents only (2.64.0).** `POST`/`PUT`/`PATCH`/`DELETE` under
+  `/api/notes` and `/api/documents` work with a key that has write access, and the item is
+  recorded as written by you (your agent name, `created_by_kind: "agent"`), exactly as
+  through MCP. Both lanes write through the same services (`noteService`,
+  `documentService`), so a field cannot mean one thing on REST and another on MCP (the
+  #137 class). A document you create without a folder goes into "Agent work". Every
+  other surface refuses a write with `403 {"code":"AGENT_KEY_READ_ONLY"}`, and so does a
+  key made read-only. Before 2.64.0 the whole lane was read-only, which pushed agents
+  onto the owner's sign-in for REST writes and recorded their work as the owner's: never
+  do that.
 - **Self-host only.** `GET /api/capabilities` → `agentIdentity.restReadLanes` says
   whether this instance has the lane. On cloud it is `false` and the lane is not
   attempted at all, so a key there gets the ordinary `401 AUTH_TOKEN_INVALID`.
@@ -262,7 +260,7 @@ The boundary is deliberate and narrow — learn it once and stop probing for it:
   never a way around them.
 - **You are attributed.** Reads carry `auth_via: "named-key"` and your agent name
   server-side, which is the point: your traffic is distinguishable from the owner's
-  instead of wearing their identity.
+  instead of wearing their identity, and your writes are credited to you.
 - **Header only.** A key in a query string is never accepted — it would land in every
   access log and proxy log on the way.
 
@@ -362,6 +360,20 @@ project state live there. **The lifecycle facts that keep the store usable**
   write path missed at :15 past each hour (operator opt-out:
   `ENABLE_CORPUS_RECONCILER=false`), so a search that keeps missing committed
   content is worth one retry after the next pass.
+- **Write as yourself, never through the person's login (2.64.0).** Glassy is
+  one workspace for a person and their agents, and it tells them apart by who
+  wrote each item. Anything you file through the owner's session or password is
+  recorded as *them*: their search bar's "me" chip shows it as their own work,
+  and no agent's `exclude_mine` can leave it out. Write with your named key, through
+  MCP or the REST lane for notes and documents.
+- **Your documents go into "Agent work" (2.64.0).** `glassy_create_document`
+  (or a REST `POST /api/documents` with your key) without a `folder_id` files the
+  document in the workspace's "Agent work" folder, made on first use, so the person's own documents stay in front in
+  Docs. Name a folder when the document belongs with the person's own work.
+- **Archive your working papers when their job is done** — plans, receipts,
+  checklists, staging and release reports. The search bar still finds archived
+  items (labelled, after current ones), but the AI assistant and lists leave
+  them out.
 - **Archive rather than delete your own output.** `archived` is a reversible
   flag you can clear yourself (`{archived: false}`); delete moves the note to
   the bin and **restore is owner-only** — from your side a delete is
