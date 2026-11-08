@@ -73,7 +73,7 @@
 | Note delete / restore | Soft delete to bin | Same, via one service (beta.41). Delete is idempotent; **restore is owner-only** and returns a real `403`; a collaborator's delete unfollows instead of erroring |
 | Tag policy | 20 tags × 64 chars | Identical — **one** canonical policy across notes, bookmarks, captures, extension writes, AI auto-tag and MCP (beta.41). Accents, internal spaces and punctuation are preserved; case and surrounding whitespace are normalised; invalid tags are refused with `422 INVALID_TAGS` naming each offender |
 | Storage headroom enforcement | Checked before write | Same (beta.41) — capture, the extension's note/document endpoints and the notes POST/PUT/PATCH paths refuse up front rather than writing past quota. Bookmarks are deliberately ungated |
-| Memory layer (semantic + keyword + graph) | One lane for all content | One lane (2.37): notes, bookmarks, documents and vault files share ONE memory system — `content_embeddings`, `vault_fts`, and the `note_links` graph. Trashed or archived content is never indexed, and deleting content removes its index rows. The graph accepts every content type — a note's `[[wikilink]]` to another note or document becomes an edge, and the graph MCP tools take node keys (`note:<id>`, `document:<id>`) as well as vault paths. **Memory Lane A (v2.51.0+):** the client generates embeddings on-device (WebGPU/WASM via `mxbai-embed-xsmall`, 384-dim) and uploads them into its own namespace via `POST /api/embeddings/upload`; the server is store + scorer. Convergence runs on the owner's next client visit (upload-on-visit sweep, bounded 20 rows per visit). The C-shim (server-generated gemini/768-dim) is the **cloud** lane while `ENABLE_FIRST_PARTY_EMBEDDINGS=true`; **the self-host installer ships it `false`**, so on an appliance the user's own key (or the on-device model) is the embedding lane and headless rows wait as `pending_client`. Since v2.57.0 the ledger records attempts, retires permanent failures at the cap of five, and repairs orphaned rows at boot. Namespace pins are per `(source_type, model)`, so 384-dim client vectors never meet 768-dim shim vectors. |
+| Memory layer (semantic + keyword + graph) | One lane for all content | One lane (2.37): notes, bookmarks, documents and vault files share ONE memory system — `content_embeddings`, `vault_fts`, and the `note_links` graph. Archived content is indexed and searched like everything else; trashed content is not, and deleting content removes its index rows. The graph accepts every content type — a note's `[[wikilink]]` to another note or document becomes an edge, and the graph MCP tools take node keys (`note:<id>`, `document:<id>`) as well as vault paths. **Search model:** each workspace has one, chosen from what you have: your stated `GLASSY_EMBEDDING_PROVIDER`/`GLASSY_EMBEDDING_MODEL`, else your own Ollama (`nomic-embed-text`). Your own key or your device are choices in Settings → Second Brain. AI on your appliance runs on what you bring. |
 | Memory rebuild | Automatic | Automatic (2.37): whenever content arrives — including via Cloud Sync — its memory (embeddings, full-text, graph edges) builds on that machine. No manual reindex. `POST /api/kb/backfill/reindex` remains the one-call repair path for a model change or a missed batch; `POST /api/kb/backfill` seeds types in bulk |
 
 ---
@@ -475,48 +475,27 @@ docker compose -f docker-compose.yml -f docker-compose.ollama.yml exec ollama ol
 
 The overlay points Glassy at the sidecar automatically (`OLLAMA_BASE_URL=http://ollama:11434`) and supports NVIDIA GPUs (see [`deploy/selfhost/docker-compose.ollama.yml`](../deploy/selfhost/docker-compose.ollama.yml)).
 
-### Memory Lane A — client-owned embeddings (v2.51.0+)
+### The search model
 
-Lane A moves embedding generation from the server to the client's device. The client generates 384-dim vectors on-device (WebGPU with WASM fallback via `mxbai-embed-xsmall`) and uploads them into its own namespace via `POST /api/embeddings/upload`. The server becomes store + scorer: it validates provenance (declared model on the server allowlist, dims match canonical dims, vector length matches dims), enforces ownership (the source row must belong to the authenticated caller), enforces namespace pins (first write establishes the width; a mismatched write raises), and upserts on `(source_type, source_id, chunk_index, model)`.
+Search by meaning reads your library with one model per workspace. On an
+appliance it is, unless you name another, your own Ollama with
+`nomic-embed-text` (install it with `ollama pull nomic-embed-text`). Name a
+different one with `GLASSY_EMBEDDING_PROVIDER` / `GLASSY_EMBEDDING_MODEL`; a
+saved key never overrides it. AI on your appliance runs on what you bring, and
+Glassy never bills for it.
 
-**How it works operationally:**
+Settings → Second Brain → Search shows which model reads the library, who pays
+for it (your server, your key, or your device), how much is ready, and why it
+paused if it did, with what to do. Searching by words always works, whatever the
+model's state.
 
-- **Cloud** defaults `ENABLE_FIRST_PARTY_EMBEDDINGS=true` (the C-shim, server-generated gemini/768-dim, is the platform lane). **The self-host installer ships it `false`** — on an appliance the user owns the embedding lane (their key, or the on-device model), and headless rows wait as `pending_client` until one converges them.
-- Flip it to `false` **only after your writers have converged** to Lane A (≥ 98% of client-written rows carry a client-namespace vector across one full hourly reconciler cycle). When false, server-side embedding generation raises `EMBEDDINGS_LANE_DISABLED` (409), headless rows take the `pending_client` path, and the owner's next client visit converges them.
-- The convergence sweep runs on the owner's next client visit (`useLaneAConvergence`, mounted at App bootstrap): it asks `POST /api/embeddings/namespace-status` which rows are pending per source type (defaults now include `voice_transcript`; `vault_file` is excluded — its content arrives externally via Obsidian sync), fetches each row's text via `GET /api/embeddings/client-content/:sourceType/:sourceId`, embeds locally, and uploads. Bounded to 20 rows per visit so a long-absent client converges over several visits, never one blocking burst.
-- KB search with a client query vector: `useKbSearch` embeds the query on-device (only when a model is already loaded — a search never downloads a model) and attaches it to `POST /api/kb/query`. The server runs the semantic leg entirely inside the client's namespace with zero server-side generation and zero cloud-AI spend. Without a local vector, the request uses the server lane as before.
-- Namespace pins are per `(source_type, model)`, so a 384-dim client vector never meets a 768-dim shim vector. The scoped re-index escape hatch (`DELETE /api/embeddings/namespace`) drops one namespace's rows and resets its pins.
-
-**Flag flip order (release-train action, not yet executed):** glassydev first (verify search quality + convergence), then Clear → local prod → the production host; retire the embedding key from the env only after the fleet has run the sunset through a full reconciler cycle. See `docs/superpowers/specs/2026-10-25-memory-lane-a-design.md` for the full design and `docs/DEPLOYMENT_RUNBOOK.md` for the Stripe catalog preflight that must be green before any commerce-affecting deploy.
-
-
-The Obsidian bridge indexes files as they change; it cannot seed a vault that
-already exists. For that, the instance has a bulk ingest:
-
-```bash
-# the vault must be a path THIS SERVER can read — on Docker, mount it in. Declare once:
-echo 'VAULT_INGEST_ROOT=/mnt/vault' >> .env
-
-curl -sX POST http://localhost:3000/api/ingest -H "Authorization: Bearer $TOKEN"
-# {"jobId":"…","planned":5012,"skippedCount":0}
-
-curl -s "http://localhost:3000/api/ingest/status?jobId=…" -H "Authorization: Bearer $TOKEN"
-# {"job":{…,"status":"running"},"counts":{"pending":0,"processing":0,"done":5012,…},"errors":[]}
-
-curl -sX POST http://localhost:3000/api/ingest/<jobId>/cancel -H "Authorization: Bearer $TOKEN"
-```
-
-What it guarantees, and why each guarantee exists:
-
-- **Resumable.** Progress is rows, not memory. A restart resumes from where the
-  run stopped; a file finished once is never indexed twice. If a worker dies
-  mid-batch its claims are returned to the queue after a staleness threshold.
-- **Idempotent.** Re-running over an unchanged vault is a **no-op** — every file
-  is reported `skipped`, because the indexer already knows which sources are
-  synced. You can run it again without fear; you cannot double-embed anything.
-- **Honest.** `status` reports counts plus the first errors, and files that could
-  not be read are listed rather than silently missing. Nothing is truncated
-  without a reported reason.
+**Your device as the search model.** You can choose an on-device model instead
+(`mxbai-embed-xsmall`, 384-dim). The server then embeds nothing: while Glassy is
+open on that device with the model turned on (Settings → Local AI models), it
+reads waiting items a few at a time (`POST /api/embeddings/namespace-status`
+lists them, `GET /api/embeddings/client-content/:sourceType/:sourceId` serves
+their text, `POST /api/embeddings/upload` stores the vectors) and embeds your
+search queries. An edited item goes back in the queue.
 
 **Cost, stated plainly:** every newly-indexed file costs one embedding call. On
 the cloud provider that is real money at vault scale (thousands of files), which
@@ -524,17 +503,17 @@ is why ingest is **explicitly opt-in** — it never runs by itself, and re-runs 
 nothing because there is nothing new to embed. On a local Ollama embedding model
 there is no per-file cost, only time.
 
-### Re-indexing embeddings
+### Changing the search model
 
-**Changing the embedding model or provider invalidates every stored vector.**
-Vectors are only comparable within the width their model produces:
-`gemini-embedding-001` → 768, `nomic-embed-text` → 768, `mxbai-embed-large` → 1024,
-`llama3.2:3b` → 3072. After a change, cosine similarity throws on the width
-mismatch and the row is skipped — so semantic search quietly returns less (often
-nothing) while the API still answers 200.
+Vectors are only comparable within one model, so a workspace's model is changed
+as a planned step, never by editing an environment variable under a running
+index: in Settings → Second Brain → Search, choose another model. The new index
+is built in the background while the current one keeps answering, and it is
+swapped in when every item has been read. The old model's vectors are deleted
+seven days later (or at once, with `POST /api/kb/index-model/prune`).
 
-This applies to `GLASSY_EMBEDDING_MODEL`, `GLASSY_EMBEDDING_PROVIDER` and
-`OLLAMA_EMBEDDING_MODEL`.
+`GLASSY_EMBEDDING_PROVIDER` / `GLASSY_EMBEDDING_MODEL` only choose the model for
+a workspace that has not chosen one yet.
 
 **Check whether you have drift:**
 
