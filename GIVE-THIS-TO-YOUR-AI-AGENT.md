@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.64.0** (November 8, 2026). The numbers and surfaces in this brief are
+**v2.64.1** (November 8, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -371,9 +371,9 @@ project state live there. **The lifecycle facts that keep the store usable**
   document in the workspace's "Agent work" folder, made on first use, so the person's own documents stay in front in
   Docs. Name a folder when the document belongs with the person's own work.
 - **Archive your working papers when their job is done** — plans, receipts,
-  checklists, staging and release reports. The search bar still finds archived
-  items (labelled, after current ones), but the AI assistant and lists leave
-  them out.
+  checklists, staging and release reports. Search still finds archived items
+  (labelled, a little below current work that matches as well), but the AI
+  assistant and lists leave them out.
 - **Archive rather than delete your own output.** `archived` is a reversible
   flag you can clear yourself (`{archived: false}`); delete moves the note to
   the bin and **restore is owner-only** — from your side a delete is
