@@ -3,7 +3,7 @@
 A self-contained onboarding brief so any AI agent (Claude, Cursor, Hermes, a
 custom harness — anything that speaks MCP) can start using this Glassy
 self-host without a human explaining it. Verified against
-**v2.64.1** (November 8, 2026). The numbers and surfaces in this brief are
+**v2.65.0** (November 9, 2026). The numbers and surfaces in this brief are
 machine-checked rather than hand-trusted: `scripts/check-doc-tool-counts.js` and
 `scripts/check-mcp-claims.sh` compare every tool / prompt / resource count
 against the code, and
@@ -345,7 +345,7 @@ work — do not invent an MCP shim behind `obsidian_url`. `GET /api/capabilities
 `agentIdentity.agentVaultProvider` so you can check rather than guess.
 
 **Memory:** `glassy_remember` stores a durable memory (a note tagged
-`agent-memory`, authored by YOUR pinned identity); `glassy_recall` retrieves it
+`agent-memory`, authored by YOUR pinned identity, in your own space); `glassy_recall` retrieves it
 (`scope: 'mine'` is your memories only; `scope: 'all-agents'` sees every agent's).
 Recall before acting on a long-running task — the owner's preferences and
 project state live there. **The lifecycle facts that keep the store usable**
@@ -370,10 +370,25 @@ project state live there. **The lifecycle facts that keep the store usable**
   (or a REST `POST /api/documents` with your key) without a `folder_id` files the
   document in the workspace's "Agent work" folder, made on first use, so the person's own documents stay in front in
   Docs. Name a folder when the document belongs with the person's own work.
+- **Three places: shared, archive, your own (lanes, 2.65.0).** Every note and
+  document lives in one of them, and you choose with `place` on
+  `glassy_note_create` / `glassy_create_document` (`"shared"` | `"own"`) and on
+  `glassy_note_update` / `glassy_update_document` (`"shared"` | `"archive"` | `"own"`;
+  send `place` or `archived`, not both). Over REST: `POST /api/notes/:id/place` and
+  `POST /api/documents/:id/place` with `{"place": …}`.
+  - **shared** — the working space. Work the person should see: reports, replies,
+    documents written for them. The default for everything except memories.
+  - **archive** — filed away and still searched, by the person, by you and by the AI
+    assistant, a little below current work that matches as well.
+  - **own** — your own space: memories (`glassy_remember` writes here), scratch, run
+    state. Kept out of the person's notes, documents, search and AI assistant so it
+    never crowds their work. Agents still see it (`glassy_search`, `glassy_recall`,
+    your key's lists), and it is **never secret**: the person sees each agent's own
+    space in Settings → Agent access (MCP) and can move anything into their workspace.
 - **Archive your working papers when their job is done** — plans, receipts,
-  checklists, staging and release reports. Search still finds archived items
-  (labelled, a little below current work that matches as well), but the AI
-  assistant and lists leave them out.
+  checklists, staging and release reports. Search and the AI assistant still find
+  archived items (labelled, a little below current work that matches as well);
+  the everyday lists leave them out.
 - **Archive rather than delete your own output.** `archived` is a reversible
   flag you can clear yourself (`{archived: false}`); delete moves the note to
   the bin and **restore is owner-only** — from your side a delete is
