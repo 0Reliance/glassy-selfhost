@@ -1,6 +1,6 @@
 # Glassy — self-hosted
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.65.14-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.65.15-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
 [![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
@@ -29,9 +29,9 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.65.14>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.65.15>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
-#   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Self-hosting on your cloud>
+#   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Account → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
 #   JWT_SECRET=$(openssl rand -hex 32)
 #   API_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)
@@ -41,7 +41,7 @@ docker compose up -d --quiet-pull   # ~1.2 GB image; suppresses per-layer progre
 > **Pin `GLASSY_TAG` to a released version — never use `latest`.** The floating
 > `latest` tag is the *hosted* build: it is rebuilt on every push to `main`
 > without the self-host build-time flags, so on `latest` the **AI tools (MCP)**,
-> **Second Brain**, **Agent connections** and **API keys (BYOK)** settings are
+> **Second Brain**, **Agent connections** and **API keys** settings are
 > hidden and a "You are on the cloud" banner appears on your own appliance.
 > Versioned tags carry all self-host features. Check the
 > [releases page](https://github.com/0Reliance/glassy-selfhost/releases) for the
@@ -125,7 +125,7 @@ at [glassy.today/kickstarter](https://glassy.today/kickstarter).
 
 The only outbound calls are: the membership check at boot (once per 30 days)
 and AI providers *you* configure (Ollama on localhost, or BYOK keys you add
-in Settings → API Keys). No note content or usage data is ever sent to us.
+in Settings → Workspace → API keys). No note content or usage data is ever sent to us.
 
 ### How your account works
 
@@ -147,7 +147,7 @@ and `GET /api/instance` reports `membershipState: "degraded"` until the next
 successful check. The container never refuses to start over verification.
 
 You generate the pairing token in your Glassy account on the cloud:
-**Settings → Self-hosting → Generate token**.
+**Settings → Account → Self-hosting → Generate token**.
   • Public / Pro members: https://app.glassy.fyi/#/settings?g=account&s=selfhost
   • Clear members:        https://clear.glassy.fyi/#/settings?g=account&s=selfhost
 Paste it into `GLASSY_SELFHOST_TOKEN` in `.env`. If you generated the token on
@@ -215,11 +215,11 @@ called out below; everything else has a safe default.
 | Variable | Description |
 | --- | --- |
 | `GLASSY_MEMBER_EMAIL` | Your Glassy account email — any account, free included. Checked against the cloud at boot; cached for 30 days. |
-| `GLASSY_SELFHOST_TOKEN` | Pairing token from Settings → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
+| `GLASSY_SELFHOST_TOKEN` | Pairing token from Settings → Account → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.65.14`), never `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.65.15`); Glassy won't start without it, and never use `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -248,7 +248,7 @@ called out below; everything else has a safe default.
 | `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
 | `APP_URL` | `http://localhost:3000` | Base URL for OAuth + email links. **Set this if you access via Tailscale or a domain** — see [Multi-device access](#multi-device-access-tailscale--cloudflare-tunnel--netbird). |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins allowed to call the API. **Must include any additional origin you use** (Tailscale hostname, LAN IP, domain). |
-| `GEMINI_API_KEY` | — | *Not used on the appliance.* Cloud AI keys (Gemini/OpenAI/Anthropic) are added in-app at **Settings → API Keys** (BYOK), stored encrypted per-account. Local AI (WebGPU/Ollama) works with no key. |
+| `GEMINI_API_KEY` | — | *Not used on the appliance.* Cloud AI keys (Gemini/OpenAI/Anthropic) are added in-app at **Settings → Workspace → API keys**, stored encrypted per-account. Local AI (WebGPU/Ollama) works with no key. |
 | `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on the host (reachable via Docker host gateway). The server auto-appends `/v1` if missing. Use `http://ollama:11434` with the bundled sidecar overlay. |
 | `OBSIDIAN_NETWORK_ALLOWLIST` | — | Additional comma-separated hostnames/IPs allowed for Obsidian connections. Use when Obsidian is on a LAN IP, Tailscale node, or WSL2 bridge address not covered by the defaults. Self-hosted only. |
 | `TRUST_PROXY` | unset | Set to `1` if behind a single reverse proxy. |
@@ -290,7 +290,7 @@ it for 30 seconds (v2.36.0-beta.40+), so it always shows the models you have
 actually pulled — no manual refresh or restart needed. Have an NVIDIA GPU? Uncomment the `deploy` block in
 [`docker-compose.ollama.yml`](docker-compose.ollama.yml) after installing the
 NVIDIA Container Toolkit. For **cloud** AI (Gemini / OpenAI / Anthropic), add
-your own key in-app at **Settings → API Keys** (BYOK) — the appliance never
+your own key in-app at **Settings → Workspace → API keys** — the appliance never
 reads cloud keys from `.env`.
 
 ## Obsidian vault sync
@@ -314,7 +314,7 @@ On Windows with Docker Desktop (WSL2), the container cannot reach Obsidian on th
    - Toggle **Obsidian Bridge** on.
    - Click **Test Connection** — this tests the FULL bridge loop (server → extension → Obsidian), not just extension→Obsidian. A green result with "plugin v4.x" confirms both legs work.
    - Click **Save**.
-5. In the self-hosted web app (Settings → Obsidian), you should see "✓ Extension bridge active — Obsidian connected."
+5. In the self-hosted web app (Settings → Connections & data → Obsidian vault), you should see "✓ Extension bridge active — Obsidian connected."
 6. **Verify:** `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status` should return `{"connected":true,...}`.
 
 The extension holds the Obsidian API key locally (never sent to the server) and maintains a persistent SSE connection to the Glassy server via the offscreen document (which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search) — or needs to WRITE to the vault (checkbox toggles, add-under-heading, daily-note append, push-to-vault; companion v2.18.0+ transport v2) — it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result (including upstream response headers like ETag, which power concurrency-safe writes). See the [Obsidian integration guide](https://docs.glassy.fyi/02-core-features/integrations/obsidian-vault) for full details.
