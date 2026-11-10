@@ -1,6 +1,6 @@
 # Glassy — self-hosted
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.65.15-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.65.16-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
 [![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
@@ -19,7 +19,7 @@ The image is published to the **public** GitHub Container Registry
 
 ## Quick start
 
-> **Self-hosting is open to every Glassy account** — free included (D3, 2026-10-24).
+> **Self-hosting is open to every Glassy account**, free included.
 > Sign up at [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.today](https://glassy.today);
 > the pairing token is the anchor, not the tier, and the container never refuses to start
 > over verification.
@@ -29,7 +29,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.65.15>  (see note below)
+#   GLASSY_TAG=<latest released version, e.g. v2.65.16>  (see note below)
 #   GLASSY_MEMBER_EMAIL=your@glassy-account-email
 #   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Account → Self-hosting on your cloud>
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
@@ -66,7 +66,8 @@ docker exec glassy cat /app/data/.initial_admin_password
 > table is completely empty. If the `glassy-data` volume persisted from a
 > previous run (e.g. you ran `docker compose down` without `-v`), no new
 > password is printed and your existing admin password is unchanged. To start
-> completely fresh, see [Reset everything](#reset-everything-nuclear-option).
+> completely fresh, run `docker compose down -v` and then `docker compose up -d`.
+> That erases every note and setting on this machine, so take a backup first.
 
 Sign in at **http://localhost:3000** with your membership email and that password.
 You will be **immediately prompted to set a permanent password** before you can
@@ -111,20 +112,13 @@ window. The token is the anchor: someone who merely knows your email cannot
 stand up an appliance on your account. No tier is required, and the container
 never refuses to start over verification.
 
-**Sign-in is required during our Kickstarter launch.** Once our published
-Kickstarter goals are met, sign-in on the appliance becomes **optional** —
-the login screen will be a setting rather than a requirement.
-
-We are a transparent, privacy-first, independent company. Track our goals
-at [glassy.today/kickstarter](https://glassy.today/kickstarter).
-
 **What stays on this device:**
 - Your notes, documents, and tags
 - Your API keys (stored encrypted in the local database)
 - Any file attachments
 
 The only outbound calls are: the membership check at boot (once per 30 days)
-and AI providers *you* configure (Ollama on localhost, or BYOK keys you add
+and AI providers *you* configure (Ollama on localhost, or your own keys you add
 in Settings → Workspace → API keys). No note content or usage data is ever sent to us.
 
 ### How your account works
@@ -142,9 +136,9 @@ required so that someone who merely knows your email cannot spin up an
 unlocked instance on your account. The result is cached locally for 30
 days (signed) or 24 hours (unsigned fallback), so the appliance works fully
 offline within that window. If the cloud can't be reached and no usable cache
-exists, the appliance starts in **degraded mode** — every local feature works,
-and `GET /api/instance` reports `membershipState: "degraded"` until the next
-successful check. The container never refuses to start over verification.
+exists, Glassy starts anyway and every local feature works. It confirms your
+account at the next start. (For scripts: `GET /api/instance` reports
+`membershipState: "degraded"` until then.) The container never refuses to start over verification.
 
 You generate the pairing token in your Glassy account on the cloud:
 **Settings → Account → Self-hosting → Generate token**.
@@ -219,7 +213,7 @@ called out below; everything else has a safe default.
 | `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
 | `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
 | `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.65.15`); Glassy won't start without it, and never use `latest` (the hosted build omits self-host features). |
+| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.65.16`); Glassy won't start without it, and never use `latest` (the hosted build omits self-host features). |
 
 ### Single-user defaults (already set in `.env.example`)
 
@@ -227,8 +221,8 @@ called out below; everything else has a safe default.
 | --- | --- | --- |
 | `INSTANCE_ACCESS_MODE_DEFAULT` | `private` | Hides all public surfaces from logged-out visitors. An admin account is seeded automatically on first boot. |
 | `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
-| `ENABLE_CORPUS_INDEXER` | `true` | Generates embeddings for semantic search (required for MCP search tools). |
-| `ENABLE_CORPUS_RECONCILER` | `true` | Hourly convergence sweep — indexes anything a write path missed (synced rows, older content, failed embeds). Opt out only with a strict embedding-API budget. |
+| `ENABLE_CORPUS_INDEXER` | `true` | Prepares your notes for search by meaning. Agents' search tools need it. |
+| `ENABLE_CORPUS_RECONCILER` | `true` | Once an hour, adds anything search missed (synced items, older items, items that failed to index). Turn it off only if your search provider charges per item and you need to cap that. |
 | `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
 | `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (42 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
 | `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
@@ -945,7 +939,6 @@ repository are licensed under the **MIT License**.
 The GlassyDash application image (`ghcr.io/0reliance/glassy-dash`) pulled by
 these compose files is separately licensed under the **Business Source License
 1.1** (BSL 1.1). It is available for personal, non-commercial, self-hosted use
-and will transition to **AGPL-3.0** on 2027-07-13 or upon Kickstarter goal
-satisfaction, whichever comes first.
+and will transition to **AGPL-3.0** on 2027-07-13.
 
 For commercial licensing inquiries: hello@glassy.fyi
