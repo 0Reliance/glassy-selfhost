@@ -1,0 +1,51 @@
+1
+00:00:00,300 --> 00:00:06,697
+The quiet workspace for 47 tabs. Now your agent gets one too.
+
+2
+00:00:08,300 --> 00:00:13,100
+Your agent has a desk now. Boards, counts, actions — one page.
+
+3
+00:00:16,300 --> 00:00:21,300
+Notes, voice, docs — all on the same calm page as the agent's work.
+
+4
+00:00:26,300 --> 00:00:36,621
+Six machines, live LEDs. Down = amber. Honest.
+
+5
+00:00:36,299 --> 00:00:43,892
+Every cron job, every sync, every backup — a timeline from the real schedule.
+
+6
+00:00:44,299 --> 00:00:52,799
+The agent files proposals with evidence. You approve in one click.
+
+7
+00:00:56,299 --> 00:01:06,748
+The loop: a button in chat drives a board. Canvas = record, chat = action.
+
+8
+00:01:06,299 --> 00:01:13,500
+Every capture catalogued with provenance. Nothing orphaned.
+
+9
+00:01:16,299 --> 00:01:26,200
+Same pipeline: Manim renders, brand lint, a quality gate.
+
+10
+00:01:26,299 --> 00:01:35,506
+One spec annotates stills AND video. Thirteen primitives.
+
+11
+00:01:36,299 --> 00:01:42,395
+Your hardware. Local models. Nothing phones home.
+
+12
+00:01:46,299 --> 00:01:51,152
+Nineteen boards. One click from anywhere.
+
+13
+00:01:56,000 --> 00:01:59,796
+Glassy. Keep it yours. Keep it Glassy.

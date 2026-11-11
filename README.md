@@ -10,12 +10,283 @@
      directory and the glassy-selfhost installer repo. Any change to
      files here MUST be synced to github.com/0Reliance/glassy-selfhost. -->
 
-Run Glassy on your own machine. This is the recommended path if you want
-live Obsidian sync, Ollama, Agent Gateway, or any other localhost integration —
-the cloud server cannot reach `127.0.0.1` on your machine.
+<div align="center">
 
-The image is published to the **public** GitHub Container Registry
-(`ghcr.io/0reliance/glassy-dash`); no GitHub login required.
+<img src="screenshots/story/hero-card.webp" alt="A Glassy public window in a browser — write and publish your articles" width="920">
+
+**The quiet workspace for people who think in 47 tabs, 12 notebooks, and a
+voice memo they forgot to label. This is the build you run on your own machine.**
+
+Notes, voice memos, bookmarks, documents, boards, and AI on one calm page.
+Your files stay on your disk. Your server holds the keys. No tracking,
+no phone-home — the whole product, one container.
+
+[The workspace](#the-workspace) · [Your second brain](#your-second-brain) ·
+[Your vault, live](#your-vault-live) · [Local AI](#local-ai-included) ·
+[Why self-host](#why-self-host-and-what-you-take-on) · [The proof](#the-proof) ·
+[The tour](#the-tour) · [Run it yourself](#run-it-yourself) ·
+[The manual](#the-manual)
+
+</div>
+
+---
+
+## 👋 What you're looking at
+
+This repo installs **the whole Glassy product** — not a trimmed-down demo —
+as one Docker container on hardware you control. Every feature the cloud
+workspace ships, you get here: the notes surface, Voice Studio, bookmarks,
+documents, public windows, the agent gateway, 42 MCP tools for your AI
+agents, and the local index that makes it a second brain.
+
+Everything pictured below is the real app, running on a real appliance.
+Nothing is a mockup.
+
+---
+
+## 🧭 The workspace
+
+Three surfaces carry a working day: **capture** (a thought lands in a second —
+in the app, from the browser, or as a voice memo), **think** (notes beside
+documents beside bookmarks, on one page), and **speak** (Voice Studio turns a
+ramble into a note).
+
+<p>
+  <img src="screenshots/story/app-view-today.webp" alt="The Today view — the day's decisions, calendar, and quiet welcome" width="49%">
+  <img src="screenshots/story/app-view-notes.webp" alt="The notes surface — a write-a-note composer and the note grid" width="49%">
+</p>
+<p>
+  <img src="screenshots/story/app-view-docs.webp" alt="The documents library — a storage sidebar and a document grid" width="49%">
+  <img src="screenshots/story/app-view-voice.webp" alt="Voice Studio — the recorder, ready" width="49%">
+</p>
+
+Forty-seven tabs. Three of them important. The pile you're keeping isn't a
+discipline problem — it's more ideas than any single tool can hold.
+Glassy is the page you actually open.
+
+---
+
+## 🔍 Your second brain
+
+A saved thought is indexed — found by what you meant, not only by what you
+typed. Notes talk to each other. Documents keep the file they came from.
+Bookmarks surface when they matter, grouped by meaning later, never binned.
+
+<img src="screenshots/story/p2-mkt-secondbrain-00.webp" alt="Second Brain — how one thought becomes something an agent can find and use" width="70%">
+
+And your AI agents are first-class users here. The workspace ships its own
+MCP server — 42 tools across notes, documents, memory, digests, the calendar,
+and the knowledge graph — so whatever agent you run holds **the same surface
+you do**, not a side channel. On this build, the model can run on this
+machine too.
+
+<p>
+  <img src="screenshots/story/p2-mkt-agents.webp" alt="The agents page — what an agent can do in the workspace" width="66%">
+</p>
+
+---
+
+## 🗃️ Your vault, live
+
+Already keeping your notes in Obsidian? Glassy sits on top of it — not
+in place of it.
+
+> Only the self-host build can do this: live Obsidian sync over `127.0.0.1`,
+> bundled Ollama, and any other localhost integration. The cloud server
+> cannot reach your machine; this one can.
+
+<p>
+  <img src="screenshots/story/scene-07-mcp.webp" alt="Claude or Cursor, through Glassy, into the Obsidian vault" width="66%">
+</p>
+
+Edit on the web, it lands in Obsidian. Capture from the browser, it files
+into the vault. Search it all from one page — even when Obsidian is closed.
+
+---
+
+## 🤖 Local AI, included
+
+The appliance can run its models on the same box — a bundled Ollama overlay
+comes with the repo (`docker-compose.ollama.yml`), your keys stay yours, and
+nothing leaves your network. Pull a model once and it lives in a Docker
+volume beside the app.
+
+---
+
+## 🔐 Why self-host, and what you take on
+
+A cloud server cannot reach `127.0.0.1` on your machine. That one fact is why
+this build exists.
+
+**What you gain here and nowhere else**
+
+- **Your vault, live.** Point Glassy at an Obsidian vault and an edit on the web lands in the vault.
+- **Your models, on your hardware.** The bundled Ollama overlay runs the AI on the same box.
+- **Your agents, same surface.** The Agent Gateway and the 42-tool MCP server reach agents running on your machine.
+- **Your disk.** Notes and documents are files you can copy, back up, and move. No tracking, no phone-home.
+
+**What you take on — plainly**
+
+- **You run the updates.** `docker compose pull && docker compose up -d` when a new version ships.
+- **One user by default.** Self-host is single-user out of the box; more seats come from a seat pack.
+- **Backups are yours.** Nothing leaves the box unless you set up Cloud Sync against a second instance.
+- **It is a container, not an appliance you can forget.** About 1.2 GB of image, and a database that lives in a Docker volume.
+
+**What you need:** Docker Engine (or Docker Desktop) with Compose v2, and a
+Glassy account — free works, because the pairing token is the anchor, not the
+tier.
+
+---
+
+## ✅ The proof
+
+The agentic half is not a claim; it is a daily loop, screenshotted.
+The daily verbs run from one screen, with a receipt for each. A high-impact
+action goes through a human gate — propose, evidence, approve, execute —
+instead of trusting it to a model. The boards stay alive and say what
+they're currently saying.
+
+<p>
+  <img src="screenshots/story/exhibit-1-quick-actions.webp" alt="Quick actions, each with a receipt" width="32%">
+  <img src="screenshots/story/exhibit-3-approval.webp" alt="The approval gate — propose, evidence, approve, execute" width="32%">
+  <img src="screenshots/story/exhibit-5-gallery.webp" alt="The gallery — four live boards and what each is saying" width="32%">
+</p>
+
+---
+
+## 🎨 Make it yours
+
+Themes, icons, color-coded cards. And when you want to publish, a **public
+window** turns your workspace into a link anyone can read — no login for
+them, and nothing leaves your server but the page itself.
+
+<p>
+  <img src="screenshots/story/window-0reliance.webp" alt="A published window — self-hosted AI, Docker, running it yourself" width="49%">
+  <img src="screenshots/story/window-neurocrispy.webp" alt="A published window — one topic gathered properly, sixty notes, a real theme" width="49%">
+</p>
+
+---
+
+## 🖼️ The gallery
+
+The whole tour, grouped by surface. Six groups, real screens, nothing staged.
+
+<details>
+<summary><b>The workspace</b> — Today, notes, documents, Voice Studio</summary>
+
+<p>
+  <img src="screenshots/story/app-view-today.webp" alt="The Today view" width="49%">
+  <img src="screenshots/story/app-view-notes.webp" alt="The notes surface" width="49%">
+</p>
+<p>
+  <img src="screenshots/story/app-view-docs.webp" alt="The documents library" width="49%">
+  <img src="screenshots/story/app-view-voice.webp" alt="Voice Studio" width="49%">
+</p>
+
+</details>
+
+<details>
+<summary><b>The second brain</b> — how a thought becomes findable</summary>
+
+<img src="screenshots/story/landing-seg0.webp" alt="The 'organize the chaos' section: forty-seven tabs, three of them important" width="70%">
+
+<img src="screenshots/story/p2-mkt-secondbrain-01.webp" alt="Six panels: hybrid search, MCP server, knowledge base, Obsidian proxy" width="70%">
+
+</details>
+
+<details>
+<summary><b>Your vault</b> — Obsidian, on both sides</summary>
+
+<img src="screenshots/story/card-11.webp" alt="A card headed 'edit here. it lands in Obsidian.', over an edit, write-back and Obsidian flow" width="70%">
+
+</details>
+
+<details>
+<summary><b>Agents and boards</b> — the surface an agent holds</summary>
+
+<img src="screenshots/story/app-view-decisions.webp" alt="The decisions surface — the human gate, with a queue of pending items" width="49%">
+<img src="screenshots/story/p2-mkt-agents.webp" alt="The agents page" width="49%">
+
+</details>
+
+<details>
+<summary><b>Public windows</b> — what publishing looks like</summary>
+
+<p>
+  <img src="screenshots/story/hero-card.webp" alt="A public window headed 'write and publish your articles'" width="49%">
+  <img src="screenshots/story/window-0reliance.webp" alt="A published window about self-hosted AI and Docker" width="49%">
+</p>
+
+</details>
+
+<details>
+<summary><b>Where it runs</b> — the self-host page</summary>
+
+<img src="screenshots/story/p2-mkt-selfhost-00.webp" alt="The self-host page hero: 'Your workspace. Your server. Your rules.'" width="70%">
+
+</details>
+
+---
+
+## 🎬 The tour
+
+Fifty-two seconds, no voiceover, the product doing its thing:
+
+<a href="media/glassy-tour-60s.mp4"><img src="screenshots/story/tour-poster.webp" alt="Play the 60-second Glassy tour" width="70%"></a>
+
+[▶ Watch the 60-second tour](media/glassy-tour-60s.mp4) · [captions](media/glassy-tour-60s.srt)
+
+For the step-by-step version, **Glassy Learn** has the lessons — including
+[Install Glassy](https://learn.glassy.fyi/lessons/start/install-glassy) and
+the rest of [the lesson list](https://learn.glassy.fyi/lessons).
+
+---
+
+## Run it yourself
+
+You need Docker, a Glassy account (free works — the pairing token is the
+anchor, not the tier), and one command:
+
+```bash
+git clone https://github.com/0Reliance/glassy-selfhost.git
+cd glassy-selfhost
+cp .env.example .env
+# Edit .env — six required fields, each explained in the manual below
+docker compose up -d --quiet-pull
+```
+
+**Run the workspace on your own server, where your rules are the only ones.**
+
+<p>
+  <img src="screenshots/story/p2-mkt-selfhost-00.webp" alt="The self-host page — for self-hosters" width="70%">
+</p>
+
+Five ways people use it: with a vault they already love, with the extension
+in the browser, with Ollama on the same box, with agents, or plain and
+quiet. Find the one that's yours.
+
+**Handing this to an agent?** Give it
+[GIVE-THIS-TO-YOUR-AI-AGENT.md](GIVE-THIS-TO-YOUR-AI-AGENT.md) — the install
+brief written for the machine, not the human.
+
+---
+
+## Contributing
+
+This repository is the installer: `README.md`, `screenshots/`, `media/`, and
+`MAINTAINING.md` are maintained here, and the compose files, `.env.example`
+and the deployment docs are copied in from `0Reliance/glassy` by the release
+workflow. Change those upstream, not here —
+[MAINTAINING.md](MAINTAINING.md) has the process and the exception list.
+
+Bugs in the app itself belong in
+[0Reliance/glassy](https://github.com/0Reliance/glassy/issues).
+
+---
+
+<!-- ═══════════════ THE MANUAL — the install and operations reference ═══════════════ -->
+
+## 📖 The manual
 
 ## Quick start
 
@@ -252,7 +523,7 @@ called out below; everything else has a safe default.
 > **Email is disabled on the appliance.** Nothing leaves the machine, so
 > `RESEND_API_KEY` / `EMAIL_FROM` are no-ops here. Lost-password recovery uses
 > local paths instead (admin reset or a secret recovery key) — see
-> [`docs/SELF_HOSTED_DEPLOYMENT.md` § Account recovery](../../docs/SELF_HOSTED_DEPLOYMENT.md).
+> [`SELF_HOSTED_DEPLOYMENT.md` § Account recovery](SELF_HOSTED_DEPLOYMENT.md#5-account-recovery-lost-password).
 
 ### Advanced tuning
 
