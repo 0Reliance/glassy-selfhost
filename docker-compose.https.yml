@@ -10,9 +10,14 @@
 #   docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
 #
 # Caddy fetches and renews a trusted certificate automatically. For a private
-# network without a public domain, prefer Tailscale (see README) instead.
+# network without a public domain, prefer Tailscale (see docs/reach-it-from-other-devices.md) instead.
 name: glassy-selfhost
 services:
+  glassy:
+    environment:
+      # Caddy is one proxy in front of Glassy, so sign-in limits see the visitor's real address.
+      - TRUST_PROXY=${TRUST_PROXY:-1}
+
   caddy:
     image: caddy:2-alpine
     container_name: glassy-caddy

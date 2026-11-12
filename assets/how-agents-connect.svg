@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" role="img" aria-labelledby="t d" font-family="Inter, 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title id="t">How assistants connect to Glassy</title>
+  <desc id="d">Each assistant holds its own named key and connects to Glassy's agent endpoint. Its work lands in one of three places: your workspace, the archive, or the assistant's own space. Questions for you appear under Decisions.</desc>
+  <rect width="1200" height="500" rx="20" fill="#0c0c14"/>
+
+  <!-- assistants -->
+  <text x="48" y="70" fill="#c973ff" font-size="15" font-weight="600" letter-spacing="1.5">YOUR ASSISTANTS</text>
+  <g fill="#c973ff" fill-opacity="0.09" stroke="#c973ff" stroke-opacity="0.55">
+    <rect x="48" y="98" width="270" height="92" rx="14"/>
+    <rect x="48" y="210" width="270" height="92" rx="14"/>
+    <rect x="48" y="322" width="270" height="92" rx="14"/>
+  </g>
+  <g fill="#ffffff" font-size="21" font-weight="700">
+    <text x="72" y="138">Claude</text>
+    <text x="72" y="250">Cursor</text>
+    <text x="72" y="362">Any MCP client</text>
+  </g>
+  <g fill="#b9c0d0" font-size="16">
+    <text x="72" y="166">its own named key</text>
+    <text x="72" y="278">its own named key</text>
+    <text x="72" y="390">its own named key</text>
+  </g>
+  <text x="48" y="450" fill="#7f8799" font-size="14.5">One key each, so you can tell who wrote what</text>
+  <text x="48" y="470" fill="#7f8799" font-size="14.5">and switch one off without touching the rest.</text>
+
+  <!-- arrows in -->
+  <g stroke="#6a82ff" stroke-width="2" fill="none">
+    <path d="M318 144 C380 144 380 250 436 250"/>
+    <path d="M318 256 H436"/>
+    <path d="M318 368 C380 368 380 262 436 262"/>
+    <path d="M428 249 l9 7 -9 7"/>
+  </g>
+
+  <!-- glassy -->
+  <rect x="446" y="98" width="290" height="316" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#2dd4bf" stroke-opacity="0.6" stroke-width="1.5"/>
+  <text x="474" y="142" fill="#2dd4bf" font-size="15" font-weight="600" letter-spacing="1.5">GLASSY, ON YOUR MACHINE</text>
+  <text x="474" y="190" fill="#ffffff" font-size="23" font-weight="700">Agent access</text>
+  <text x="474" y="220" fill="#b9c0d0" font-size="16" font-family="'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace">localhost:3000/mcp</text>
+  <g fill="#d7dbe6" font-size="16.5">
+    <text x="474" y="268">Search, by meaning and words</text>
+    <text x="474" y="296">Read and write notes</text>
+    <text x="474" y="324">Read and write documents</text>
+    <text x="474" y="352">Remember things</text>
+    <text x="474" y="380">Ask you a question</text>
+  </g>
+
+  <!-- arrows out -->
+  <g stroke="#2dd4bf" stroke-width="2" fill="none">
+    <path d="M736 256 H790"/>
+    <path d="M790 144 V368"/>
+    <path d="M790 144 H842"/><path d="M834 137 l9 7 -9 7"/>
+    <path d="M790 256 H842"/><path d="M834 249 l9 7 -9 7"/>
+    <path d="M790 368 H842"/><path d="M834 361 l9 7 -9 7"/>
+  </g>
+
+  <!-- places -->
+  <text x="852" y="70" fill="#4df0ff" font-size="15" font-weight="600" letter-spacing="1.5">WHERE THEIR WORK GOES</text>
+  <g fill="#4df0ff" fill-opacity="0.07" stroke="#4df0ff" stroke-opacity="0.5">
+    <rect x="852" y="98" width="300" height="92" rx="14"/>
+    <rect x="852" y="210" width="300" height="92" rx="14"/>
+    <rect x="852" y="322" width="300" height="92" rx="14"/>
+  </g>
+  <g fill="#ffffff" font-size="21" font-weight="700">
+    <text x="876" y="138">Your workspace</text>
+    <text x="876" y="250">The archive</text>
+    <text x="876" y="362">The assistant's space</text>
+  </g>
+  <g fill="#b9c0d0" font-size="16">
+    <text x="876" y="166">Work for you, signed</text>
+    <text x="876" y="278">Kept and searchable</text>
+    <text x="876" y="390">Its notes and memory</text>
+  </g>
+  <text x="852" y="450" fill="#7f8799" font-size="14.5">Questions for you appear under Decisions.</text>
+  <text x="852" y="470" fill="#7f8799" font-size="14.5">You click a choice; they carry on.</text>
+</svg>

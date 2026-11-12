@@ -1,1215 +1,134 @@
-# Glassy — self-hosted
+# Glassy Self-Host
 
-[![Install pin](https://img.shields.io/badge/GLASSY_TAG-v2.65.22-6366f1?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-docs.glassy.fyi-38bdf8?style=flat-square)](https://docs.glassy.fyi/03-advanced/self-hosting/)
-[![AI agents](https://img.shields.io/badge/for%20AI%20agents-GIVE%E2%80%91THIS%E2%80%91TO%E2%80%91YOUR%E2%80%91AI%E2%80%91AGENT-94a3b8?style=flat-square)](GIVE-THIS-TO-YOUR-AI-AGENT.md)
-[![Account](https://img.shields.io/badge/account-any%20Glassy%20account-22c55e?style=flat-square)](https://glassy.fyi/pricing)
+[![Version](https://img.shields.io/badge/version-v2.65.22-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Runs on Docker](https://img.shields.io/badge/runs%20on-Docker-0c0c14?style=flat-square)](docs/install.md)
+[![For AI agents](https://img.shields.io/badge/for%20AI%20agents-AGENTS.md-6a82ff?style=flat-square)](AGENTS.md)
+[![License: MIT](https://img.shields.io/badge/installer-MIT-94a3b8?style=flat-square)](LICENSE)
 
-<!-- MAINTAINERS: See MAINTAINING.md for the sync process between this
-     directory and the glassy-selfhost installer repo. Any change to
-     files here MUST be synced to github.com/0Reliance/glassy-selfhost. -->
+<img src="assets/hero-today.webp" alt="Glassy's Today view: good morning, Sam, and two questions from an assistant called Juniper waiting for a decision" width="100%">
 
-<div align="center">
+**The second brain for you and your agents, running on your own machine.**
 
-<img src="screenshots/story/hero-card.webp" alt="A Glassy public window in a browser — write and publish your articles" width="920">
+Notes, documents, bookmarks, voice memos, calendars and boards on one calm page. It is the
+same page your AI assistants read and write, each under its own name. Your files stay on your
+disk.
 
-**The quiet workspace for people who think in 47 tabs, 12 notebooks, and a
-voice memo they forgot to label. This is the build you run on your own machine.**
+This repository installs it. One container, about ten minutes.
 
-Notes, voice memos, bookmarks, documents, boards, and AI on one calm page.
-Your files stay on your disk. Your server holds the keys. No tracking,
-no phone-home — the whole product, one container.
+[Install](#install) · [What you get](#what-you-get-here) · [What you take on](#what-you-take-on) · [For AI agents](#for-ai-agents) · [Guides](#guides)
 
-[The workspace](#the-workspace) · [Your second brain](#your-second-brain) ·
-[Your vault, live](#your-vault-live) · [Local AI](#local-ai-included) ·
-[Why self-host](#why-self-host-and-what-you-take-on) · [The proof](#the-proof) ·
-[The tour](#the-tour) · [Run it yourself](#run-it-yourself) ·
-[The manual](#the-manual)
+## Install
 
-</div>
-
----
-
-## 👋 What you're looking at
-
-This repo installs **the whole Glassy product** — not a trimmed-down demo —
-as one Docker container on hardware you control. Every feature the cloud
-workspace ships, you get here: the notes surface, Voice Studio, bookmarks,
-documents, public windows, the agent gateway, 42 MCP tools for your AI
-agents, and the local index that makes it a second brain.
-
-Everything pictured below is the real app, running on a real appliance.
-Nothing is a mockup.
-
----
-
-## 🧭 The workspace
-
-Three surfaces carry a working day: **capture** (a thought lands in a second —
-in the app, from the browser, or as a voice memo), **think** (notes beside
-documents beside bookmarks, on one page), and **speak** (Voice Studio turns a
-ramble into a note).
-
-<p>
-  <img src="screenshots/story/app-view-today.webp" alt="The Today view — the day's decisions, calendar, and quiet welcome" width="49%">
-  <img src="screenshots/story/app-view-notes.webp" alt="The notes surface — a write-a-note composer and the note grid" width="49%">
-</p>
-<p>
-  <img src="screenshots/story/app-view-docs.webp" alt="The documents library — a storage sidebar and a document grid" width="49%">
-  <img src="screenshots/story/app-view-voice.webp" alt="Voice Studio — the recorder, ready" width="49%">
-</p>
-
-Forty-seven tabs. Three of them important. The pile you're keeping isn't a
-discipline problem — it's more ideas than any single tool can hold.
-Glassy is the page you actually open.
-
----
-
-## 🔍 Your second brain
-
-A saved thought is indexed — found by what you meant, not only by what you
-typed. Notes talk to each other. Documents keep the file they came from.
-Bookmarks surface when they matter, grouped by meaning later, never binned.
-
-<img src="screenshots/story/p2-mkt-secondbrain-00.webp" alt="Second Brain — how one thought becomes something an agent can find and use" width="70%">
-
-And your AI agents are first-class users here. The workspace ships its own
-MCP server — 42 tools across notes, documents, memory, digests, the calendar,
-and the knowledge graph — so whatever agent you run holds **the same surface
-you do**, not a side channel. On this build, the model can run on this
-machine too.
-
-<p>
-  <img src="screenshots/story/p2-mkt-agents.webp" alt="The agents page — what an agent can do in the workspace" width="66%">
-</p>
-
----
-
-## 🗃️ Your vault, live
-
-Already keeping your notes in Obsidian? Glassy sits on top of it — not
-in place of it.
-
-> Only the self-host build can do this: live Obsidian sync over `127.0.0.1`,
-> bundled Ollama, and any other localhost integration. The cloud server
-> cannot reach your machine; this one can.
-
-<p>
-  <img src="screenshots/story/scene-07-mcp.webp" alt="Claude or Cursor, through Glassy, into the Obsidian vault" width="66%">
-</p>
-
-Edit on the web, it lands in Obsidian. Capture from the browser, it files
-into the vault. Search it all from one page — even when Obsidian is closed.
-
----
-
-## 🤖 Local AI, included
-
-The appliance can run its models on the same box — a bundled Ollama overlay
-comes with the repo (`docker-compose.ollama.yml`), your keys stay yours, and
-nothing leaves your network. Pull a model once and it lives in a Docker
-volume beside the app.
-
----
-
-## 🔐 Why self-host, and what you take on
-
-A cloud server cannot reach `127.0.0.1` on your machine. That one fact is why
-this build exists.
-
-**What you gain here and nowhere else**
-
-- **Your vault, live.** Point Glassy at an Obsidian vault and an edit on the web lands in the vault.
-- **Your models, on your hardware.** The bundled Ollama overlay runs the AI on the same box.
-- **Your agents, same surface.** The Agent Gateway and the 42-tool MCP server reach agents running on your machine.
-- **Your disk.** Notes and documents are files you can copy, back up, and move. No tracking, no phone-home.
-
-**What you take on — plainly**
-
-- **You run the updates.** `docker compose pull && docker compose up -d` when a new version ships.
-- **One user by default.** Self-host is single-user out of the box; more seats come from a seat pack.
-- **Backups are yours.** Nothing leaves the box unless you set up Cloud Sync against a second instance.
-- **It is a container, not an appliance you can forget.** About 1.2 GB of image, and a database that lives in a Docker volume.
-
-**What you need:** Docker Engine (or Docker Desktop) with Compose v2, and a
-Glassy account — free works, because the pairing token is the anchor, not the
-tier.
-
----
-
-## ✅ The proof
-
-The agentic half is not a claim; it is a daily loop, screenshotted.
-The daily verbs run from one screen, with a receipt for each. A high-impact
-action goes through a human gate — propose, evidence, approve, execute —
-instead of trusting it to a model. The boards stay alive and say what
-they're currently saying.
-
-<p>
-  <img src="screenshots/story/exhibit-1-quick-actions.webp" alt="Quick actions, each with a receipt" width="32%">
-  <img src="screenshots/story/exhibit-3-approval.webp" alt="The approval gate — propose, evidence, approve, execute" width="32%">
-  <img src="screenshots/story/exhibit-5-gallery.webp" alt="The gallery — four live boards and what each is saying" width="32%">
-</p>
-
----
-
-## 🎨 Make it yours
-
-Themes, icons, color-coded cards. And when you want to publish, a **public
-window** turns your workspace into a link anyone can read — no login for
-them, and nothing leaves your server but the page itself.
-
-<p>
-  <img src="screenshots/story/window-0reliance.webp" alt="A published window — self-hosted AI, Docker, running it yourself" width="49%">
-  <img src="screenshots/story/window-neurocrispy.webp" alt="A published window — one topic gathered properly, sixty notes, a real theme" width="49%">
-</p>
-
----
-
-## 🖼️ The gallery
-
-The whole tour, grouped by surface. Six groups, real screens, nothing staged.
-
-<details>
-<summary><b>The workspace</b> — Today, notes, documents, Voice Studio</summary>
-
-<p>
-  <img src="screenshots/story/app-view-today.webp" alt="The Today view" width="49%">
-  <img src="screenshots/story/app-view-notes.webp" alt="The notes surface" width="49%">
-</p>
-<p>
-  <img src="screenshots/story/app-view-docs.webp" alt="The documents library" width="49%">
-  <img src="screenshots/story/app-view-voice.webp" alt="Voice Studio" width="49%">
-</p>
-
-</details>
-
-<details>
-<summary><b>The second brain</b> — how a thought becomes findable</summary>
-
-<img src="screenshots/story/landing-seg0.webp" alt="The 'organize the chaos' section: forty-seven tabs, three of them important" width="70%">
-
-<img src="screenshots/story/p2-mkt-secondbrain-01.webp" alt="Six panels: hybrid search, MCP server, knowledge base, Obsidian proxy" width="70%">
-
-</details>
-
-<details>
-<summary><b>Your vault</b> — Obsidian, on both sides</summary>
-
-<img src="screenshots/story/card-11.webp" alt="A card headed 'edit here. it lands in Obsidian.', over an edit, write-back and Obsidian flow" width="70%">
-
-</details>
-
-<details>
-<summary><b>Agents and boards</b> — the surface an agent holds</summary>
-
-<img src="screenshots/story/app-view-decisions.webp" alt="The decisions surface — the human gate, with a queue of pending items" width="49%">
-<img src="screenshots/story/p2-mkt-agents.webp" alt="The agents page" width="49%">
-
-</details>
-
-<details>
-<summary><b>Public windows</b> — what publishing looks like</summary>
-
-<p>
-  <img src="screenshots/story/hero-card.webp" alt="A public window headed 'write and publish your articles'" width="49%">
-  <img src="screenshots/story/window-0reliance.webp" alt="A published window about self-hosted AI and Docker" width="49%">
-</p>
-
-</details>
-
-<details>
-<summary><b>Where it runs</b> — the self-host page</summary>
-
-<img src="screenshots/story/p2-mkt-selfhost-00.webp" alt="The self-host page hero: 'Your workspace. Your server. Your rules.'" width="70%">
-
-</details>
-
----
-
-## 🎬 The tour
-
-Fifty-two seconds, no voiceover, the product doing its thing:
-
-<a href="media/glassy-tour-60s.mp4"><img src="screenshots/story/tour-poster.webp" alt="Play the 60-second Glassy tour" width="70%"></a>
-
-[▶ Watch the 60-second tour](media/glassy-tour-60s.mp4) · [captions](media/glassy-tour-60s.srt)
-
-For the step-by-step version, **Glassy Learn** has the lessons — including
-[Install Glassy](https://learn.glassy.fyi/lessons/start/install-glassy) and
-the rest of [the lesson list](https://learn.glassy.fyi/lessons).
-
----
-
-## Run it yourself
-
-You need Docker, a Glassy account (free works — the pairing token is the
-anchor, not the tier), and one command:
+You need [Docker](https://docs.docker.com/get-docker/) and a Glassy account. A free one is
+enough: [sign up at glassy.fyi](https://glassy.fyi).
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
-cp .env.example .env
-# Edit .env — six required fields, each explained in the manual below
-docker compose up -d --quiet-pull
+./install.sh
 ```
 
-**Run the workspace on your own server, where your rules are the only ones.**
+On Windows, in PowerShell: `.\install.ps1`
 
-<p>
-  <img src="screenshots/story/p2-mkt-selfhost-00.webp" alt="The self-host page — for self-hosters" width="70%">
-</p>
+The installer checks your machine, asks for your account email and pairing token, starts
+Glassy, and tells you how to sign in at `http://localhost:3000`.
 
-Five ways people use it: with a vault they already love, with the extension
-in the browser, with Ollama on the same box, with agents, or plain and
-quiet. Find the one that's yours.
+<img src="assets/install-terminal.webp" alt="The installer finishing: every check marked ok, Glassy running at localhost:3000, and the next steps" width="100%">
 
-**Handing this to an agent?** Give it
-[GIVE-THIS-TO-YOUR-AI-AGENT.md](GIVE-THIS-TO-YOUR-AI-AGENT.md) — the install
-brief written for the machine, not the human.
+The full walk-through, including doing it by hand, is in [docs/install.md](docs/install.md).
 
----
+## What you get here
 
-## Contributing
+This is all of Glassy, the same software that runs on glassy.fyi. Running it yourself is where
+these three go furthest.
 
-This repository is the installer: `README.md`, `screenshots/`, `media/`, and
-`MAINTAINING.md` are maintained here, and the compose files, `.env.example`
-and the deployment docs are copied in from `0Reliance/glassy` by the release
-workflow. Change those upstream, not here —
-[MAINTAINING.md](MAINTAINING.md) has the process and the exception list.
+### Your assistants work beside you
 
-Bugs in the app itself belong in
-[0Reliance/glassy](https://github.com/0Reliance/glassy/issues).
+Give each assistant its own named key. It reads what you've saved, writes where you can see it,
+and asks you when a choice is yours. You can always tell who wrote what.
 
----
+<img src="assets/agents-notes.webp" alt="The notes view: cards written by Sam, and cards written by an assistant called Juniper, each marked with its author" width="100%">
 
-<!-- ═══════════════ THE MANUAL — the install and operations reference ═══════════════ -->
+<img src="assets/agents-decision.webp" alt="A question from Juniper, 'Shall I book the Graça house for Lisbon?', with three choices as buttons, each saying what it leads to" width="100%">
 
-## 📖 The manual
+### AI runs where you choose
 
-## Quick start
+In your browser, on your own Ollama, or with your own key from a provider. Glassy provides no
+AI here and never bills you for any. With none set up, everything except AI still works.
 
-> **Self-hosting is open to every Glassy account**, free included.
-> Sign up at [clear.glassy.fyi](https://clear.glassy.fyi) or [glassy.today](https://glassy.today);
-> the pairing token is the anchor, not the tier, and the container never refuses to start
-> over verification.
+With a model of your own, search finds things by what you meant as well as the words you typed.
 
-```bash
-git clone https://github.com/0Reliance/glassy-selfhost.git
-cd glassy-selfhost
-cp .env.example .env
-# Edit .env — fill in six required fields:
-#   GLASSY_TAG=<latest released version, e.g. v2.65.22>  (see note below)
-#   GLASSY_MEMBER_EMAIL=your@glassy-account-email
-#   GLASSY_SELFHOST_TOKEN=<pairing token from Settings → Account → Self-hosting on your cloud>
-#   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi  (Clear members: https://clear.glassy.fyi)
-#   JWT_SECRET=$(openssl rand -hex 32)
-#   API_KEY_ENCRYPTION_KEY=$(openssl rand -hex 32)
-docker compose up -d --quiet-pull   # ~1.2 GB image; suppresses per-layer progress
-```
+<img src="assets/search.webp" alt="A search for 'somewhere quiet to stay with no stairs' finds the note comparing three places to stay in Lisbon first, matched by meaning and by words" width="100%">
 
-> **Pin `GLASSY_TAG` to a released version — never use `latest`.** The floating
-> `latest` tag is the *hosted* build: it is rebuilt on every push to `main`
-> without the self-host build-time flags, so on `latest` the **AI tools (MCP)**,
-> **Second Brain**, **Agent connections** and **API keys** settings are
-> hidden and a "You are on the cloud" banner appears on your own appliance.
-> Versioned tags carry all self-host features. Check the
-> [releases page](https://github.com/0Reliance/glassy-selfhost/releases) for the
-> newest version. `docker compose` will refuse to start until `GLASSY_TAG` is set.
+### Your Obsidian vault, live
 
-On first boot the appliance verifies your account AND pairing token against
-the cloud, creates your local account using that email address, and prints
-the initial password once. The password is **also written to a file** so you can
-recover it even if the Docker log buffer has rolled:
+Keep writing in Obsidian. Glassy searches your vault beside everything else you save, and an
+edit in Glassy lands in the file. [How to link it](docs/obsidian.md).
 
-```bash
-# Option A — grep the logs (only works on the very first boot, see note below):
-docker compose logs glassy | grep -A2 "Default admin created"
+## What you take on
 
-# Option B — read the credentials file (TWO lines: your email on line 1, the random
-# password on line 2 — sign in with line 2, not the whole file; survives container
-# recreation, deleted after your first password change):
-docker exec glassy cat /app/data/.initial_admin_password
-```
+- **You run the updates.** Nothing changes until you choose. [Update Glassy](docs/upgrade.md).
+- **Backups are yours.** Glassy saves a copy every night on the same disk. Keeping one
+  somewhere else is up to you. [Backups](docs/backups.md).
+- **One person by default.** More workspaces for you are free. More people need a seat pack.
+- **It lives in Docker**, using about 2 GB of disk plus your notes.
 
-> ⚠️ **The password line only appears on the true first boot** — when the `users`
-> table is completely empty. If the `glassy-data` volume persisted from a
-> previous run (e.g. you ran `docker compose down` without `-v`), no new
-> password is printed and your existing admin password is unchanged. To start
-> completely fresh, run `docker compose down -v` and then `docker compose up -d`.
-> That erases every note and setting on this machine, so take a backup first.
+## What leaves your machine
 
-Sign in at **http://localhost:3000** with your membership email and that password.
-You will be **immediately prompted to set a permanent password** before you can
-use the workspace — the random one is discarded after that.
-Registration is closed by default — the seeded `admin` is the only account until a
-one-time **seat pack** (Family 10 · Team 50 · Studio 100) opens it to more users.
-All premium features are unlocked automatically.
+<img src="assets/what-leaves.svg" alt="Diagram: notes, files, passwords and saved keys stay on your machine. Three things can leave: an account check at start, AI services you choose, and Cloud Sync if you turn it on." width="100%">
 
-## Giving this to an AI agent
+When Glassy starts, it confirms your account with the Glassy cloud: your email and pairing
+token, no password, no notes. If that can't happen, Glassy starts anyway. After that, the only
+things that leave are the ones you turn on. There is no tracking. [Security and privacy](docs/security.md).
 
-**[`GIVE-THIS-TO-YOUR-AI-AGENT.md`](GIVE-THIS-TO-YOUR-AI-AGENT.md) is in this repo's root, and it
-is the only document here written for an agent rather than for you.** Hand it over whole — it is
-self-contained and needs no other page open. It carries the MCP endpoint and Bearer auth, the full
-tool / prompt / resource tables, the write-path contract, and the operational facts an agent cannot
-infer from the API. Four of those facts have already cost a field agent an hour each:
+## For AI agents
 
-| The trap | What the brief says |
+Handing this to an assistant? Give it **[AGENTS.md](AGENTS.md)**. It routes an agent to one of
+four sets of steps: install Glassy, set it up, work in it, or fix it. Each says what to ask
+you first, when to stop, and how to show the job is done.
+
+<img src="assets/how-agents-connect.svg" alt="Diagram: each assistant holds its own named key and connects to Glassy's agent endpoint; its work lands in your workspace, the archive, or its own space" width="100%">
+
+Connecting an assistant yourself takes a minute: [Agents in your Glassy](docs/agents.md).
+
+## Guides
+
+| I want to… | Read |
 |---|---|
-| Every authenticated call answers `403 PASSWORD_CHANGE_REQUIRED` on a fresh install, while login itself succeeds | The seeded owner carries `password_must_change`; login sits **outside** that wall and everything else behind it. The brief gives the exact three-call sequence, the password rules, and the fact that two different `403`s must be told apart by body rather than by status. |
-| A script needs the owner's email and password to read the API | It does not. A named agent key authenticates `GET /api/*` on an appliance — read-only by design, with any write refused `403 AGENT_KEY_READ_ONLY`. |
-| Passing a dispatch's `sessionId` back seems to do nothing | `sessionId` is the session key to pass back; the provider's per-call id is `metadata.completionId`. On Hermes, continuity ALSO needs the separate `resumeId` (the gateway's `X-Hermes-Session-Id`, returned in the response header) — pass back both. That was genuinely broken before v2.41.0 and is fixed. |
-| A tool field or route "doesn't exist" | Read `GET /api/capabilities` first. It states what *this* instance serves — tool count, cloud-gated tools, `agentIdentity.restReadLanes`, `agentIdentity.agentVaultProvider`, the presentation routes — so an agent learns a boundary instead of probing for it. |
-| On a no-Obsidian self-host, `glassy_vault_read`/`glassy_vault_append` fail | They don't have to. The operator can declare one Agent Gateway connection the vault provider (`config_json.vaultProvider: true`), and vault reads/writes dispatch to that agent. `glassy_obsidian_proxy` still requires the full Obsidian stack. Don't invent an MCP shim behind `obsidian_url` — use the provider lane. |
-| An agent reads "vault" and assumes it means Glassy's own notes | It doesn't. `glassy_vault_read`/`glassy_vault_append` reach the **Obsidian** vault (or the vault-provider agent on a no-Obsidian self-host) — they never read Glassy's own notes and memory. Glassy's own store is `glassy_search`/`glassy_remember`/`glassy_recall`/`glassy_note_*`. If you use Glassy *instead of* Obsidian, "the vault" is Glassy itself. |
-
-If your agent reports that one of these is wrong, treat it as a defect report rather than user
-error: the brief's last section explains what a useful report carries, and reports are how every
-fix above happened.
-
-
-## Why sign in?
-
-This is your own copy of Glassy, running on your machine. Your notes,
-documents, and tags stay on this device — **your data remains offline**.
-Sign-in uses your membership email and a local password — note content is
-never sent to our servers.
-
-Self-hosting is open to **every Glassy account** — free included. The appliance
-verifies your account **and** your pairing token against the cloud once at boot
-and caches the signed answer for 30 days, so it works fully offline within that
-window. The token is the anchor: someone who merely knows your email cannot
-stand up an appliance on your account. No tier is required, and the container
-never refuses to start over verification.
-
-**What stays on this device:**
-- Your notes, documents, and tags
-- Your API keys (stored encrypted in the local database)
-- Any file attachments
-
-The only outbound calls are: the membership check at boot (once per 30 days)
-and AI providers *you* configure (Ollama on localhost, or your own keys you add
-in Settings → Workspace → API keys). No note content or usage data is ever sent to us.
-
-### How your account works
-
-Glassy self-host is **single-user by default, multi-user with a seat pack**. Here's
-what happens the first time you start it, and every time after:
-
-**1. Account + pairing-token check (once every 30 days, at boot).** The
-appliance sends your email **and** your `GLASSY_SELFHOST_TOKEN` to
-`app.glassy.fyi` — no password, no note content, no personal data. The cloud
-replies with a signed yes/no: *"does this account exist, and does the token
-match the one stored in the account?"* — the tier travels in the signed payload
-for the badge, and gates nothing (any account self-hosts). The token is
-required so that someone who merely knows your email cannot spin up an
-unlocked instance on your account. The result is cached locally for 30
-days (signed) or 24 hours (unsigned fallback), so the appliance works fully
-offline within that window. If the cloud can't be reached and no usable cache
-exists, Glassy starts anyway and every local feature works. It confirms your
-account at the next start. (For scripts: `GET /api/instance` reports
-`membershipState: "degraded"` until then.) The container never refuses to start over verification.
-
-You generate the pairing token in your Glassy account on the cloud:
-**Settings → Account → Self-hosting → Generate token**.
-  • Public / Pro members: https://app.glassy.fyi/#/settings?g=account&s=selfhost
-  • Clear members:        https://clear.glassy.fyi/#/settings?g=account&s=selfhost
-Paste it into `GLASSY_SELFHOST_TOKEN` in `.env`. If you generated the token on
-Clear, also set `GLASSY_VERIFY_CLOUD_URL=https://clear.glassy.fyi`. Rotate the
-token any time from the same settings page.
-
-**2. Admin account created (first boot only).** If no account exists yet, the
-appliance creates one using your `GLASSY_MEMBER_EMAIL` as the login email. A
-random password is generated, printed to the logs **once**, written to
-`/app/data/.initial_admin_password` (chmod 600), and never stored in plaintext
-— only its bcrypt hash goes into the local database:
-
-```bash
-# Logs (first boot only — see warning above):
-docker compose logs glassy | grep -A2 "Default admin created"
-# File (survives container recreation, deleted after first password change):
-docker exec glassy cat /app/data/.initial_admin_password
-```
-
-On first login you are **forced to set a permanent password** before you can
-use the workspace. After that, the random password and the credentials file are
-discarded.
-
-**3. Every login after that is 100% local.** The appliance authenticates you
-against its own local SQLite database using a JWT signed with your
-`JWT_SECRET`. No cloud call happens during login — the cloud only confirmed
-your membership at boot, and it only received your email address and pairing
-token. Your notes, passwords, and session tokens never leave your machine.
-
-```
-GLASSY_MEMBER_EMAIL (your email)
-        │
-        ▼
-  Boot: "does this email have a membership?" ──► Cloud: yes/no
-        │  (email only, no password sent)         (cached 30 days)
-        ▼
-  First boot: create local admin account
-        │  email = yours, random password printed once
-        ▼
-  Every login: local JWT auth against local database
-        │  (no network, no cloud, no phone-home)
-```
-
-## What works differently from cloud
-
-| Capability | Cloud (app.glassy.fyi) | Self-hosted (this) |
-| --- | --- | --- |
-| Notes, AI, capture, companion | Yes | Yes |
-| Live Obsidian vault sync | No (server cannot reach your localhost) | Yes |
-| Cloud Sync (cross-instance data sync) | Cloud side (token issuer) | Yes (appliance side) |
-| Ollama local AI | No | Yes |
-| Agent Gateway (OpenClaw, Hermes) | Cloud: localhost allowlist only | Yes — localhost **and** LAN/Tailscale addresses (v2.36.0-beta.40+) |
-| MCP server + Second Brain (42 tools on the appliance; 37 on cloud) | Yes — 37 tools, single shared key, 120/1,200 calls per hour | Yes — 42 tools, unthrottled, no tool-call rate limits |
-| Named per-agent MCP keys (agent identity) | Single shared key | Yes — one named key per agent, pinned to a verified identity (`/api/mcp-keys`) |
-| Agent awareness lane (`glassy_notify`) + aging-review escalation | Not available | Yes — ≤10 notifications/min per key by design |
-| Data location | Cloud VM | Your machine (`glassy-data` volume) |
-
-## Configuration
-
-All variables live in `.env` (see `.env.example`). Required variables are
-called out below; everything else has a safe default.
-
-### Required
-
-| Variable | Description |
-| --- | --- |
-| `GLASSY_MEMBER_EMAIL` | Your Glassy account email — any account, free included. Checked against the cloud at boot; cached for 30 days. |
-| `GLASSY_SELFHOST_TOKEN` | Pairing token from Settings → Account → Self-hosting. Prevents unauthorized use of your membership by someone who merely knows your email. |
-| `GLASSY_VERIFY_CLOUD_URL` | Cloud instance that verifies your account and token. Default `https://app.glassy.fyi`; Clear members must use `https://clear.glassy.fyi`. |
-| `JWT_SECRET` | Session token signing key. Generate with `openssl rand -hex 32`. |
-| `API_KEY_ENCRYPTION_KEY` | Encrypts stored API keys. Generate with `openssl rand -hex 32`. |
-| `GLASSY_TAG` | Image tag to pull from GHCR — **required** (set in `.env`): must name a released version (e.g. `v2.65.22`); Glassy won't start without it, and never use `latest` (the hosted build omits self-host features). |
-
-### Single-user defaults (already set in `.env.example`)
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `INSTANCE_ACCESS_MODE_DEFAULT` | `private` | Hides all public surfaces from logged-out visitors. An admin account is seeded automatically on first boot. |
-| `DEPLOYMENT_LOCALITY` | `local` | Tells the app it's running locally (hides the cloud-limitation banner in Obsidian settings). |
-| `ENABLE_CORPUS_INDEXER` | `true` | Prepares your notes for search by meaning. Agents' search tools need it. |
-| `ENABLE_CORPUS_RECONCILER` | `true` | Once an hour, adds anything search missed (synced items, older items, items that failed to index). Turn it off only if your search provider charges per item and you need to cap that. |
-| `ENABLE_KB_QUERY` | `true` | Mounts the KB query API endpoint. |
-| `ENABLE_MCP_SERVER` | `true` | Mounts the MCP server at `/mcp` (42 tools incl. the vault knowledge-graph suite and durable agent memory, 4 prompts, 9 resources). Unthrottled on the appliance — tool-call rate limits are a cloud-era mechanism and are bypassed here by design. |
-| `ENABLE_MCP_BRIDGE` | `true` | Enables Companion extension MCP token exchange. |
-| `ENABLE_AGENT_GATEWAY` | `true` | Enables OpenClaw / Hermes Agent Gateway (self-host-appropriate). |
-
-> **Single-user by default; multi-user with a seat pack.** An unlicensed appliance is
-> single-user: registration is refused and the seeded `admin` is the only account.
-> A **seat pack** (Family 10 · Team 50 · Studio 100, one-time) lifts that to a multi-user
-> workspace: the admin creates users up to the seat count, and the server refuses past it
-> (`403 SEAT_LIMIT`). Sub-accounts (multiple workspaces under one person) are free and
-> never consume seats.
-
-### Optional
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `APP_PORT` | `3000` | Host port Glassy listens on. Change if port 3000 is in use — then update `APP_URL` + `CORS_ORIGINS` to match. |
-| `APP_URL` | `http://localhost:3000` | Base URL for OAuth + email links. **Set this if you access via Tailscale or a domain** — see [Multi-device access](#multi-device-access-tailscale--cloudflare-tunnel--netbird). |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins allowed to call the API. **Must include any additional origin you use** (Tailscale hostname, LAN IP, domain). |
-| `GEMINI_API_KEY` | — | *Not used on the appliance.* Cloud AI keys (Gemini/OpenAI/Anthropic) are added in-app at **Settings → Workspace → API keys**, stored encrypted per-account. Local AI (WebGPU/Ollama) works with no key. |
-| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` | Ollama on the host (reachable via Docker host gateway). The server auto-appends `/v1` if missing. Use `http://ollama:11434` with the bundled sidecar overlay. |
-| `OBSIDIAN_NETWORK_ALLOWLIST` | — | Additional comma-separated hostnames/IPs allowed for Obsidian connections. Use when Obsidian is on a LAN IP, Tailscale node, or WSL2 bridge address not covered by the defaults. Self-hosted only. |
-| `TRUST_PROXY` | unset | Set to `1` if behind a single reverse proxy. |
-
-> **⚠️ If you change `APP_PORT`, you must also update `APP_URL` and `CORS_ORIGINS` to the same port.** Leaving them at `http://localhost:3000` while `APP_PORT=3005` will cause CORS failures and broken login redirects. All three must agree.
->
-> **Email is disabled on the appliance.** Nothing leaves the machine, so
-> `RESEND_API_KEY` / `EMAIL_FROM` are no-ops here. Lost-password recovery uses
-> local paths instead (admin reset or a secret recovery key) — see
-> [`SELF_HOSTED_DEPLOYMENT.md` § Account recovery](SELF_HOSTED_DEPLOYMENT.md#5-account-recovery-lost-password).
-
-### Advanced tuning
-
-Every knob in `.env.example` under **Advanced tuning** is optional and safe to
-leave at its default: worker count (`CLUSTER_WORKERS`), and Obsidian timeout /
-import caps (`OBSIDIAN_REQUEST_TIMEOUT_MS`, `OBSIDIAN_IMPORT_MAX_*`). Raise them
-for a multi-core host, heavy agent automation, or a very large vault. Note: the
-MCP tool-call rate-limit variables (`MCP_*_TOOLCALLS_PER_HOUR`) are inert on the
-appliance — since v2.36.0-beta.26 the self-hosted MCP server is unthrottled by
-design (rate limiting is a cloud cost-protection mechanism; the safety floor —
-key auth, SSRF validation, destructive-action confirmations — still applies).
-
-## Local AI (bundled Ollama)
-
-Glassy runs local AI out of the box: in-browser WebGPU models need nothing,
-and Ollama is auto-detected on the host. If you don't already run Ollama, the
-included overlay starts it as a sidecar so there's nothing extra to install:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.ollama.yml up -d
-# Pull a model once (stored in the ollama-models volume):
-docker compose -f docker-compose.yml -f docker-compose.ollama.yml \
-  exec ollama ollama pull llama3.2
-```
-
-Glassy is automatically pointed at the sidecar (`OLLAMA_BASE_URL=http://ollama:11434`).
-The model picker fetches the list **live from your Ollama instance** and caches
-it for 30 seconds (v2.36.0-beta.40+), so it always shows the models you have
-actually pulled — no manual refresh or restart needed. Have an NVIDIA GPU? Uncomment the `deploy` block in
-[`docker-compose.ollama.yml`](docker-compose.ollama.yml) after installing the
-NVIDIA Container Toolkit. For **cloud** AI (Gemini / OpenAI / Anthropic), add
-your own key in-app at **Settings → Workspace → API keys** — the appliance never
-reads cloud keys from `.env`.
-
-## Obsidian vault sync
-
-Glassy connects to your Obsidian vault via the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin. There are three connection methods — the **browser extension bridge** is recommended for Windows/WSL2:
-
-### 1. Browser Extension Bridge (recommended for Windows/WSL2)
-
-On Windows with Docker Desktop (WSL2), the container cannot reach Obsidian on the Windows host's `127.0.0.1`. The [Glassy Companion](https://github.com/0Reliance/glassy-companion) extension solves this by proxying Obsidian requests from the server through your browser.
-
-> **On self-hosted instances, the web app's Obsidian settings panel hides the URL, Test Connection, and Diagnostics controls** — these run server-side and would always fail from inside the container. The extension is the canonical source for the Obsidian URL and API key. Configure them in the extension popup.
-
-**Setup:**
-
-1. Install the **Obsidian Local REST API** plugin (v4.0+) in Obsidian. Copy the API key from the plugin settings.
-2. Install the **Glassy Companion** extension (Chrome or Firefox).
-3. **Sign in** to the extension with your Glassy account (same email as your self-hosted appliance).
-4. Open the extension popup → Settings → **Obsidian Bridge**:
-   - Set **Obsidian URL** to `http://127.0.0.1:27123` (HTTP avoids self-signed cert issues; HTTPS is `https://127.0.0.1:27124`).
-   - Paste the **API Key** from the Obsidian plugin.
-   - Toggle **Obsidian Bridge** on.
-   - Click **Test Connection** — this tests the FULL bridge loop (server → extension → Obsidian), not just extension→Obsidian. A green result with "plugin v4.x" confirms both legs work.
-   - Click **Save**.
-5. In the self-hosted web app (Settings → Connections & data → Obsidian vault), you should see "✓ Extension bridge active — Obsidian connected."
-6. **Verify:** `curl -H "Authorization: Bearer <jwt>" http://localhost:3000/api/ext/obsidian-bridge/status` should return `{"connected":true,...}`.
-
-The extension holds the Obsidian API key locally (never sent to the server) and maintains a persistent SSE connection to the Glassy server via the offscreen document (which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search) — or needs to WRITE to the vault (checkbox toggles, add-under-heading, daily-note append, push-to-vault; companion v2.18.0+ transport v2) — it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result (including upstream response headers like ETag, which power concurrency-safe writes). See the [Obsidian integration guide](https://docs.glassy.fyi/02-core-features/integrations/obsidian-vault) for full details.
-
-**Troubleshooting the bridge:**
-
-- **Vault writes fail (502) but reads work:** writes need companion **v2.18.0+** (bridge transport v2) AND a server with the Obsidian glass-pane follow-up (v2.36.0-beta.17+). On older companions, raw-markdown writes fall back to the direct server→Obsidian path — unreachable from WSL2 containers. Update the extension.
-- **Extension says "Bridge connected" but server says not connected:** Update to extension v2.18.0+ (v2.14.0+ is the minimum that moved the SSE out of the MV3 service worker, which Chrome evicts after ~30s, and added broad localhost permissions for self-host URLs; v2.16.0 adds the `chrome.alarms` heartbeat reliability fix; v2.17.0 fixes the save-card image preview; v2.17.1 hardens save & sync reliability — offline-queue pause semantics, 5xx-resilient sessions, capture-rule pre-population; v2.18.0 adds bridge transport v2 — vault writes over the bridge). Verify `CLUSTER_WORKERS=1` (`docker exec glassy env | grep CLUSTER`). Toggle the bridge off and on.
-- **Test Connection green but Obsidian features don't work:** Test Connection tests the full loop — if it's green, both legs work. Check server logs for `ECONNREFUSED` (the direct fallback failing — expected on WSL2).
-
-### 2. Direct server → localhost (Linux/macOS)
-
-On native Linux/macOS or Docker on Linux, the server reaches Obsidian directly via `host.docker.internal:27124`. This works out of the box with the default `OBSIDIAN_HOST_OVERRIDE=host.docker.internal`.
-
-### 3. Network allowlist (split-machine setups)
-
-If Obsidian runs on a different machine, set `OBSIDIAN_NETWORK_ALLOWLIST` to the Obsidian host's IP or hostname, and configure the plugin to bind to `0.0.0.0` instead of `127.0.0.1`:
-
-```env
-OBSIDIAN_NETWORK_ALLOWLIST=192.168.1.10,glassy.tail-net.ts.net
-```
-
-> ⚠️ Binding the Obsidian plugin to `0.0.0.0` exposes it to your network. Only do this on a trusted network or behind a firewall. The browser extension bridge is safer — it doesn't expose Obsidian to the network at all.
-
-## Cloud Sync (cross-instance data sync)
-
-Cloud Sync keeps notes, documents, bookmarks, voice recordings,
-conversations, pinned tags, collections, highlights, and custom backgrounds
-two-way in sync between this appliance and a receiving Glassy instance — your
-cloud account (app.glassy.fyi or clear.glassy.fyi), or a private VPS in a Zero
-Reliance Pair. It is separate from the self-host membership token: sync uses
-its own per-peer token that you generate and rotate independently from
-Settings → Cloud Sync on the receiving instance.
-
-Beta.40 adds appliance-side downloads of missing note images and custom-background
-renditions after row sync. Voice audio uses a separate download path. The server
-exposes a size/hash manifest, but the downloader currently fetches local references
-directly and does not verify manifest checksums. Downloads retry on eligible pull
-cycles; this is not two-way file replication. Back up appliance-origin media.
-
-### Enabling Cloud Sync
-
-1. On the **receiving** instance — your cloud account, or the private VPS in a
-   Pair — open **Settings → Cloud Sync** and click **Generate**. Copy the raw
-   token (it is shown only once).
-2. On the **sending appliance**, paste it into **Settings → Cloud Sync → "Pair
-   token"**, enter the receiver in **Syncs to**, and save. The token is stored
-   **encrypted** and both values take effect from the next cycle, **no
-   restart**. (Bootstrap/recovery alternative: put the token and peer URL in
-   `.env` as `GLASSY_SYNC_TOKEN` and `GLASSY_SYNC_PEER_URL` and restart; a token
-   saved in Settings wins from its next cycle onward.)
-3. Verify in the self-hosted web app at **Settings → Cloud Sync** — you should
-   see the peer connection status, `credentialSource`, pending outbound count,
-   and per-type cursor state. Click **Sync now** to trigger an immediate cycle.
-
-### Tuning the scheduler (optional)
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `GLASSY_SYNC_INTERVAL_MS` | `300000` (5 min) | Full cycle interval — pulls peer changes + pushes local. Set to `0` to disable automation (manual **Sync now** still works). |
-| `GLASSY_SYNC_CHECK_MS` | `10000` (10 s) | Fast-check interval — if there are pending outbound rows, runs an immediate cycle for near-instant push. Set to `0` to disable fast-check. |
-
-The fast check is a lightweight `COUNT(*)` query against the local outbox —
-negligible overhead. When local writes are pending you typically see them
-reach the peer within ~10 seconds.
-
-### Per-type, direction, and conflict controls
-
-In **Settings → Cloud Sync** on each side you can:
-- Toggle individual content types on/off (notes, documents, bookmarks, voice,
-  conversations, pinned tags, etc.). Disabled types pause in the outbox —
-  they're held (not lost) and flow again when you re-enable them.
-- Set the sync direction on the sending appliance (push-only, pull-only, or two-way).
-- Set the conflict policy: `most-recent` (last-writer-wins, the default) or
-  `cloud-wins` (always apply the incoming version).
-
-Deletes sync fully for notes, documents, folders, and voice recordings. For
-bookmarks, collections, highlights, conversations, and pinned tags, deletes are
-best-effort and may not propagate — delete on the other instance too.
-
-Multi-appliance is supported: each appliance that handshakes with the same
-cloud token gets its own row in `sync_peers`, and each runs its own scheduler
-against the shared cloud state.
-
-### Sync health & missing media
-
-Settings → Cloud Sync reads the authenticated `/api/sync-token/health` endpoint.
-Its `mediaMissing` field counts missing voice and note-image files; background
-renditions are not included. In beta.40 this scan is instance-wide, not filtered
-per account. It is separate from readiness/liveness endpoints.
-Missing files can be downloaded on eligible pull cycles when the peer has them.
-Check connectivity, permissions, versions, and disk space before concluding a
-persistent count represents lost data.
-
-## Upgrading
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Database migrations run automatically on container start.
-
-### What changed recently that you might notice
-
-**`v2.42.0`** — *your appliance can now use an agent as its vault, and a dispatch hands back a handle that resumes.*
-
-- **No Obsidian? Point the vault at an agent.** If your appliance has a filesystem vault but no
-  Obsidian, you can now mark one Agent Gateway connection as the **vault provider** (Settings →
-  Agent connections → *Set vault provider*), and `glassy_vault_read` / `glassy_vault_append` route
-  to that agent instead of failing — the agent holds the files. Only one connection can be the
-  provider at a time (enforced server-side). `glassy_obsidian_proxy` still needs the full Obsidian
-  stack.
-- **A dispatch returns a resume handle that actually resumes.** On a Hermes gateway, continuation
-  needs a separate `resumeId` (the gateway's `X-Hermes-Session-Id`, returned in the response
-  header) alongside the `sessionId` key — passing back only the key did not resume and made
-  multi-turn work *more* expensive (5.3× by the second turn). Both fields are now returned; pass
-  both back. See the agent brief.
-- **Sync tells the truth about what it did.** A row that failed to apply three times used to be
-  force-acked silently and vanish from every surface while health still read green. The cause is
-  now logged, the loss is kept as a cumulative `pullDeadLetter` count in Settings → Cloud Sync,
-  and the recovery (cloud re-snapshot + `sync-data/import`) is documented. **Sync is a state
-  channel, not a restore path** — reinstalling does not pull old content back; use export/import.
-- **Health no longer reports a provider that isn't there.** On a fully-local appliance the
-  embeddings screen used to claim "gemini" while Ollama produced the vectors; it now reports what
-  actually produced them.
-- **Clear members can mint their pairing token** (the Settings → Self-hosting pane was hidden on
-  Clear instances), and the sidebar's **Agent Gateway** and **Agent Review** items now open.
-
-**`v2.41.0`** — *your agent can now call the API without borrowing your password.*
-
-- **A named agent key works on the REST API, read-only.** Until now every script that
-  wanted `GET /api/notes` had to log in as **you**, with your email and password, to
-  obtain a session token — so your password sat in every integration's environment, the
-  script's reads looked like yours, and a reinstall (which rotates the signing secret)
-  broke all of them at once. The same `gky_mcp_…` key you already mint under
-  *Settings → Connections & data → AI tools (MCP)* now authenticates `GET /api/*`
-  directly:
-
-  ```bash
-  curl -s http://localhost:8080/api/notes -H "Authorization: Bearer gky_mcp_..."
-  ```
-
-  It is **reads only over REST, on purpose — but not a limit on what the agent can do**. A
-  `POST`/`PUT`/`PATCH`/`DELETE` carrying a key over REST is refused `403 AGENT_KEY_READ_ONLY`
-  before the key is even checked; that does not mean "this agent cannot write" — the **same key
-  writes normally through the MCP tools** (`glassy_note_create`, `glassy_note_update`,
-  `glassy_note_delete`, `glassy_add_capture`, documents, events). The instruction to give an
-  agent is: **write through MCP, read through either.** The refusal is deliberate duplication
-  avoidance, not a security wall — REST writes would be a second implementation of a write path
-  that exists, and a past release shipped a bug of exactly that shape (a REST `PATCH` answering
-  `ok` while silently discarding a field the MCP path handled). The key stays in the account it
-  was minted under, an `X-Account-Id` header will not move it, a key in a query string is never
-  accepted, and the forced-password-change wall, the inactivity lock and the account PIN lock all
-  still apply to it. `GET /api/capabilities` reports `agentIdentity.restReadLanes` so a script
-  can check rather than probe.
-- **A fresh install no longer ships the bug-report widget turned on.** It was visible on
-  a brand-new appliance that nobody had configured, because the default was written by a
-  database migration at first boot rather than by the code that looked like it governed
-  it. New installs now start with it off and an admin turns it on under *Admin*. If you
-  installed earlier and want it off, the toggle is yours: a stored "on" is
-  indistinguishable from a deliberate choice, so nothing overwrites it. Where it is on,
-  an individual can still hide it for themselves, and that choice now definitively wins.
-- **Knowledge Base results scroll in their own region again.** A long result list used to
-  push the whole page, carrying the search box and the source pills off screen with it.
-  The same fix repaired six other full-height views that were resolving against an
-  unclamped parent — Feed, Canvas, Present, Upgrade, the Agent Gateway and GlassyKeep.
-- **The account menu on an appliance offers *Extension* instead of a dead *Store*.** There
-  is no store to open on a self-host box, and the browser-extension download had no entry
-  point at all. Hosted instances keep *Store*.
-- **An agent asking you to approve something can now say what each choice commits to.**
-  A review request may carry a separate `context` — why it is asking, what it already
-  tried — and a one-line consequence per choice, rendered inside its own button so it
-  cannot be read against the wrong one.
-- **Multi-turn dispatch now has a session handle that works.** `POST /api/agents/:id/task`
-  used to return the provider's per-call completion id in its `sessionId` field, so passing
-  that back started a *new* conversation every turn and re-paid the agent's full context.
-  It returns the real session key now, with the provider's id under
-  `metadata.completionId`.
-- **The first-boot password wall is documented for scripts, not just for people.** On a
-  fresh install the seeded owner must change its password before the API will serve
-  anything, but login itself is *not* behind that wall — so a script saw a successful
-  login and then `403` on every call, and reasonably concluded the install was broken.
-  `GIVE-THIS-TO-YOUR-AI-AGENT.md` now gives the exact three-call sequence and the two
-  different meanings of `403`.
-
-
-**`v2.40.7`** — *the surfaces now describe themselves accurately, and one new surface exists.*
-
-- **New: a chrome-free presentation route, `#/present/<kind>/<id>`.** It renders one note,
-  canvas or document with no sidebar, header or widgets — for putting a single artifact in
-  front of someone without the workspace around it. `Esc` exits. It is **owner-only** by
-  design (the unauthenticated surface is still `#/w/<slug>/<noteId>`), it reuses the
-  existing renderers rather than adding one, and `/api/capabilities` publishes the route
-  and its valid kinds so an agent can build the URL instead of guessing it.
-- **Canvas notes now render in the Public Window.** A canvas opened through
-  `#/w/<slug>/<noteId>` used to fetch successfully and then display nothing, because the
-  window had a renderer for every note type except that one. It now uses the same canvas
-  renderer as the rest of the app. On an appliance the Public Window is forced
-  members-only, so this is visible to signed-in members rather than to anonymous visitors.
-- **The capability manifest advertised an embedding-reindex route that has never
-  existed.** It said `/api/kb/reindex`, which answers 404 on every method; the real route
-  is `POST /api/kb/backfill/reindex`. For an agent, a 404 on a repair path is
-  indistinguishable from “this instance has no reindex”. The value is now derived from
-  the constant the route registers with, so the two cannot part silently.
-- **`glassy_note_update`’s `is_public` description now names both presentation surfaces**
-  and states the appliance behaviour, so an agent deciding whether to publish a note is
-  told who will actually be able to see it.
-
-**`v2.40.6`** — *a rule that is enforced is not a rule that is displayed.*
-
-- **The forced password change is now enforced by the server, not just shown by the page.**
-  Until this release an account carrying `password_must_change` was greeted by a full-screen
-  prompt, while a token that ignored it kept complete access to `/api/*`. The refusal is now
-  server-side — `403 PASSWORD_CHANGE_REQUIRED` — with `POST /api/auth/change-password` the one
-  exempt route, so the account that must change its password still can. On a fresh appliance
-  this is invisible: you were going to set your own password anyway.
-- **Setting your own password in the admin panel now satisfies the requirement.** Previously
-  only the change-password screen cleared the flag, so rotating a password from the admin panel
-  rotated it and left the account permanently flagged — harmless while the flag only chose which
-  screen you saw, and a lockout once the flag gated the API. An admin resetting *someone else*
-  still leaves the flag set, on purpose: that is the "we reset your access, choose your own"
-  flow the flag was introduced for.
-- **Pairs with Companion extension v2.20.1** (error classification now reads the HTTP status
-  code instead of inferring it from message text). The in-app extension page had been pointing
-  at v2.20.0 after v2.20.1 shipped; it now names the release that exists.
-
-**`v2.40.5`** — *the appliance tells clients what it can actually do.*
-
-- **Pairs with Companion extension v2.20.0.** The capability manifest now reports the
-  vault, and `/api/ext/me` reports your `obsidian_enabled` setting, so the extension
-  shows its 📁 Vault tab and Obsidian Bridge settings only when this appliance can
-  really serve them. Companion v2.20.0 also fixes its AI Tools (MCP) section, which
-  previously never appeared because it probed the wrong endpoint — **update the
-  extension alongside this image** or the MCP settings stay hidden.
-- **MCP tool calls are recorded** at a single choke point and shown in the activity
-  feed, so "what did the agent just do" is something you read rather than reconstruct.
-- **Bookmark delete is two-stage**, matching how notes already worked — a delete is
-  recoverable rather than immediate.
-- **Agent note edits are recoverable.** Version snapshots are taken in the service, so
-  a write that did not go through the main route still produces a restorable version.
-- **A disabled or failed MCP server now says so.** `/mcp/*` answers `503` with a JSON
-  `MCP_NOT_MOUNTED` reason instead of falling through to the single-page app and
-  returning an HTML page to a JSON-RPC client.
-
-**`v2.40.4`** — *the membership signature stops being a secret that everyone has.*
-No behaviour change you will notice; this closes a security issue in how appliances
-verify membership.
-
-- The appliance used to verify the cloud's membership signature with a **symmetric**
-  key that had to be baked into the image — and the image is publicly pullable, so the
-  "secret" was public and any signature could be forged. It now uses **Ed25519**: the
-  cloud signs with a private key that never leaves it, and the image ships only a
-  **public** key. A public key in a public image is not an exposure.
-- Worth knowing because it explains an oddity: the old mechanism was **inert as well as
-  insecure**. The build arg defaulted to the literal string `unset`, so signed caches
-  never validated and every appliance has always re-verified on the 24-hour TTL.
-  Upgrading therefore **cannot regress anything** — you were already on that path.
-- A cached signature from an older build is recognised by shape and re-verified once,
-  with a log line saying so. That is expected, not tampering.
-
-**`v2.40.3`** — *the image can finally take an OS security patch.* Two CRITICAL GnuTLS
-CVEs (CVE-2026-33845, CVE-2026-42010) had published fixes that **no rebuild would ever
-pick up**: the Debian base already ships `libgnutls30`, and
-`apt-get install curl ca-certificates` does not upgrade a package that is merely
-present. Docker then caches that layer by its instruction text, so on any host with a
-warm build cache it survived even a corrected instruction. The runtime stage now runs an
-explicit `apt-get upgrade` behind a date-stamped cache key, so OS patches land within a
-day of publication instead of never.
-
-If you build your own image rather than pulling ours, **you have the same problem** —
-add `&& apt-get upgrade -y` to your runtime apt layer.
-
-Practical exposure was low (`libgnutls30` reaches the image via `curl`, a diagnostic
-tool; the Node runtime uses OpenSSL), so upgrade at your normal pace.
-
-**`v2.40.2`** — *an appliance serves its own pages, and a limit means what it
-says.* **If your install shows a completely blank page, upgrade to this.**
-
-- **The blank screen (critical).** Every earlier build decided "is this request
-  from my own site?" against a hardcoded origin allowlist containing
-  `localhost:3000` and `127.0.0.1:3001`. A production browser bundle is emitted
-  with `crossorigin`, so it always sends an `Origin` header — which meant the
-  allowlist was the only thing consulted, and the appliance answered **403 to
-  requests for its own JavaScript and CSS**. Reach it on a custom `APP_PORT`, a
-  LAN address, a Tailscale hostname or your own domain and the page rendered
-  empty. The default `localhost:3000` install was never affected, which is why
-  this survived eleven releases: it passed by accident, not by design. Sameness is
-  now judged from the `Host` header the browser derives from the URL it is
-  fetching — not `req.host`, which Express takes from the caller-controlled
-  `X-Forwarded-Host` under `trust proxy` and which would have made the fix into a
-  cross-origin read.
-- **Boot survives its own workers.** An appliance could crash-loop on first boot
-  before anyone signed in: every cluster worker ran the default-admin seed as
-  "count the users, then insert", two workers both saw an empty database, and the
-  loser's unique-constraint error exited the process. Separately, two workers
-  adding the same column made the loser's `duplicate column name` warning skip
-  **every column after it**, silently.
-- **Rate limits are real.** `glassy_notify` advertised 10/minute and the login
-  limiter 20 per 15 minutes, but both windows lived in per-process memory.
-  Measured on a live 2-worker appliance: **40** failed logins got through against
-  a promise of 20. Both are now shared across workers and survive a restart.
-- **The MCP surface stops advertising what it is not serving.** A failed MCP mount
-  left `POST /mcp` answering `200` with the single-page app's HTML while
-  `/api/capabilities` claimed all 40 tools. It now answers `503 MCP_NOT_MOUNTED`
-  with a reason, and the manifest reports `mounted: false` beside the count.
-- **Deep links work.** A shadowed variable made every id-carrying route
-  (`#/notes/<id>`, `#/canvas/<id>`) unmatchable, silently falling back to the list.
-- **Honest diagnostics.** A registered-but-disabled external corpus no longer tells
-  you to register it; it names the real reason and how to re-enable it.
-
-After upgrading, **close and reopen the Glassy tab** — a service worker and CSP
-from the previous build can keep serving the stale shell after the container is
-fixed.
-
-**`v2.40.0`** — *the agent is a principal.* Your AI agents stop being anonymous
-callers and become named, verifiable coworkers:
-
-- **Named agent keys.** The appliance can now issue one MCP key **per agent**
-  (Settings → the MCP key manager, `POST /api/mcp-keys`) instead of one shared
-  key for everything. Each key is pinned to an agent name, so the activity feed,
-  note authorship and agent memory all say *which* agent did the work. The
-  Companion browser extension can issue itself a named key ("Companion") from
-  its AI Tools section.
-- **Your agents can remember.** A new memory lane
-  (`glassy_remember`/`glassy_recall`) stores durable memories as ordinary notes —
-  searchable, graph-linked, and private per agent.
-- **An awareness lane.** Agents can ping you with `glassy_notify` (rate-limited
-  to 10/minute by design) and post end-of-session digests. Unread notifications
-  appear on the **Agent Review** page and as a badge in the Companion popup;
-  review requests you leave unanswered escalate to a warning at 24h and 72h.
-- **Approval badges on your notes.** A note that an agent asked you about now
-  shows its state — under review / approved / changes requested — on the card
-  itself, not only in the queue. When you pick a changes-style answer you now
-  have to say why.
-- **Brain depth.** Embedding widths are pinned per content source with loud,
-  actionable errors instead of silent search degradation; re-indexing can be
-  scoped to one source (`?sourceTypes`), which keeps it fast and cheap;
-  `glassy_search` can federate across extra search endpoints you register by
-  config; and search ranking now respects your note graph (well-linked notes
-  rank up).
-
-Migrations 0117–0122 apply automatically on the first start after upgrading.
-The new agent surfaces are **appliance-only** — the hosted service deliberately
-withholds them (check `curl -s localhost:3000/api/capabilities` →
-`agentIdentity` + `notifications`).
-
-**`v2.36.0-beta.42`** — 2FA verification accepts one 30-second step either side of
-the current one (it previously checked the exact step only, so a *correct* code was
-rejected whenever the boundary fell between reading it and submitting it). If 2FA
-has ever told you a code was invalid and then worked seconds later, upgrading fixes
-it. The appliance inherits your Docker host's clock and has no NTP of its own, so a
-host more than ~30 seconds out still rejects everything — check `date -u` on the
-host before re-enrolling. See
-[SELF_HOSTED_DEPLOYMENT.md § 11](SELF_HOSTED_DEPLOYMENT.md#11-troubleshooting).
-
-**`v2.36.0-beta.41`** — every note write now goes through one server service. Four
-operator-visible consequences:
-
-- **Newly created notes sync.** A new note was written with no `updated_at`, so it
-  was invisible to incremental sync and sorted last in every recently-updated view.
-  If Cloud Sync ever appeared to "miss" fresh notes, this was it.
-- **Tags keep their characters.** One canonical policy now governs notes,
-  bookmarks, captures, extension writes, AI auto-tag and MCP: 20 tags × 64
-  characters, lowercased and trimmed, with accents and internal spaces preserved.
-  The AI auto-tag lane used to strip non-alphanumerics — `Résumé` came back as
-  `rsum`. Already-mangled tags are not retroactively repaired.
-- **Agent edits are attributed.** An MCP `note_update` records `MCP agent` as the
-  last editor, so you can tell an agent's change from your own.
-- **Delete and restore behave.** `note_delete` soft-deletes and is idempotent (an
-  agent retry is safe); restore is owner-only and returns a real `403` instead of a
-  hollow success.
-
-**Three changelog versions have no published image — never pin them.**
-
-- **`v2.36.0-beta.41`** — its tag push landed inside a transient CI outage, and
-  beta.42 contains all of its work plus the 2FA fix.
-- **`v2.39.0`** — prepared as a release and deliberately not launched; its canvas
-  page type and bulk vault ingest shipped in `v2.40.0`.
-- **`v2.40.1`** — never tagged; its work shipped in `v2.40.2`.
-
-Each header says so in the application repo's `CHANGELOG.md`, and
-`scripts/version-check.js` now fails a build that adds another untagged version
-silently — which is how all three came to exist in the first place. If a pin gives
-you `manifest unknown`, this is why: check the tag list rather than guessing.
-
-### Automatic updates (optional)
-
-The bundled Watchtower overlay polls once a day and recreates the container
-(same config + volumes) when its image tag moves. Caveat: with `GLASSY_TAG`
-pinned to a released version (the recommended setup — never `latest`, the
-hosted build), the tag never moves, so in practice upgrading stays manual:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.watchtower.yml up -d
-```
-
-To upgrade, change `GLASSY_TAG` in `.env` to the newest released version, then
-run `docker compose pull && docker compose up -d`.
-
-> **After an upgrade, give the tab one reload.** The PWA's service worker and
-> cached shell live in your browser, not the container. Since v2.36.0-beta.32 the
-> app serves its shell **network-first** and reloads an open tab once when the
-> service worker updates, so this is mostly automatic (0Reliance/glassy#36).
->
-> Two cases still need you: a tab that has been **open across the upgrade**
-> enforces the security policy of the document it already loaded until it reloads,
-> and a browser still running a **pre-fix service worker** keeps precaching the
-> shell until that worker is itself replaced. Symptoms, if you hit either: fetches
-> failing with CSP violations listing hosts the server no longer blocks, or the UI
-> showing the previous build (e.g. the old "You are on the cloud" banner on a
-> self-host). Close and reopen the tab; if it persists, clear site data for the
-> Glassy origin (DevTools → Application → Storage → Clear site data).
-
-## Multi-device access (Tailscale · Cloudflare Tunnel · Netbird)
-
-To use Glassy from another device (phone, laptop), you have three good options:
-
-### Tailscale (recommended)
-
-[Tailscale](https://tailscale.com/) is a WireGuard mesh VPN — no port
-forwarding, no TLS to manage, no public attack surface. Each device on your
-tailnet gets a stable IP (in `100.64.0.0/10`) and a MagicDNS hostname like
-`glassy.tail-net.ts.net`.
-
-```bash
-# One-time, on the host running Glassy:
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up
-```
-
-Then access Glassy from any device on your tailnet at
-`http://<this-machine>.tail-net.ts.net:3000` (replace `<this-machine>` with
-your host's tailnet name).
-
-**Required `.env` changes:**
-
-```env
-APP_URL=http://<this-machine>.tail-net.ts.net:3000
-CORS_ORIGINS=http://localhost:3000,http://<this-machine>.tail-net.ts.net:3000
-```
-
-> ⚠️ **Tailscale CORS gotcha:** Tailscale uses `100.64.0.0/10`, which the
-> app does *not* treat as internal. You must add the tailnet hostname
-> (or IP) to `CORS_ORIGINS` — otherwise the browser will be CORS-rejected.
-
-**Companion extension:** On your phone/secondary device, open the Glassy
-Companion → Settings → **Server URL** and set it to
-`http://<this-machine>.tail-net.ts.net:3000` for capture to work over Tailscale.
-
-### Cloudflare Tunnel
-
-[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
-gives Glassy a public HTTPS URL through Cloudflare's edge — no port
-forwarding, free TLS, but exposes the instance to the internet (gated by
-Cloudflare Access if you want auth).
-
-```bash
-# One-time, on the host running Glassy:
-cloudflared tunnel login
-cloudflared tunnel create glassy
-cloudflared tunnel route dns glassy glassy.example.com
-cloudflared tunnel run glassy
-```
-
-**Required `.env` changes:**
-
-```env
-APP_URL=https://glassy.example.com
-CORS_ORIGINS=https://glassy.example.com
-```
-
-### Netbird
-
-[Netbird](https://netbird.io/) is similar to Tailscale (WireGuard mesh +
-MagicDNS). Same `APP_URL` + `CORS_ORIGINS` pattern as Tailscale.
-
-### Automatic HTTPS (Caddy)
-
-If you own a domain and can point it at this host (public A/AAAA record, ports
-80 + 443 open), the Caddy overlay terminates TLS with an auto-renewing
-Let's Encrypt certificate — no manual cert wrangling:
-
-```bash
-# in .env:
-#   GLASSY_DOMAIN=glassy.example.com
-#   APP_URL=https://glassy.example.com
-#   CORS_ORIGINS=https://glassy.example.com
-docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
-```
-
-Caddy proxies to Glassy on the internal network; you can drop the host `3000`
-port publish from `docker-compose.yml` if you only want HTTPS ingress. For a
-private network with no public domain, prefer Tailscale above.
-
-## Data persistence, backups & restore
-
-All data lives in the `glassy-data` Docker volume (notes DB, uploads, logs,
-and `/app/data/backups`). Glassy takes an **automatic daily backup at 02:00** —
-plain SQLite copies in `/app/data/backups`, roughly 7 days retained. No
-configuration required.
-
-**Full volume snapshot** (captures everything, including generated backups):
-
-```bash
-docker run --rm -v glassy-selfhost_glassy-data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/glassy-backup.tar.gz -C /data .
-```
-
-> The named volume is `glassy-selfhost_glassy-data` (the `glassy-selfhost_`\n> prefix comes from the `name:` field in `docker-compose.yml`). Using\n> `glassy-data` without the prefix targets a nonexistent volume and backs\n> up nothing.
-
-**Encrypted / on-demand backups.** For extra copies you can move off the
-machine, use the backup CLI (honours `BACKUP_ENCRYPTION_KEY`,
-`BACKUP_RETENTION_DAYS`, `BACKUP_DIR` from `.env`). The runtime image has no
-`npm`, so call `node` directly:
-
-```bash
-docker compose exec glassy node server/utils/backup.js            # create
-docker compose exec glassy ls -1 /app/data/backups               # list files
-```
-
-**Restore the database.** The CLI restore auto-decrypts `.enc` files and copies
-plain `.db` files, so it works on both the automatic and CLI backups:
-
-```bash
-docker compose exec glassy node server/utils/backup.js --restore <backup-file>
-```
-
-The restore takes a pre-restore safety copy and waits 5 seconds before
-overwriting the live database (press Ctrl+C to abort). For a clean restore,
-stop other writers first. Set `BACKUP_ENCRYPTION_KEY` in `.env` before
-restoring an encrypted (`.enc`) backup.
-
-## Troubleshooting
-
-### The container name is already in use (`/glassy`)
-
-`deploy/selfhost/docker-compose.yml` sets **`container_name: glassy`** so the
-commands in this README (and the restore helper) always address the same
-container by name. If a compose project from a different directory already
-created that container — the error reads `Conflict. The container name "/glassy"
-is already in use` — remove the old one first (your data is on the host volume,
-not the container) and bring it up again from THIS directory:
-
-```bash
-docker stop glassy && docker rm glassy
-docker compose up -d
-```
-
-Run every compose command from the SAME directory (where `docker-compose.yml` +
-`.env` live) so the project name — and therefore the container names — stay
-consistent.
-
-### Port 3000 already in use
-
-If another service is using port 3000 (common for dev tools), set a
-different port in `.env`:
-
-```env
-APP_PORT=3001
-APP_URL=http://localhost:3001
-CORS_ORIGINS=http://localhost:3001
-```
-
-Then `docker compose up -d`. The container always listens on 8080 internally;
-`APP_PORT` only changes the host-side mapping.
-
-### Checking container health
-
-The container includes a built-in health check. To verify it's healthy from
-the host:
-
-```bash
-# Canonical health endpoint (used by Docker healthcheck):
-curl http://localhost:3000/api/monitoring/ready
-
-# Convenience alias:
-curl http://localhost:3000/ready
-```
-
-Both return JSON with `"status":"ready"` when healthy. If you get HTML
-instead, the container may still be starting up — wait a few seconds and
-retry.
-
-### Sync media missing (restored instance)
-
-If `mediaMissing` persists, confirm the source file exists and check the peer's
-version, credentials, connectivity, and available disk space. The counter alone
-cannot establish permanent loss. Restore or re-upload available files; do not
-delete note metadata or transcripts merely to hide a warning.
-
-### Debugging from inside the container
-
-The runtime image includes `curl` for network diagnostics:
-
-```bash
-# Enter the container:
-docker compose exec glassy sh
-
-# Test Ollama connectivity from inside the container:
-curl -s http://host.docker.internal:11434/api/tags | head -c 200
-
-# Test membership-verification endpoint reachability:
-curl -s -o /dev/null -w "%{http_code}" https://app.glassy.fyi/api/verify-selfhost
-```
-
-### Container logs
-
-```bash
-# Full logs:
-docker compose logs glassy
-
-# Follow logs:
-docker compose logs -f glassy
-
-# Check for membership verification status:
-docker compose logs glassy | grep -i "membership"
-
-# Check for Agent Gateway mount status:
-docker compose logs glassy | grep -i "Agent Gateway"
-```
-
-## Licensing
-
-The Docker Compose files, Caddy configuration, and deployment scripts in this
-repository are licensed under the **MIT License**.
-
-The GlassyDash application image (`ghcr.io/0reliance/glassy-dash`) pulled by
-these compose files is separately licensed under the **Business Source License
-1.1** (BSL 1.1). It is available for personal, non-commercial, self-hosted use
-and will transition to **AGPL-3.0** on 2027-07-13.
-
-For commercial licensing inquiries: hello@glassy.fyi
+| Install Glassy | [docs/install.md](docs/install.md) |
+| Choose where AI runs, connect an assistant, change settings | [docs/configure.md](docs/configure.md) |
+| Understand AI and search here | [docs/ai.md](docs/ai.md) |
+| Work with assistants | [docs/agents.md](docs/agents.md) |
+| Link my Obsidian vault | [docs/obsidian.md](docs/obsidian.md) |
+| Use Glassy on my phone or another computer | [docs/reach-it-from-other-devices.md](docs/reach-it-from-other-devices.md) |
+| Keep a second copy in sync | [docs/cloud-sync.md](docs/cloud-sync.md) |
+| Run two Glassys of my own, with no Glassy server between them | [PAIRING.md](PAIRING.md) |
+| Back up and restore | [docs/backups.md](docs/backups.md) |
+| Update, or see what changed | [docs/upgrade.md](docs/upgrade.md), [docs/whats-new.md](docs/whats-new.md) |
+| Sort out my account or a forgotten password | [docs/accounts.md](docs/accounts.md) |
+| Fix a problem | `./doctor.sh`, then [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Know what is private | [docs/security.md](docs/security.md) |
+
+Learn Glassy itself, step by step, at [learn.glassy.fyi](https://learn.glassy.fyi). The full
+product documentation is at [docs.glassy.fyi](https://docs.glassy.fyi).
+
+## Help
+
+Run `./doctor.sh` first. Then [open an issue](https://github.com/0Reliance/glassy-selfhost/issues/new/choose)
+for a problem with installing or running Glassy yourself. Assistants file theirs with the
+"Agent report" form.
+
+The files in this repository are produced from Glassy's main source on every release, so
+changes made here directly are replaced. [Contributing](.github/CONTRIBUTING.md) says how to
+suggest one.
+
+## License
+
+The Docker Compose files, Caddy configuration, scripts and documentation in this repository
+are licensed under the **MIT License**.
+
+The Glassy application image (`ghcr.io/0reliance/glassy-dash`) pulled by these compose files is
+separately licensed under the **Business Source License 1.1** (BSL 1.1). It is available for
+personal, non-commercial, self-hosted use and will transition to **AGPL-3.0** on 2027-07-13.
+
+For commercial licensing: hello@glassy.fyi

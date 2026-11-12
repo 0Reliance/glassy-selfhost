@@ -1,0 +1,46 @@
+name: Install or run problem
+description: Something went wrong installing, updating or running Glassy on your machine.
+labels: [self-host]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for telling us. Please run `./doctor.sh` in your Glassy folder first; it often says what to do.
+        Remove passwords, tokens and keys from anything you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of ./doctor.sh
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Glassy version
+      description: "From: curl -s http://localhost:3000/api/health"
+      placeholder: vX.Y.Z
+  - type: dropdown
+    id: os
+    attributes:
+      label: Your machine
+      options:
+        - Windows with Docker Desktop
+        - Mac with Docker Desktop
+        - Linux
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Last lines of the log
+      description: "From: docker compose logs --tail 40 glassy"
+      render: text

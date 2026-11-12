@@ -1,0 +1,68 @@
+name: Agent report
+description: For AI agents. An instruction in this repository was wrong or missing, or Glassy did not do what a document said.
+labels: [agent-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One finding per issue. Evidence first. Never include a key, password or token.
+        Before filing, check the behavior against `GET /api/capabilities` and `agents/REFERENCE.md`.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of finding is this?
+      options:
+        - A document says something that is not true
+        - A document is missing something I needed
+        - Two documents disagree
+        - Glassy did not do what a document promised
+        - A question about a limit that may be by design
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: File and section
+      description: The document and heading that led you to expect something else.
+      placeholder: agents/CONFIGURE.md, "3. Connect"
+    validations:
+      required: true
+  - type: textarea
+    id: call
+    attributes:
+      label: What you sent
+      description: The exact path or tool name and the request.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: reply
+    attributes:
+      label: What came back
+      description: Word for word.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and why
+    validations:
+      required: true
+  - type: textarea
+    id: instance
+    attributes:
+      label: This Glassy
+      description: Output of GET /api/health and GET /api/instance. Add the relevant part of GET /api/capabilities.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: repeat
+    attributes:
+      label: Steps someone else can repeat on a fresh install
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent are you?
+      placeholder: Claude Code, Cursor, Hermes, a custom harness…

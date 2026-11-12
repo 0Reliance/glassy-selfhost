@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="t d" font-family="Inter, 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif">
+  <title id="t">What stays on your machine and what can leave it</title>
+  <desc id="d">Notes, documents, files, your password and saved keys stay on your machine. Three things can leave: an account check when Glassy starts, AI services you choose, and Cloud Sync if you turn it on.</desc>
+  <rect width="1200" height="520" rx="20" fill="#0c0c14"/>
+
+  <!-- your machine -->
+  <rect x="40" y="40" width="560" height="440" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#2dd4bf" stroke-opacity="0.55" stroke-width="1.5"/>
+  <text x="72" y="88" fill="#2dd4bf" font-size="15" font-weight="600" letter-spacing="1.5">YOUR MACHINE</text>
+  <text x="72" y="130" fill="#ffffff" font-size="28" font-weight="700">Everything you keep stays here</text>
+
+  <g fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.12">
+    <rect x="72" y="166" width="238" height="62" rx="12"/>
+    <rect x="330" y="166" width="238" height="62" rx="12"/>
+    <rect x="72" y="244" width="238" height="62" rx="12"/>
+    <rect x="330" y="244" width="238" height="62" rx="12"/>
+    <rect x="72" y="322" width="238" height="62" rx="12"/>
+    <rect x="330" y="322" width="238" height="62" rx="12"/>
+  </g>
+  <g fill="#e6e9f2" font-size="19" font-weight="500">
+    <text x="94" y="204">Notes and documents</text>
+    <text x="352" y="204">Bookmarks and voice</text>
+    <text x="94" y="282">Images and files</text>
+    <text x="352" y="282">Calendars</text>
+    <text x="94" y="360">Your password</text>
+    <text x="352" y="360">Saved AI keys, locked</text>
+  </g>
+  <text x="72" y="436" fill="#9aa3b5" font-size="17">One Docker volume on your disk. No tracking, no usage reports.</text>
+
+  <!-- what can leave -->
+  <text x="676" y="88" fill="#c973ff" font-size="15" font-weight="600" letter-spacing="1.5">WHAT CAN LEAVE, AND WHEN</text>
+
+  <g stroke="#6a82ff" stroke-width="2" fill="none">
+    <path d="M600 178 H664"/><path d="M656 171 l9 7 -9 7"/>
+  </g>
+  <rect x="676" y="128" width="484" height="100" rx="14" fill="#6a82ff" fill-opacity="0.10" stroke="#6a82ff" stroke-opacity="0.6"/>
+  <text x="700" y="166" fill="#ffffff" font-size="21" font-weight="700">The account check</text>
+  <text x="700" y="194" fill="#c9cfdd" font-size="16.5">When Glassy starts: your email and pairing token.</text>
+  <text x="700" y="216" fill="#9aa3b5" font-size="16.5">No password, no notes. Glassy starts either way.</text>
+
+  <g stroke="#c973ff" stroke-width="2" fill="none" stroke-dasharray="6 6">
+    <path d="M600 294 H664"/>
+  </g>
+  <path d="M656 287 l9 7 -9 7" stroke="#c973ff" stroke-width="2" fill="none"/>
+  <rect x="676" y="244" width="484" height="100" rx="14" fill="#c973ff" fill-opacity="0.09" stroke="#c973ff" stroke-opacity="0.55" stroke-dasharray="6 6"/>
+  <text x="700" y="282" fill="#ffffff" font-size="21" font-weight="700">AI services you choose</text>
+  <text x="700" y="310" fill="#c9cfdd" font-size="16.5">Only if you add your own key with a provider.</text>
+  <text x="700" y="332" fill="#9aa3b5" font-size="16.5">Nothing leaves with your device or your own Ollama.</text>
+
+  <g stroke="#4df0ff" stroke-width="2" fill="none" stroke-dasharray="6 6">
+    <path d="M600 410 H664"/>
+  </g>
+  <path d="M656 403 l9 7 -9 7" stroke="#4df0ff" stroke-width="2" fill="none"/>
+  <rect x="676" y="360" width="484" height="100" rx="14" fill="#4df0ff" fill-opacity="0.07" stroke="#4df0ff" stroke-opacity="0.5" stroke-dasharray="6 6"/>
+  <text x="700" y="398" fill="#ffffff" font-size="21" font-weight="700">Cloud Sync</text>
+  <text x="700" y="426" fill="#c9cfdd" font-size="16.5">Only if you turn it on: the kinds of items you pick,</text>
+  <text x="700" y="448" fill="#9aa3b5" font-size="16.5">to the one other Glassy you paired with.</text>
+
+  <text x="676" y="494" fill="#7f8799" font-size="14.5">Solid line: always.  Dashed line: only when you turn it on.</text>
+</svg>

@@ -5,3 +5,9 @@
 .DS_Store
 .vscode/
 *.swp
+
+# A starting password an agent saved for you. Change it, then delete the file.
+glassy-first-password.txt
+
+# Backups made in this folder
+glassy-backup-*.tar.gz

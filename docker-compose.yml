@@ -1,10 +1,6 @@
 # Glassy — self-hosted (local machine). Obsidian + local services reachable.
-# Copy .env.example to .env and fill in the required fields (membership email,
-# pairing token, secrets). Clear members also set GLASSY_VERIFY_CLOUD_URL.
-# Then `docker compose up -d`. See README.md for the full quick start.
-#
-# MAINTAINERS: This file is the source of truth. After any change, sync
-# to github.com/0Reliance/glassy-selfhost — see MAINTAINING.md.
+# Run ./install.sh, or copy .env.example to .env, fill in the required fields
+# and run `docker compose up -d`. See docs/install.md.
 name: glassy-selfhost
 services:
   glassy:
@@ -14,8 +10,7 @@ services:
     # BYOK), so on `latest` the Agent access (MCP), Second Brain, Agent dispatch
     # and API keys (BYOK) settings are hidden and a "You are on the cloud"
     # banner appears on your own appliance. Versioned tags carry all flags.
-    # See DEPLOYMENT_RUNBOOK.md "GHCR tag semantics".
-    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG to a released version, e.g. v2.40.5 — do NOT use latest (it is the hosted build and omits self-host features)}
+    image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG in .env to the released version named in .env.example — do NOT use latest (it is the hosted build and omits self-host features). Or run ./install.sh}
     container_name: glassy
     restart: unless-stopped
     ports: ['${APP_PORT:-3000}:8080']
@@ -91,7 +86,7 @@ services:
       # container that has no code path that reads them. Same reasoning as the
       # ENABLE_BYOK note above: do not advertise a knob the appliance cannot use.
       # If web push is ever enabled on self-host, add them back together with the
-      # route mount — see SELF_HOSTED_DEPLOYMENT.md §13.
+      # route mount — see docs/reference/operations.md §13.
 
       # Ollama on the HOST (not in a container). The code default is
       # http://localhost:11434/v1, which inside a container points at the
