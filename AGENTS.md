@@ -40,6 +40,13 @@ It is long. Open it when you need a detail, not before.
 - **Health:** `GET /api/health` needs no sign-in. Its reply includes `"status":"ok"` and a
   `"version"` written without a leading `v` (`.env` and the scripts write it with one).
 - **Agent endpoint (MCP):** `http://localhost:3000/mcp`, with `Authorization: Bearer <your key>`.
+- **Whose it is:** a self-host has one account, the person's. More workspaces for them are
+  free. More people need a seat pack, which the person buys; registration on the install is
+  closed, so do not try to create accounts.
+- **Whose AI:** Glassy never pays for AI. It runs on the person's device, on their own Ollama
+  server, or with their own key. A key can be saved for OpenAI, Google Gemini, Anthropic,
+  MiniMax, or any OpenAI-compatible service. `GET /api/capabilities` lists the kinds this
+  install accepts. Adding a key spends the person's money: ask first.
 - **One command that checks everything:** `./doctor.sh` (add `--json` to read it yourself).
 - **Problems with these instructions:** report them at
   https://github.com/0Reliance/glassy-selfhost/issues with the "Agent report" form.

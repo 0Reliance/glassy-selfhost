@@ -1,6 +1,6 @@
 # Glassy Self-Host
 
-[![Version](https://img.shields.io/badge/version-v2.65.22-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Version](https://img.shields.io/badge/version-v2.65.23-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![Runs on Docker](https://img.shields.io/badge/runs%20on-Docker-0c0c14?style=flat-square)](docs/install.md)
 [![For AI agents](https://img.shields.io/badge/for%20AI%20agents-AGENTS.md-6a82ff?style=flat-square)](AGENTS.md)
 [![License: MIT](https://img.shields.io/badge/installer-MIT-94a3b8?style=flat-square)](LICENSE)

@@ -73,7 +73,7 @@ Glassy reads its settings from `.env` in the Glassy folder. After changing it, r
 | `APP_PORT` | `3000` | The port Glassy answers on. |
 | `APP_URL` | `http://localhost:3000` | The address you open Glassy at. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Every address you open Glassy at, separated by commas. |
-| `TRUST_PROXY` | `2` | How many reverse proxies sit in front of Glassy. Set it to `1` behind a single proxy. The HTTPS overlay sets `1` for you. |
+| `TRUST_PROXY` | `0` | How many reverse proxies sit in front of Glassy. A plain install has none. Set it to `1` behind your own reverse proxy, or sign-in limits count the proxy as one caller. The HTTPS overlay sets `1` for you. |
 
 These three must agree. If you change the port, change all of them, or use
 `./install.sh --port <number>`, which does it for you.

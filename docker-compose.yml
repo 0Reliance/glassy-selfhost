@@ -16,6 +16,9 @@ services:
     ports: ['${APP_PORT:-3000}:8080']
     env_file: [.env]
     environment:
+      # Nothing is in front of a plain install, so no forwarded address is believed. The HTTPS
+      # overlay sets 1. Behind your own reverse proxy, set TRUST_PROXY=1 in .env.
+      - TRUST_PROXY=${TRUST_PROXY:-0}
       - NODE_ENV=production
       - DB_FILE=/app/data/notes.db
       - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
