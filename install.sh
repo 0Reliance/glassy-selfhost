@@ -319,6 +319,7 @@ fi
 cat <<EOF
 
   Then:
+    • New to Glassy? A ten-minute tour:                           docs/first-steps.md
     • Choose where AI runs, connect an assistant, link Obsidian:  docs/configure.md
     • Setting this up with an AI agent? Point it at:              AGENTS.md
     • Check on Glassy any time:                                   ./doctor.sh

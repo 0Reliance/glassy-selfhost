@@ -18,7 +18,7 @@ the shared key: ask the person for a named key. Never write through the person's
 ## Each session
 
 1. `GET /api/capabilities` once: what this Glassy offers.
-2. `glassy_recall` with `scope: "mine"`: what you remembered.
+2. `glassy_recall` with `scope: "mine"` and a `query` (required) about the task: what you remembered.
 3. `glassy_get_recent`: what changed.
 
 ## Where things go (`place`)
@@ -44,7 +44,7 @@ and `glassy_obsidian_*` reach the person's Obsidian vault, not Glassy's own note
 ## Asking
 
 When a choice is the person's: `glassy_request_review` with a question, choices, `context`,
-and `choice_notes` saying what each choice leads to. Keep working; check `glassy_get_review`;
+and `choice_notes` (a map: choice → what it leads to). Keep working; check `glassy_get_review`;
 after acting, `glassy_report_review_outcome`. Ask before publishing, deleting or overwriting
 their work, spending money, or sending anything outside Glassy.
 

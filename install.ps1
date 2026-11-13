@@ -93,11 +93,15 @@ function Test-PortInUse($p) {
 function Get-Json($url) {
   try { return Invoke-RestMethod -Uri $url -TimeoutSec 5 } catch { return $null }
 }
-function Get-GlassyOwner {
-  $o = Invoke-Text docker inspect glassy --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}'
-  if ($LASTEXITCODE -ne 0) { return $null }
-  return $o
+# The folder a container was started from (its Compose working_dir label), or $null.
+# Read as JSON: Windows PowerShell 5.1 drops the double quotes inside a native command's
+# argument, so a --format template that quotes the label name reaches docker broken.
+function Get-ComposeFolder($container) {
+  $j = Invoke-Text docker inspect $container --format '{{json .Config.Labels}}'
+  if ($LASTEXITCODE -ne 0 -or -not $j) { return $null }
+  try { return ((($j -join '') | ConvertFrom-Json).'com.docker.compose.project.working_dir') } catch { return $null }
 }
+function Get-GlassyOwner { return Get-ComposeFolder 'glassy' }
 function Same-Folder($a, $b) {
   if (-not $a -or -not $b) { return $false }
   return ($a.TrimEnd('\','/') -ieq $b.TrimEnd('\','/'))
@@ -211,7 +215,7 @@ Step 'Starting Glassy'
 
 # If the bundled Ollama was started from this folder before, keep it in the picture.
 if (-not $WithOllama) {
-  $ollamaOwner = Invoke-Text docker inspect glassy-ollama --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}'
+  $ollamaOwner = Get-ComposeFolder 'glassy-ollama'
   if (Same-Folder $ollamaOwner $PWD.Path) { $WithOllama = $true }
 }
 $compose = @('compose','-f','docker-compose.yml')
@@ -224,9 +228,13 @@ $upArgs = $compose + @('up','-d')
 if ((Invoke-Quiet docker @upArgs) -ne 0) { Stop-Install "Docker couldn't start Glassy." 'See why with:  docker compose logs --tail 40 glassy' 20 }
 
 $Base = "http://localhost:$Port"
+# The installer's own checks go to 127.0.0.1. Windows PowerShell tries "localhost" as IPv6
+# first and, with Docker Desktop on the WSL engine, can wait out the whole timeout there
+# instead of falling back. Browsers fall back, so the address shown to the person stays.
+$Probe = "http://127.0.0.1:$Port"
 $health = $null
 for ($i = 0; $i -lt 60; $i++) {
-  $health = Get-Json "$Base/api/health"
+  $health = Get-Json "$Probe/api/health"
   if ($health -and $health.status -eq 'ok') { break }
   Start-Sleep -Seconds 3
 }
@@ -235,7 +243,7 @@ if (-not ($health -and $health.status -eq 'ok')) { Stop-Install "Glassy started 
 $running = "v$($health.version)"
 if ($running -eq $Tag) { Ok "Glassy $running is running at $Base" } else { Note "Glassy is running at $Base as $running, though .env asks for $Tag" }
 
-$instance = Get-Json "$Base/api/instance"
+$instance = Get-Json "$Probe/api/instance"
 if (-not $instance -or $instance.instanceId -ne 'self_hosted') { Note "This build doesn't report itself as a self-host. Check GLASSY_TAG in .env against .env.example." }
 if ($instance -and $instance.membershipState -eq 'verified') { Ok 'Your account is confirmed' }
 else {
@@ -260,6 +268,7 @@ if ((Invoke-Quiet docker exec glassy test -f /app/data/.initial_admin_password) 
 Write-Host @"
 
   Then:
+    - New to Glassy? A ten-minute tour:                           docs\first-steps.md
     - Choose where AI runs, connect an assistant, link Obsidian:  docs\configure.md
     - Setting this up with an AI agent? Point it at:              AGENTS.md
     - Check on Glassy any time (in Git Bash):                     ./doctor.sh

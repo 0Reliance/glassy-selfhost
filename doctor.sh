@@ -114,7 +114,10 @@ same_folder() {
   b="$(printf '%s' "$2" | tr '\\' '/' | sed -e 's|^\([A-Za-z]\):|/\1|' -e 's|/*$||' | tr 'A-Z' 'a-z')"
   [ "$a" = "$b" ]
 }
-if [ -n "$owner" ] && ! same_folder "$owner" "$PWD"; then
+# Git Bash can also mount a Windows folder elsewhere (the Temp folder is /tmp); `pwd -W` gives
+# its Windows name, so compare against both.
+here_win="$(pwd -W 2>/dev/null || true)"
+if [ -n "$owner" ] && ! same_folder "$owner" "$PWD" && { [ -z "$here_win" ] || ! same_folder "$owner" "$here_win"; }; then
   add attention folder "The running Glassy was started from $owner, not this folder. This report reads this folder's .env, so some lines may not match." "Run doctor.sh from $owner"
 fi
 add ok container "Glassy's container is running"

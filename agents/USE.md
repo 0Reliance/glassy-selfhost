@@ -15,8 +15,9 @@ crowding it: put work where it belongs, sign it, ask when a choice is theirs, an
 ## Start of a session
 
 1. `GET /api/capabilities`, once. It says what this Glassy offers, its limits and its tool list.
-2. `glassy_recall` with `scope: "mine"`. Your own memories: the person's preferences, where you
-   left off.
+2. `glassy_recall` with `scope: "mine"` and a `query` about the task in hand (it needs one;
+   the person's name or the project works). Your own memories: the person's preferences, where
+   you left off.
 3. `glassy_get_recent`, to see what changed since you were last here.
 
 Do not start by reading everything. Search for what the task needs.
@@ -37,7 +38,7 @@ Rules of thumb:
 - If the person would want to read it, `shared`. If only you need it, `own`.
 - A document you create with no folder goes into "Agent work", so their own documents stay in front.
 - When a working paper has done its job (a plan, a checklist, a status report), archive it.
-- `glassy_remember` writes to your own space for you. Use it for things worth knowing next
+- `glassy_remember` (its one argument is `text`) writes to your own space for you. Use it for things worth knowing next
   time: preferences, decisions, where a long task stands. Not for a transcript of the session.
 
 ## Writing
@@ -74,7 +75,8 @@ Rules of thumb:
 When a choice is the person's, ask. Do not guess, and do not stop everything to wait.
 
 1. `glassy_request_review` with a `question`, two to ten `choices`, a `context` line saying why
-   you are asking, and `choice_notes` saying what each choice leads to. Link the item it is
+   you are asking, and `choice_notes`, a map from each choice to what it leads to
+   (`{"Book it": "€670 on your card today"}`). Link the item it is
    about with `linked_type` and `linked_id`.
 2. Carry on with other work. Check `glassy_get_review` later.
 3. When they answer, act on it, then `glassy_report_review_outcome` with what you did.

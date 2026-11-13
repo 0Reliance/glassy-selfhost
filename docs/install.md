@@ -10,7 +10,17 @@ Having an AI agent do this for you? Point it at [AGENTS.md](../AGENTS.md) instea
 - **Docker**, with Compose v2. Docker Desktop on Windows or Mac, Docker Engine on Linux.
   [Get Docker](https://docs.docker.com/get-docker/).
 - **A Glassy account.** A free one is enough. [Sign up at glassy.fyi](https://glassy.fyi).
-- **About 2 GB of disk** for Glassy, plus room for your notes.
+
+| | Glassy | With `--with-ollama` (AI on this machine) |
+|---|---|---|
+| Processor | 64-bit Intel or AMD | The same |
+| Memory | 1 GB free | Plus what your models need: 1 GB covers a search model, a chat model wants 8 GB or more |
+| Disk | About 2 GB, plus your notes | About 9 GB more for Ollama, plus each model you pull |
+| System | Windows 10 or 11, macOS, or Linux, wherever Docker runs | The same |
+
+Glassy's image is built for Intel and AMD processors. On a Mac with Apple silicon, Docker
+Desktop runs it through its Intel emulation, a little slower. It doesn't run on ARM Linux
+boards such as a Raspberry Pi.
 
 ## 1. Get your pairing token
 
@@ -67,6 +77,7 @@ copy somewhere safe, and don't share it.
 
 ## Next
 
+- [Your first ten minutes](first-steps.md): a short tour with a note, a document and an assistant
 - [Choose where AI runs, connect an assistant, link Obsidian](configure.md)
 - [Use Glassy from your phone or another computer](reach-it-from-other-devices.md)
 - [Back up your notes](backups.md)

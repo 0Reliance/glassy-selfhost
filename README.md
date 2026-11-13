@@ -19,8 +19,9 @@ This repository installs it. One container, about ten minutes.
 
 ## Install
 
-You need [Docker](https://docs.docker.com/get-docker/) and a Glassy account. A free one is
-enough: [sign up at glassy.fyi](https://glassy.fyi).
+You need [Docker](https://docs.docker.com/get-docker/) on a 64-bit Intel or AMD machine
+(Windows, Mac or Linux), about 2 GB of disk, and a Glassy account. A free one is enough:
+[sign up at glassy.fyi](https://glassy.fyi). [Full requirements](docs/install.md#what-you-need).
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
@@ -51,6 +52,8 @@ and asks you when a choice is yours. You can always tell who wrote what.
 
 <img src="assets/agents-decision.webp" alt="A question from Juniper, 'Shall I book the Graça house for Lisbon?', with three choices as buttons, each saying what it leads to" width="100%">
 
+<a href="https://learn.glassy.fyi/lessons/agents/who-wrote-that"><img src="assets/watch-who-wrote-that.webp" alt="Watch a 25-second film on Glassy Learn: who wrote that? Every note and document shows who wrote it, you or an assistant" width="100%"></a>
+
 ### AI runs where you choose
 
 In your browser, on your own Ollama, or with your own key from a provider. Glassy provides no
@@ -63,7 +66,10 @@ With a model of your own, search finds things by what you meant as well as the w
 ### Your Obsidian vault, live
 
 Keep writing in Obsidian. Glassy searches your vault beside everything else you save, and an
-edit in Glassy lands in the file. [How to link it](docs/obsidian.md).
+edit in Glassy lands in the file. Tick a box in Glassy and it's ticked in Obsidian.
+[How to link it](docs/obsidian.md).
+
+<img src="assets/obsidian.webp" alt="A vault note, 'Garden plan', open in Glassy: the vault's Garden folder on the left, the note's checklist on the right with two items ticked" width="100%">
 
 ## What you take on
 
@@ -96,6 +102,7 @@ Connecting an assistant yourself takes a minute: [Agents in your Glassy](docs/ag
 | I want to… | Read |
 |---|---|
 | Install Glassy | [docs/install.md](docs/install.md) |
+| Find my way around in the first ten minutes | [docs/first-steps.md](docs/first-steps.md) |
 | Choose where AI runs, connect an assistant, change settings | [docs/configure.md](docs/configure.md) |
 | Understand AI and search here | [docs/ai.md](docs/ai.md) |
 | Work with assistants | [docs/agents.md](docs/agents.md) |
