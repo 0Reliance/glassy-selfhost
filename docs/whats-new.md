@@ -6,6 +6,7 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 
 | Version | Date | What changed |
 |---|---|---|
+| v2.65.24 | 2026-11-13 | "Read waiting notes" says what happened, and the app hands out Glassy Capture 2.21.2 |
 | v2.65.23 | 2026-11-12 | Deleting for good is the last word in Cloud Sync, and repairs to self-host sign-in, agent keys and AI messages |
 | v2.65.22 | 2026-11-12 | Cloud Sync carries the trash, archives and images, and the newest change wins |
 | v2.65.21 | 2026-11-11 | Workspaces stay separate across Cloud Sync, and public stays where you set it |
@@ -35,6 +36,5 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 | v2.63.0 | 2026-11-08 | One search everywhere |
 | v2.62.6 | 2026-11-08 | Choose which AI answers; sharper search on your own server |
 | v2.62.5 | 2026-11-08 | Glassy never pays for anyone's AI; one search index you can see; every message rewritten |
-| v2.62.4 | 2026-11-05 | Switching workspaces no longer locks you out; expired reviews and voice transcription fixed |
 
 The full notes for every release are at <https://docs.glassy.fyi/changelog/>.
