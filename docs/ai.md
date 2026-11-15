@@ -45,6 +45,10 @@ card? Install the NVIDIA Container Toolkit and uncomment the `deploy` block in
 **Ollama is on another machine.** Set `OLLAMA_BASE_URL` in `.env` to its address, then
 `docker compose up -d`.
 
+Search by meaning always reads your library with the Ollama named in `OLLAMA_BASE_URL`. Adding
+an Ollama server in Settings → Workspace → API keys does not change that. To move search to
+another server, change `OLLAMA_BASE_URL`.
+
 ## Your own key
 
 Settings → Workspace → API keys. Add a key from a provider you have an account with. Glassy
