@@ -1,8 +1,10 @@
 # Your first ten minutes
 
-Glassy is running and you've chosen your password. It opens on an empty Notes page. Here is
-a short tour that leaves you with a note, a document, a saved link and an assistant at work,
-and shows you where each one went.
+Glassy is running and you've chosen your password. It opens on Notes, with a few notes and
+documents from Glassy to start you off: "Start here", a checklist called "Your first ten
+minutes", and guides to connecting an assistant and choosing where AI runs. Archive them when
+you're done. Here is the same tour in more detail, and it leaves you with a note, a document, a
+saved link and an assistant at work.
 
 The left bar has every page. Hover over an icon to see its name.
 
