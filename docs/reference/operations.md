@@ -116,7 +116,7 @@ never degrade the appliance. Cloud deployments keep every gate.
 
 ## 3. First boot & account setup
 
-On first boot the appliance verifies your membership with the cloud, then
+On first boot the appliance checks your account with the cloud, then
 creates your local account using your `GLASSY_MEMBER_EMAIL` and prints the
 initial password once. The password is **also written to a file** so you can
 recover it even if the Docker log buffer has rolled:
@@ -185,7 +185,7 @@ Degraded mode is informational and means exactly this:
 | Value | Meaning |
 |---|---|
 | `unverified` | Boot has not reached the check yet |
-| `verified` | Cloud confirmed the membership (live, or from the signed offline cache) |
+| `verified` | Cloud confirmed the account (live, or from the signed offline cache) |
 | `degraded` | Not confirmed — the appliance is otherwise fully functional |
 
 - Nothing else changes. No service is switched off by degraded mode; the state exists so
@@ -213,7 +213,7 @@ You will see something like:
 > Use the file fallback above, or to start completely fresh see
 > [Start completely fresh](#start-completely-fresh).
 
-Sign in at http://localhost:3000 with your membership email and that password.
+Sign in at http://localhost:3000 with your account email and that password.
 You will be **immediately forced to set a permanent password** before you can
 use the workspace — the random one is discarded after that, and the
 `/app/data/.initial_admin_password` file is deleted on first successful
@@ -240,7 +240,7 @@ appliance sends a server-to-server POST to `<GLASSY_VERIFY_CLOUD_URL>/api/verify
 it to `https://clear.glassy.fyi/api/verify-selfhost`) with body
 `{ "email": "you@example.com", "selfhostToken": "<your pairing token>" }`.
 **No password, no session data, no note content is ever sent.** The cloud looks
-up the email, confirms the membership is active, and verifies the token matches
+up the email, confirms the account exists (a free account is enough), and verifies the token matches
 the one stored hashed in your account. It returns one of:
 
 - `{ valid: true, tier: "clear_lifetime", ts, nonce, signature }` — active
@@ -253,7 +253,7 @@ the one stored hashed in your account. It returns one of:
 
 Generate the pairing token in your Glassy account on the cloud:
 **Settings → Self-hosting → Generate token**.
-  • Public / Pro members: https://app.glassy.fyi/#/settings?g=account&s=selfhost
+  • Free and Pro accounts: https://app.glassy.fyi/#/settings?g=account&s=selfhost
   • Clear members:        https://clear.glassy.fyi/#/settings?g=account&s=selfhost
 Paste it into `GLASSY_SELFHOST_TOKEN` in `.env`. If you generated the token on
 Clear, also set `GLASSY_VERIFY_CLOUD_URL=https://clear.glassy.fyi` so the
@@ -305,7 +305,7 @@ Your .env: GLASSY_MEMBER_EMAIL=you@example.com
   ┌─────────────────────────────────┐
   │ Boot (every 30 days)            │
   │ POST /api/verify-selfhost        │  ← email + pairing token, no password
-  │ Cloud checks: membership + token │
+  │ Cloud checks: account + token    │
   └────────────┬────────────────────┘
                │ valid: true, tier, signed cache
                ▼
@@ -335,7 +335,7 @@ Your .env: GLASSY_MEMBER_EMAIL=you@example.com
 
 - The cloud endpoint cannot leak your password — it never receives one.
 - The pairing token prevents anyone who merely knows your email from spinning
-  up an unlocked instance using your membership. Keep it private; rotate it if
+  up an unlocked instance using your account. Keep it private; rotate it if
   it leaks.
 - The membership cache is Ed25519-signed by the cloud; a forged cache file on your
   disk will fail signature verification and degrade to a 24h TTL (or be rejected
