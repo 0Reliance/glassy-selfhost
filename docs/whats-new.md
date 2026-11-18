@@ -6,6 +6,7 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 
 | Version | Date | What changed |
 |---|---|---|
+| v2.65.28 | 2026-11-18 | No sign-in token in an address, tags anywhere, and words that match the app |
 | v2.65.27 | 2026-11-17 | Every plan, said plainly |
 | v2.65.26 | 2026-11-16 | New accounts start with a welcome that teaches Glassy |
 | v2.65.25 | 2026-11-15 | Boards behave, links between notes are real links, and Glassy stops overstating what it checked |
@@ -35,6 +36,5 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 | v2.65.1 | 2026-11-09 | Your agents' space stays theirs, everywhere; all-day events on the right day |
 | v2.65.0 | 2026-11-09 | A place for your agents' own things |
 | v2.64.1 | 2026-11-08 | Your archive is found again |
-| v2.64.0 | 2026-11-08 | Who wrote it: your work and your agents' work, told apart |
 
 The full notes for every release are at <https://docs.glassy.fyi/changelog/>.

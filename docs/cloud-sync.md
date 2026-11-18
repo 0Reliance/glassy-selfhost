@@ -15,8 +15,8 @@ Sync is off until you turn it on.
 1. On **the other Glassy**, open Settings → Account → Cloud Sync and choose **Make a token**.
    Copy it. It is shown once.
 2. On **this Glassy**, open Settings → Account → Cloud Sync. Paste it into **Pair token**,
-   put the other Glassy's address in **Syncs to**, and save. It takes effect at the next
-   sync, with no restart.
+   put the other Glassy's address in **Syncs to**. Each box is saved when you leave it or
+   press Enter; there is no Save button. It takes effect at the next sync, with no restart.
 3. The panel shows **Sync status**. Choose **Sync now** to run one straight away.
 
 The sync token is separate from your self-host pairing token. You can replace it at any time;
