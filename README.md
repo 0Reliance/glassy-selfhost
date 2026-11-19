@@ -1,6 +1,6 @@
 # Glassy Self-Host
 
-[![Version](https://img.shields.io/badge/version-v2.65.28-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Version](https://img.shields.io/badge/version-v2.65.29-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![Runs on Docker](https://img.shields.io/badge/runs%20on-Docker-0c0c14?style=flat-square)](docs/install.md)
 [![For AI agents](https://img.shields.io/badge/for%20AI%20agents-AGENTS.md-6a82ff?style=flat-square)](AGENTS.md)
 [![License: MIT](https://img.shields.io/badge/installer-MIT-94a3b8?style=flat-square)](LICENSE)
@@ -15,13 +15,29 @@ disk.
 
 This repository installs it. One container, about ten minutes.
 
-[Install](#install) · [What you get](#what-you-get-here) · [What you take on](#what-you-take-on) · [For AI agents](#for-ai-agents) · [Guides](#guides)
+[Install](#install) · [What you get](#what-you-get-here) · [What you take on](#what-you-take-on) · [When you want more](#when-you-want-more) · [For AI agents](#for-ai-agents) · [Guides](#guides)
 
 ## Install
 
 You need [Docker](https://docs.docker.com/get-docker/) on a 64-bit Intel or AMD machine
 (Windows, Mac or Linux), about 2 GB of disk, and a Glassy account. A free one is enough:
-[sign up at glassy.fyi](https://glassy.fyi). [Full requirements](docs/install.md#what-you-need).
+[sign up at glassy.fyi](https://app.glassy.fyi/#/register). [Full requirements](docs/install.md#what-you-need).
+
+### The quickest way: hand it to your agent
+
+Paste this into Claude Code, Codex, Hermes or whichever agent works on your machine:
+
+```text
+Install Glassy on this machine for me. Follow the guide at https://github.com/0Reliance/glassy-selfhost/blob/main/AGENTS.md and ask me before anything that needs my account or a decision that is mine.
+```
+
+It checks your machine, asks you for your account email and a pairing token (it never asks for
+your password), installs Glassy, proves it is healthy, and can then connect itself under its own
+name. [What it will do, step by step](agents/INSTALL.md).
+
+<a href="https://learn.glassy.fyi/lessons/your-machine/agent-installs-glassy"><img src="assets/watch-agent-installs-glassy.webp" alt="Watch a one-minute film on Glassy Learn: your agent installs Glassy, asking for the two things only you have" width="100%"></a>
+
+### Or run the installer yourself
 
 ```bash
 git clone https://github.com/0Reliance/glassy-selfhost.git
@@ -78,6 +94,18 @@ edit in Glassy lands in the file. Tick a box in Glassy and it's ticked in Obsidi
   somewhere else is up to you. [Backups](docs/backups.md).
 - **One person by default.** More workspaces for you are free. More people need a seat pack.
 - **It lives in Docker**, using about 2 GB of disk plus your notes.
+
+## When you want more
+
+Glassy here is free with any account, and stays that way. Three things you can add when you need them:
+
+- **Our cloud for your Glassy (Pro).** Keep this Glassy and one on our cloud in step, at full speed,
+  so your notes are on your phone and in a second place. [Cloud Sync](docs/cloud-sync.md).
+- **A pair of your own (the Zero Reliance Pair).** Link this Glassy to one on your own server, with
+  no Glassy server in between. [How the Pair works](PAIRING.md).
+- **Room for your people (seat packs).** Open this Glassy to family, friends or a team, bought once.
+
+Prices and what each includes: [glassy.fyi/pricing](https://www.glassy.fyi/pricing).
 
 ## What leaves your machine
 
