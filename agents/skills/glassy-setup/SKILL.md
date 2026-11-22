@@ -26,8 +26,9 @@ Addresses assume `http://localhost:3000`.
    `Authorization: Bearer <key>`. Over plain HTTP send
    `Accept: application/json, text/event-stream`.
 4. **Prove it.** Read `glassy://status` (expect your name with `"verified": true`), write a
-   note with `glassy_note_create`, find it with `glassy_search` (expect `createdBy` to be
-   you), then archive it.
+   note with `glassy_note_create`, read it back with `glassy_read_note` (expect it to be credited
+   to you; search by meaning may need a moment to index it), then archive it with
+   `glassy_note_update` and `archived: true`.
 5. **AI.** Ask where AI should run: their device (free), their own Ollama (free), or their own
    provider key (that provider bills them). Recommend Ollama if it is on this machine.
    Never add a provider key yourself unless handed one for that purpose.

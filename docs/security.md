@@ -44,10 +44,11 @@ You don't have to. Tailscale gives you Glassy everywhere without it. If you do:
 - **Use HTTPS.** The Caddy overlay or Cloudflare Tunnel does it for you. Never put plain port
   3000 on the internet.
 - **Turn on two-step sign-in.**
-- **Know how images are served.** Images and files inside your notes are served from
-  `/uploads/…` without sign-in, to anyone who has the exact address of a file. Nothing lists
-  those addresses, but they are not locked. On a private network that doesn't matter. On the
-  internet, decide whether it does.
+- **Know how pictures and files are served.** Since 2.66.0 a picture or file you upload opens
+  only for people who should see it: you, and people who can open the note or document it was
+  added to. Avatars, window banners and anything on a public item stay open to anyone with the
+  address. `UPLOADS_PUBLIC=true` in `.env` brings back the older behaviour, where anyone with a
+  file's exact address could open it; leave it off on the internet.
 - **Keep Glassy updated.** See [Update Glassy](upgrade.md).
 
 A self-host is private by default: pages you publish are shown to people signed in to your

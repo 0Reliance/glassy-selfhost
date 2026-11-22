@@ -1,6 +1,6 @@
 # Glassy Self-Host
 
-[![Version](https://img.shields.io/badge/version-v2.65.29-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
+[![Version](https://img.shields.io/badge/version-v2.66.0-2dd4bf?style=flat-square)](https://github.com/0Reliance/glassy-selfhost/releases)
 [![Runs on Docker](https://img.shields.io/badge/runs%20on-Docker-0c0c14?style=flat-square)](docs/install.md)
 [![For AI agents](https://img.shields.io/badge/for%20AI%20agents-AGENTS.md-6a82ff?style=flat-square)](AGENTS.md)
 [![License: MIT](https://img.shields.io/badge/installer-MIT-94a3b8?style=flat-square)](LICENSE)
@@ -92,7 +92,8 @@ edit in Glassy lands in the file. Tick a box in Glassy and it's ticked in Obsidi
 - **You run the updates.** Nothing changes until you choose. [Update Glassy](docs/upgrade.md).
 - **Backups are yours.** Glassy saves a copy every night on the same disk. Keeping one
   somewhere else is up to you. [Backups](docs/backups.md).
-- **One person by default.** More workspaces for you are free. More people need a seat pack.
+- **One person by default.** More workspaces for you are free. More people need a seat pack
+  ([People](docs/people.md)).
 - **It lives in Docker**, using about 2 GB of disk plus your notes.
 
 ## When you want more
@@ -103,7 +104,9 @@ Glassy here is free with any account, and stays that way. Three things you can a
   so your notes are on your phone and in a second place. [Cloud Sync](docs/cloud-sync.md).
 - **A pair of your own (the Zero Reliance Pair).** Link this Glassy to one on your own server, with
   no Glassy server in between. [How the Pair works](PAIRING.md).
-- **Room for your people (seat packs).** Open this Glassy to family, friends or a team, bought once.
+- **Room for your people (seat packs).** Open this Glassy to the people you invite, bought once.
+  You run them from **People**: invites, each member's options, groups and shared devices.
+  [Set up Glassy for your people](docs/people.md).
 
 Prices and what each includes: [glassy.fyi/pricing](https://www.glassy.fyi/pricing).
 
@@ -134,6 +137,7 @@ Connecting an assistant yourself takes a minute: [Agents in your Glassy](docs/ag
 | Choose where AI runs, connect an assistant, change settings | [docs/configure.md](docs/configure.md) |
 | Understand AI and search here | [docs/ai.md](docs/ai.md) |
 | Work with assistants | [docs/agents.md](docs/agents.md) |
+| Add people, or let an assistant manage them | [docs/people.md](docs/people.md) |
 | Link my Obsidian vault | [docs/obsidian.md](docs/obsidian.md) |
 | Use Glassy on my phone or another computer | [docs/reach-it-from-other-devices.md](docs/reach-it-from-other-devices.md) |
 | Keep a second copy in sync | [docs/cloud-sync.md](docs/cloud-sync.md) |

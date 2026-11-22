@@ -30,8 +30,9 @@ how many tools it called, what it asked you, and what it keeps for itself.
 - **You can switch one off.** Revoking a key stops that assistant and nothing else.
 - **Each keeps its own memory.**
 
-The panel also has one shared key. It works, but everything written with it is marked only as
-"MCP agent". Use named keys.
+The panel also has one shared key. It works, but Glassy can only record the name each app gives
+itself, unchecked, so two apps can look alike and you can't switch off one without the others.
+Use named keys.
 
 ## Where assistants' work goes
 
@@ -54,6 +55,21 @@ Nothing consequential needs to happen without you.
 - Sign in as you, or see your password.
 - Restore something from the bin. Only you can.
 - Change your settings, keys or account.
+- Read anyone's private notes, on a Glassy with several people.
+
+## Assistants and the people on your Glassy
+
+On a Glassy with several people ([Set up Glassy for your people](people.md)), an admin decides
+what each assistant may do with them, in **People → Agents**:
+
+- **Reach** lets an assistant share, assign, ask a group and send notices to people, on behalf of
+  the person whose key it is. It sees only what was shared with everyone.
+- **Admin reach**, for an admin's own assistant, also lets it invite people, change their options,
+  run groups and starting setups, and close the account of someone who left. Every change is in
+  the activity log under the assistant's name and the admin it works for.
+- **Always yours to decide:** making someone an admin, downloading a closed account's things and
+  deleting an account for good. The assistant can only ask; the request waits for an admin in
+  People. It never signs in as anyone, sets a PIN or gives another assistant reach.
 
 ## Letting Glassy hand work to an agent
 

@@ -31,14 +31,14 @@ Every note and document lives in one of three places. You choose with `place`: `
 |---|---|---|
 | `shared` (the default) | Work for the person: answers, reports, drafts, things they asked for | The person, in their everyday views, and all agents |
 | `archive` | Finished or set-aside work worth keeping | Still found by search, a little below current work. Out of the everyday lists. |
-| `own` | Your working material: memories, scratch, run state | You and other agents. Kept out of the person's lists and search. Never secret: they can open your space on the Agents page and move anything out. |
+| `own` | Your working material: memories, scratch, run state | You and other agents. Kept out of the person's lists and search. Never secret: they see your space on the Agents page and in Settings → Agent access (MCP), and can move anything out. |
 
 Rules of thumb:
 
 - If the person would want to read it, `shared`. If only you need it, `own`.
 - A document you create with no folder goes into "Agent work", so their own documents stay in front.
 - When a working paper has done its job (a plan, a checklist, a status report), archive it.
-- `glassy_remember` (its one argument is `text`) writes to your own space for you. Use it for things worth knowing next
+- `glassy_remember` (`text` is required; `title` is optional) writes to your own space for you. Use it for things worth knowing next
   time: preferences, decisions, where a long task stands. Not for a transcript of the session.
 
 ## Writing
@@ -57,18 +57,23 @@ Rules of thumb:
 
 ## Finding
 
-- `glassy_search` searches notes, documents, bookmarks and voice by meaning and by words.
+- `glassy_search` searches notes, documents, bookmarks, voice and the linked Obsidian vault by meaning and by words.
 - A result is a lead, not a fact. Before you rely on one, read the item (`glassy_read_note`,
   `glassy_read_document`).
 - If the reply carries `degraded`, say so. "Search by meaning isn't available right now, so
   this is by words only" is an honest answer. "Nothing found" is not.
 - A memory or note written seconds ago may not be searchable by meaning yet. Read it by id.
 - Search includes the archive, a little below current work. Pass `include_archived: false` to
-  leave it out. The list tools (`glassy_list_notes`, `glassy_get_recent`) leave archived items
-  out unless you ask for them.
+  leave it out. `glassy_list_notes` leaves archived items out unless you pass
+  `include_archived: true`; `glassy_get_recent` always leaves them out.
 - "Vault" tools (`glassy_vault_read`, `glassy_vault_append`, `glassy_obsidian_*`) reach the
-  person's **Obsidian** vault, not Glassy's own notes. With no Obsidian connected they fail.
-  For Glassy's own content use search, the note tools and the document tools.
+  person's **Obsidian** vault, not Glassy's own notes. With no Obsidian connected they fail,
+  unless the person set one of their agents as the vault provider, which then answers
+  `glassy_vault_read` and `glassy_vault_append`. For Glassy's own content use search, the note
+  tools and the document tools.
+
+Not sure which tool fits? The table in [REFERENCE.md](REFERENCE.md#choosing-a-tool) maps what you
+want to do to the tool that does it.
 
 ## Asking
 
@@ -105,6 +110,29 @@ When you have made something the person should look at, give them a link, not a 
 
 Use the address the person actually uses for Glassy if it is not `localhost`. Making a note
 public (`is_public`) changes who can see it. Ask first.
+
+## Boards and pictures
+
+- A board is a note with `type: "canvas"` and one self-contained HTML page as its content.
+  Change it by sending the whole page again with `glassy_note_update`; an open board redraws.
+- For a picture, `glassy_upload_image` (self-host) gives you `url` for a note's `images` and
+  `canvasUrl` for an `<img src>` on a board. On cloud, ask the person to add the picture to a note in the app.
+
+## Several people on one Glassy
+
+On a self-host with a seat pack, an admin can add people (the **People** screen). Glassy
+defines no kinds of people or groups; use the names the admin chose.
+
+- With **reach** (an admin turns it on for your key in People → Agents) you can list the people
+  (`glassy_list_members`), share, assign, ask a group and send to people. Name the member who
+  asked in `onBehalfOf`. You only see what was shared with everyone, never a member's private notes.
+- With **admin reach** (only for an admin's key) you can also invite people, change their options,
+  run groups and starting setups, and close the account of someone who left, with the eight
+  `glassy_admin_*` tools. The steps are in
+  [REFERENCE.md](REFERENCE.md#managing-people-end-to-end).
+- You can only **ask** to make someone an admin, to download a closed account's things, or to
+  delete an account for good: the call files a request and an admin decides in People. You never
+  act as a person, set a PIN or give an agent reach.
 
 ## Tidying
 

@@ -42,9 +42,9 @@ Addresses use `http://localhost:3000`, the default.
 | Custom themes | Purchased theme pack (add-on) | ✅ unlocked |
 | Voice Studio | Every account (D4) | ✅ unlocked |
 | Knowledge base (KB) | Every account — the `#/kb` workspace reads the same MCP lane | ✅ unlocked |
-| MCP server + Second Brain | Every account — single-key MCP lane, tier-rated (R4); notify/review tools withheld | ✅ unlocked (all 42 tools, named keys) |
+| MCP server + Second Brain | Every account — single-key MCP lane with an hourly tool-call allowance (R4); the 18 appliance-only tools (notify, the four review tools, the four people tools, image upload, the eight admin tools) are withheld | ✅ unlocked (all 55 tools, named keys) |
 | Agent harnesses — dispatch | Hosted `agents-api` only when `ENABLE_AGENT_GATEWAY` is enabled; local subprocess transports are refused | ✅ unlocked — all transports; LAN/Tailscale `baseUrl`s allowed on self-host (#37); cloud keeps the strict allowlist |
-| Agent harnesses — knowledge (MCP) | ✅ single-key lane; notify/review tools withheld | ✅ named keys, all tools |
+| Agent harnesses — knowledge (MCP) | ✅ single-key lane; the appliance-only tools withheld | ✅ named keys, all tools |
 | Glassy Capture browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
@@ -57,24 +57,26 @@ Addresses use `http://localhost:3000`, the default.
 | Cloud metered AI (Gemini/OpenAI/Anthropic system keys) | ✅ | ❌ disabled |
 | AI credit metering / top-ups | ✅ | ❌ no-op (unlimited BYOK) |
 | Stripe / commerce / upgrade funnel | ✅ | ❌ not mounted |
-| Web push notifications | ✅ | ❌ disabled (no FCM/APNs offline) |
+| Web push notifications | ✅ | Off by default; opt in with your own VAPID keys ([section 13](#13-push-notifications--opt-in-on-self-host)) |
 | Transactional email | ✅ | ❌ disabled (nothing leaves the machine) |
 | Google OAuth | ✅ | ❌ disabled |
-| Registration | ✅ | ❌ permanently disabled |
+| Registration | ✅ | ❌ closed — people join by an admin's invite ([People](../people.md)) |
 | Telemetry (Sentry) | ✅ | ❌ not initialised |
 | Sub-accounts (multiple workspaces, one owner) | ✅ | ✅ |
+| People (several people on one Glassy: invites, admins and members, groups, starting setups, shared devices and screens, closed accounts) | ❌ one person per account | ✅ with a seat pack — **People** in the sidebar, `/api/people`, the `glassy_admin_*` tools ([People](../people.md), [section 4](#4-account-management-sub-accounts)) |
+| Uploaded pictures and files | Open only to people who should see them | Same (2.66.0): the owner, people who can open an item they were added to, and anyone for avatars, banners and public items. `UPLOADS_PUBLIC=true` restores the older open behaviour ([section 10](#10-security-hardening)) |
 | Linked accounts (cross-user email linking) | ✅ | ❌ disabled |
 | Public Window (publish to the web) | ✅ | ✅ — resolves from the appliance's own origin; private mode still guards anonymous access, and the signed-in owner views their own window (session attached client-side, beta.36) |
 | Social previews (OG tags on `/w/:slug`) | ✅ | ✅ mounted, 401 to anonymous crawlers — private mode is enforced before the User-Agent branch |
 | Follow Glassy people (social graph) | ✅ | ⚠️ works; following cloud people needs outbound internet |
 | Follow external RSS publications | ✅ every account (D4: no follow cap in code — storage-bound) | ✅ unlimited (local) |
 | Content reporting (abuse) | ✅ | ⚠️ mounted but effectively unreachable — there are no anonymous visitors to report content |
-| Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name. The same key also authenticates **read-only** `GET /api/*`, so scripts stop needing the owner's password |
+| Named per-agent MCP keys (agent identity) | ❌ single shared key | ✅ — one named key per agent, each pinned to a verified identity (`/api/mcp-keys`); authorship, memory and notifications key off the principal, not a self-declared name. The same key also authenticates the REST API — reads, and writes to notes and documents credited to the agent — so scripts stop needing the owner's password |
 | Agent awareness lane (`glassy_notify`) | ❌ not available | ✅ — notifications + owner surface + 24h/72h review escalation; ≤10 notifications/min per key by design |
 | The approval badge on artifacts | ✅ | ✅ — the derived review state rides note reads, so you decide on the work itself |
-| Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; sub-accounts share one login, cross-user discovery is a no-op on a single-user box |
+| Collaboration (per-note collaborators) | ⚠️ | ⚠️ mounted; on a one-person Glassy there is nobody to invite. With a seat pack, **People** shares a note, document, folder or calendar with a person, a group or everyone |
 | Two-factor authentication (TOTP + 10 recovery codes) | ✅ | ✅ — verification accepts ±1 30-second step (beta.42, RFC 6238 §5.2). **The appliance has no cloud NTP of its own:** a Docker host whose clock is more than ~30s out rejects every code from every device, and re-enrolling 2FA will not fix it |
-| Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP writes record the connecting client's `clientInfo.name`, falling back to `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
+| Note authorship (`last_edited_by`, `created_by`) | ✅ | ✅ — `created_by` is write-once and survives edits (beta.43). MCP and named-key REST writes record the agent's name: the name pinned to its named key, else the client's declared `clientInfo.name`, else `MCP agent`. Publish/takedown deliberately does **not** stamp an editor |
 | Bookmark authorship | ✅ | ✅ — same three columns (migration 0109, beta.43). Content writes go through `bookmarkService`. A takedown is not an edit |
 | Document authorship | ✅ | ✅ — same three columns (migration 0110, beta.43). Content create/update and the public toggle go through `documentService`. Archive, pin and account move stay narrow state transitions and do not stamp an editor |
 | Write warnings | ✅ | ✅ — a note write that includes a tag render will strip (`<video>` and the sanitizer's other non-allowlist tags) returns `warnings` with code `STRIPPED_AT_RENDER` (beta.43). A `canvas` note is judged by its own policy instead and returns `CANVAS_ORIGIN_BLOCKED` naming any origin outside `CANVAS_EMBED_ORIGINS` (2.40.7, #138). `PUT`/`PATCH` also return `IGNORED_FIELD` for a body key the endpoint does not write, naming the route or MCP field that does (2.40.7, #137). And an invalid **value** for an enumerated organisational field (`transparency`, `border_style`, `content_format`) is stored as the column's default with a `VALUE_COERCED` warning naming the field and the valid set (2.43.0) — `''`, `null` or omitted are the clear/unchanged spellings and never coerce |
@@ -88,16 +90,16 @@ Addresses use `http://localhost:3000`, the default.
 
 ## 2. Instance identity & gating summary
 
-Setting `INSTANCE_ID=self_hosted` in `docker-compose.yml` activates the single-user appliance mode. The following gates are **enforced server-side** and cannot be overridden by environment variables:
+Setting `INSTANCE_ID=self_hosted` in `docker-compose.yml` activates appliance mode: one owner by default, and as many people as a seat pack allows. The following gates are **enforced server-side** and cannot be overridden by environment variables:
 
 | Gate | Behaviour |
 |---|---|
-| `/api/auth/register` | Hard 403 `REGISTRATION_DISABLED` — first check, before any admin setting. |
+| `/api/auth/register` | 403 — `SEAT_LIMIT` once the seat pack's cap is reached (one seat, the owner, when there is no pack), otherwise "New account creation is currently disabled" because `allowNewAccounts` is forced off at every boot. People join through an admin's invite (`/api/people`). |
 | `/api/commerce/*` and `/api/stripe/*` | Routes not mounted → 404. |
 | `/api/push/*` (web push) | Routes not mounted → 404. |
 | `/api/auth/oauth/status` | Always returns `{google: false}`. |
 | `/api/accounts/link/request` and `/link/verify` | 403 `LINKING_DISABLED`. |
-| `/api/admin/users` (POST) and `/api/admin/users/:id` (DELETE) | 404 — the appliance cannot create or delete users. The single-user invariant is enforced here as well as at `/api/auth/register`; without it the owner (who is admin) could mint arbitrary `users` rows and turn the appliance into the multi-user hosted service the BSL forbids. The admin panel hides "Add User" to match. |
+| `/api/admin/users` (POST) and `/api/admin/users/:id` (DELETE) | Seat-pack enforced: an account is created only within the seat cap (one seat, the owner, when there is no pack). Admin → Users follows the People rules: the last admin stays (409 `LAST_ADMIN`), and on a Glassy with several people an account is closed first (it frees the seat and keeps the person's things) before it can be deleted for good. Prefer **People** and its invites. |
 | `POST /api/verify-selfhost` | Not mounted (`index.js:3931-3933`) — an appliance cannot validate other appliances, so it cannot act as a membership oracle. |
 | `GET /w/:slug` and `GET /w/:slug/:noteId` (social meta) | 401 in private mode — guarded before the User-Agent branch; a spoofed crawler UA is not a credential. |
 | `PATCH /api/admin/settings` | Mutations to `allowNewAccounts` and `instanceAccessMode` silently rejected; server re-enforces them on every boot. The admin panel disables both toggles and explains why, so it no longer reports success for a change the server discarded. |
@@ -354,13 +356,40 @@ The self-hosted appliance supports **sub-accounts** — multiple isolated worksp
 
 To create a sub-account:
 
-1. Settings → Accounts → **Add account**
-2. Choose a username + password
-3. Switch between accounts from the sidebar or Settings → Accounts
+1. **Settings → Workspaces** → **New workspace**
+2. Give it a name
+3. Switch between workspaces from the sidebar or Settings → Workspaces
 
 Sub-accounts share the same Docker volume (`glassy-data`) but have fully isolated note stores, settings, and AI keys.
 
 > **Account linking is disabled.** Account linking (`/accounts/link/*`) requires email verification and has no place on an offline appliance. Use sub-accounts instead.
+
+### People: several people on one Glassy
+
+Sub-accounts are more workspaces for **you**. Other people need their own accounts, which a
+**seat pack** (a one-time purchase on the owner's Glassy account) allows. The full guide is
+[Set up Glassy for your people](../people.md); what an operator needs to know:
+
+- **The People screen** appears in the sidebar once the seat pack adds seats (or someone else is
+  already on the Glassy). The routes are under `/api/people`.
+- **Admins and members.** An admin is a user with `is_admin`; any admin can make or remove an
+  admin, and the last admin always stays. Everyone else is a member, with three options an admin
+  sets: how they share, whether admins may look after their space (off by default, at most 8 hours
+  a visit, logged), and whether they sign in on a shared device with a PIN. Glassy defines no kinds
+  of people, groups or boards.
+- **Invites, not registration.** An invite is a link or code that works once for 14 days and holds
+  a seat while open. `APP_URL` in `.env` makes the link a full address; without it the link is a
+  path. The person chooses their own password (or a PIN for a shared device).
+- **Shared devices and screens** each have their own limits: after 15 wrong PINs a device waits for
+  an admin, and wrong PINs, invite codes and shared screens never lock each other out.
+- **When someone leaves**, an admin closes their account: it frees the seat, keeps their things,
+  hands what they shared to an admin and turns off their agent keys. It can be reopened for 30
+  days; downloading a closed account's things and deleting it for good are logged.
+- **Agents.** An admin can give an agent key reach (share, assign, ask, send) or, for an admin's own
+  key, admin reach (the eight `glassy_admin_*` tools). Agents only ask to make an admin, download a
+  closed account or delete one for good. See the [agent reference](../../agents/REFERENCE.md#managing-people-end-to-end).
+- **Upgrading from 2.65.x** adds migrations 0166–0168. Everyone already on the Glassy becomes a
+  member, admins stay admins, and nobody's access changes.
 
 ---
 
@@ -440,7 +469,7 @@ AI on your appliance runs on what you bring, in three places you can mix:
 (Ollama, free), and **your own key** (billed by that provider). Glassy provides
 no AI on an appliance and never bills for it.
 
-- **Answers, writing help and tags** use a key you saved in Settings → API keys
+- **Answers, writing help and tags** use a key you saved in Settings → Workspace → API keys
   if you have one, and your Ollama otherwise.
 - **Search by meaning** uses one model per workspace; see
   [The search model](#the-search-model).
@@ -458,10 +487,10 @@ no AI on an appliance and never bills for it.
 Cloud system keys are not loaded on the self-hosted appliance. To use cloud AI:
 
 1. Obtain a key from the provider (Google AI Studio, OpenAI, Anthropic, etc.)
-2. Settings → AI → **API Keys** → add your key
+2. **Settings → Workspace → API keys** → add your key
 3. Keys are encrypted at rest using `API_KEY_ENCRYPTION_KEY`
 
-Supported providers: Gemini, OpenAI, Anthropic, Mistral, and any OpenAI-compatible endpoint.
+Supported providers: OpenAI, Anthropic, Gemini, MiniMax, and any OpenAI-compatible endpoint (`GET /api/capabilities` lists what this install accepts).
 
 > BYOK calls are billed to **your** provider account. There is no credit ledger or metering on the appliance.
 
@@ -481,7 +510,7 @@ Ollama is already reachable via `host.docker.internal` without any configuration
 
 1. Install Ollama on the host: https://ollama.com
 2. Pull a model: `ollama pull llama3.2` (or any supported model)
-3. In Glassy: Settings → AI → **Ollama** — Glassy auto-detects models from `http://host.docker.internal:11434`
+3. In Glassy: **Settings → AI assistant** → *answer with* — Glassy finds the models at `http://host.docker.internal:11434`
 
 `OLLAMA_BASE_URL` is set to `http://host.docker.internal:11434` by
 [`docker-compose.yml`](../../docker-compose.yml),
@@ -586,7 +615,7 @@ DELETE FROM document_embeddings;
 DELETE FROM bookmark_embeddings;
 ```
 
-Then re-run the backfill — **Settings → Second Brain → Backfill**, or:
+Then re-run the backfill — **Settings → Connections & data → Second Brain → Catch up search**, or:
 
 ```bash
 curl -s -X POST localhost:3000/api/kb/backfill \
@@ -682,7 +711,7 @@ graph-centrality boost, default-on) applies to local note results only.
 Running Glassy with an AI agent (Claude, Cursor, Hermes, …)? Give it
 [`AGENTS.md`](../../AGENTS.md)
 from the installer repo root: a self-contained onboarding brief with the MCP endpoint and Bearer auth,
-the full 42-tool table, the Obsidian-bridge explainer, ops facts, and first
+the full 55-tool table, the Obsidian-bridge explainer, ops facts, and first
 actions. The self-host compose enables the MCP stack by default.
 
 **Give each agent its own named key.** Both key kinds live in one panel:
@@ -692,7 +721,7 @@ agent keys* section below it mints one key per agent, each pinned to a verified
 identity, and is the only place a named key can be revoked.
 
 A named key is what makes an agent a **principal** rather than a guest: its note
-edits are attributed to its own name instead of "MCP agent", `glassy_recall
+edits are attributed to its own verified name instead of whatever name the app declares, `glassy_recall
 { scope: "mine" }` returns only its own memories, and its notifications and digests
 are signed. The two key kinds are the same `gky_mcp_…` shape, so an agent verifies
 which it holds by reading the `glassy://status` resource (`agent.verified`), not by
@@ -710,9 +739,11 @@ every script session at once:
 curl -s http://localhost:3000/api/notes -H "Authorization: Bearer gky_mcp_..."
 ```
 
-The lane is read-only on purpose. A `POST`/`PUT`/`PATCH`/`DELETE` carrying a named
-key is refused `403 AGENT_KEY_READ_ONLY` before the key is even resolved, so a leaked
-key cannot modify anything — its reach is exactly what you can already read. The key
+Writes are narrow on purpose. Since 2.64.0 a key with write access may `POST`/`PUT`/`PATCH`/`DELETE`
+under `/api/notes` and `/api/documents`, and the item is recorded as written by that agent (a
+document with no folder goes into "Agent work"). Every other write, and every write from a
+read-only key, is refused `403 AGENT_KEY_READ_ONLY`. The People admin routes answer `403
+AGENT_USE_TOOLS`: an agent manages people through the `glassy_admin_*` tools. The key
 resolves into the account it was minted under (an `X-Account-Id` header will not move
 it), and the first-boot password wall, the inactivity lock and the account PIN lock
 all still apply. `agentIdentity.restReadLanes` in `/api/capabilities` reports whether
@@ -736,7 +767,7 @@ lifetimes, the embedding chunk size and dimensions, the review-loop limits, the
 live MCP tool list — and the app's own **navigation** map (2.44.0, from the same
 `shared/navigation.json` the sidebar/header render): `navigation.routes` maps a hash
 route to its section key, `navigation.sections` gives the key's header title, and
-`navigation.deepLinks` publishes the parameterized link families (#176) an agent
+`navigation.deepLinks` publishes the parameterized link shapes (#176) an agent
 needs to land an owner on an artifact (`/#/notes/:id` et al.) — so you can reason
 about where work belongs without reverse-engineering the bundle:
 
@@ -815,8 +846,8 @@ server mirror is compared to it **behaviourally** over a corpus of snippets
 
 Agents can ask you a question and wait for a click: `glassy_request_review`
 (question + 2–10 choices, optionally linked to a note or document), then poll
-`glassy_get_review`. Questions appear in the **Agent Review** sidebar view
-(self-host only) with one button per choice, an optional comment box, and the
+`glassy_get_review`. Questions appear under **Decisions** on Today and on the
+**Agent Review** page (self-host only) with one button per choice, an optional comment box, and the
 linked item rendered next to them. Answers sync between paired seats, so a
 question asked on one machine can be answered on the other.
 
@@ -830,7 +861,7 @@ where you can read it. On the appliance it is **enabled by default**
 There are two directions, and they are not interchangeable:
 
 - **Knowledge (MCP)** — the agent calls *into* Glassy. Configure it in
-  **Settings → Connections & data → Agent access (MCP)**. This is the 42-tool
+  **Settings → Connections & data → Agent access (MCP)**. This is the 55-tool
   Second Brain lane, with a named key per agent on the appliance.
 - **Dispatch** — Glassy calls *into* the agent. Configure it in **Settings →
   Connections & data → Agent dispatch**: choose a harness, then a transport,
@@ -987,7 +1018,7 @@ than read off the config:
   and `CanvasNoteView` stamps it onto the canvas's own `<script>` tags. Before 2.40.7 canvas script
   was silently dropped, because `script-src` allowed inline script only by build-time hash and no
   hash can be precomputed for content authored at runtime. The sandbox is unchanged, so a canvas
-  script still cannot reach the parent document, `localStorage` (where the JWT lives) or cookies —
+  script still cannot reach the page around it, `localStorage` (where the JWT lives) or cookies —
   measured as a `SecurityError`, not assumed.
 - **Appliance data is frameable only through `/widget/*`.** A canvas cannot frame an ordinary
   Glassy endpoint: those responses carry `frame-ancestors 'self'`, and an opaque origin is not
@@ -1029,7 +1060,7 @@ On **Windows with WSL2/Docker Desktop**, only the browser extension bridge works
    - Toggle **Obsidian Bridge** on. **Chrome will prompt for permission to access localhost** — click **Allow**. This grants the extension host permission to reach both the Obsidian URL and the Glassy server URL (both are localhost). If you deny it, the popup shows a warning banner and the bridge won't connect.
    - Click **Test Connection** — this tests the FULL bridge loop (server → extension → Obsidian), not just extension→Obsidian. A green result with "plugin v4.x" confirms both legs work.
    - Click **Save**.
-5. **Verify on the server**: open `http://localhost:3000` in your browser, sign in, go to Settings → Obsidian. You should see "✓ Extension bridge active — Obsidian connected." The URL/token fields are hidden because the extension manages them.
+5. **Verify on the server**: open `http://localhost:3000` in your browser, sign in, go to Settings → Connections & data → Obsidian vault. You should see "✓ Extension bridge active — Obsidian connected." The URL/token fields are hidden because the extension manages them.
 6. **Verify via API** (optional): `curl -H "Authorization: Bearer <your-jwt>" http://localhost:3000/api/ext/obsidian-bridge/status` should return `{"connected":true,...}`.
 
 The extension maintains a persistent SSE connection to the server (via the offscreen document, which Chrome does not evict). When the server needs Obsidian data (AI context, vault browsing, search) — or needs to WRITE to the vault (checkbox toggles, add-under-heading, daily-note append, push-to-vault; companion v2.18.0+ transport v2) — it pushes a request to the extension, which calls Obsidian on `127.0.0.1:27124` directly and returns the result, including upstream response headers (ETag) that power concurrency-safe writes. The extension holds the API key locally — it is never sent to the server. The extension advertises its version on connect (`&extv=` on the subscribe URL); the server enables transport v2 only for companions ≥ 2.18.0, so older extensions keep the proven read-only-over-bridge behavior.
@@ -1137,7 +1168,7 @@ Database migrations apply automatically on start. There is no downtime during a 
 `GLASSY_TAG=v2.40.7`) — `docker compose` refuses to start without it. **Do not use
 `latest`**: that floating tag is the hosted build and is rebuilt on every push
 to `main` without the self-host build-time flags, which hides the Agent access
-(MCP), Second Brain, Agent access/dispatch and API keys (BYOK) settings. 
+(MCP), Second Brain and Agent dispatch settings. 
 
 **Hands-off updates (optional).** With `GLASSY_TAG` pinned to an immutable
 versioned tag there is nothing for the Watchtower overlay to pull, so it is a
@@ -1197,14 +1228,24 @@ radius than a token-schema migration.
 
 ### Network exposure
 
-- By default Glassy binds to `0.0.0.0:3000` on the host. On a single-user machine, use a firewall to restrict access to `127.0.0.1:3000` unless you need LAN/Tailscale access.
+- By default Glassy binds to `0.0.0.0:3000` on the host. On a machine nobody else uses, use a firewall to restrict access to `127.0.0.1:3000` unless you need LAN/Tailscale access.
 - Do not expose port 3000 directly to the public internet without TLS in front (Cloudflare Tunnel or a local nginx reverse proxy).
 
-### `/uploads` is unauthenticated and serves any extension — know this before you open a port
+### Who can open a file under `/uploads`
 
-The `/uploads/*` path is deliberately **unauthenticated** (notes embed images over a plain static path) and has **no extension allowlist** — it serves whatever is in the data volume, including a video or an HTML file someone placed there. Combined with the compose default that publishes `${APP_PORT:-3000}:8080` on `0.0.0.0`, that is a network-reachable, unauthenticated static host whose contents the product did not choose.
+Since 2.66.0 a file under `/uploads` opens only for people who should see it: its owner; people
+who can open a note or document the owner attached it to; a board's viewer through the board's
+image token; and anyone, for avatars, banners and files a public item uses. Anyone else gets
+`401` (not signed in) or `404` (signed in, not theirs). The board image lane (`/widget/image/…`)
+follows the same rule. A legacy file no item uses opens for any signed-in person while
+`UPLOADS_LEGACY_OPEN` is on (the default; set it to `false` to refuse those).
 
-This is a documented trade-off, not a silent one (it is disclosed in the `/api/capabilities` manifest as `uploads.servedExtensions: null` + `authenticated: false`). The default posture is safe for the intended single-user, closed-network deployment (firewall/Tailscale only). If you run on a VPS with the port open, restrict the host binding or put auth in front — you are the one choosing what lands in that volume.
+`UPLOADS_PUBLIC=true` in `.env` restores the older behaviour, in which anyone with a file's exact
+address could open it. Leave it off on a Glassy reachable from the internet. `/uploads` has **no
+extension allowlist**: it serves whatever is in the data volume, so keep the volume to what Glassy
+put there. `/api/capabilities` reports all of this under `uploads`: `authenticated` (`true`
+unless `UPLOADS_PUBLIC=true`), `openFolders` (the folders anyone can open), `publicItemsOpen`,
+`legacyUnreferencedOpen` (follows `UPLOADS_LEGACY_OPEN`) and `servedExtensions: null`.
 
 ### TLS (optional)
 
@@ -1352,9 +1393,9 @@ network diagnostics (`docker compose exec glassy curl …`).
 
 ### AI features not working
 
-1. **BYOK path:** Settings → AI → API Keys — verify your key is saved and the correct provider is selected.
+1. **Your own key:** Settings → Workspace → API keys — verify your key is saved and the correct provider is selected.
 2. **Ollama path:** run `ollama list` on the host to verify a model is installed. Check `OLLAMA_BASE_URL` in `.env` (default `http://host.docker.internal:11434`).
-3. **No provider configured:** the app returns a clear error: "No AI provider configured. Add your own API key in Settings → API Keys, or run a local Ollama model."
+3. **No provider configured:** the app returns a clear error: "No AI provider configured. Add your own API key in Settings → Workspace → API keys, or run a local Ollama model."
 
 ### Obsidian sync not connecting
 

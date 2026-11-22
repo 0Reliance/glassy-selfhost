@@ -6,10 +6,10 @@ services:
   glassy:
     # ⚠️ GLASSY_TAG must be a pinned version, NOT `latest`. The floating `latest`
     # tag is the HOSTED build: release-image.yml rebuilds it without the
-    # self-host build-time flags (VITE_ENABLE_MCP_SERVER/KB_UI/AGENT_GATEWAY/
-    # BYOK), so on `latest` the Agent access (MCP), Second Brain, Agent dispatch
-    # and API keys (BYOK) settings are hidden and a "You are on the cloud"
-    # banner appears on your own appliance. Versioned tags carry all flags.
+    # self-host build-time flags (VITE_ENABLE_MCP_SERVER/KB_UI/AGENT_GATEWAY),
+    # so on `latest` the Agent access (MCP), Second Brain and Agent dispatch
+    # settings are hidden and a "You are on the cloud" banner appears on your
+    # own appliance. Versioned tags carry all flags.
     image: ghcr.io/0reliance/glassy-dash:${GLASSY_TAG:?set GLASSY_TAG in .env to the released version named in .env.example — do NOT use latest (it is the hosted build and omits self-host features). Or run ./install.sh}
     container_name: glassy
     restart: unless-stopped

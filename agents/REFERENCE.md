@@ -6,6 +6,11 @@ prompt and resource, what a write returns, and how to ask the person a question.
 This is the long, precise half. If you have not read [USE.md](USE.md), read that first: it is
 short and says how to behave. Come here when you need the exact shape of something.
 
+**A fresh agent's path through this file:** [connect](#mcp-connection) → confirm who you are
+(`glassy://status`; see "Two kinds of key" below) →
+[choose the right tool](#choosing-a-tool) → [ask the person](#asking-the-owner-a-question) when a
+choice is theirs → with admin reach, [manage people](#managing-people-end-to-end).
+
 Addresses in this file use `http://localhost:3000`, the default for a self-host. If the person
 changed the port or reaches Glassy by another name, use theirs. The numbers in this file (tool,
 prompt and resource counts) are checked against the code on every release, and `GET /api/capabilities`
@@ -43,7 +48,7 @@ is yours:
 |---|---|---|
 | A `gky_mcp_…` key + `http://localhost:3000/mcp` | An MCP client — you call *into* Glassy | [MCP connection](#mcp-connection) |
 | A dispatch connection the owner added under Settings → Agent dispatch | A dispatch target — Glassy calls *you* over a harness transport | [Connecting an agent as a dispatch target](#connecting-an-agent-as-a-dispatch-target) |
-| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-42-tools) |
+| The owner flipped "Set vault provider" on your connection | The vault provider — you hold the files | [No-Obsidian operators](#the-55-tools) |
 | A named agent key, on `GET /api/*` (and writes to notes and documents) | A REST script | [The same named key also reads the REST API](#the-same-named-key-also-reads-the-rest-api) |
 | The first password, or you're installing | Acting for the owner | [INSTALL.md](INSTALL.md), then [CONFIGURE.md](CONFIGURE.md) |
 
@@ -56,9 +61,10 @@ A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
 **MCP server** with three surfaces, not one:
 
-- **42 tools** — 37 registered everywhere; `glassy_notify` and the four review
-  tools are self-host only, because the review queue and owner inbox they
-  terminate in are not served on cloud. Full table below.
+- **55 tools** — 37 registered everywhere; `glassy_notify`, the four review
+  tools, the four people tools, `glassy_upload_image` and the eight admin tools are
+  self-host only, because what they terminate in (the review queue, the owner inbox,
+  several people on one Glassy) is not served on cloud. Full table below.
 - **4 prompts** — server-authored instruction templates. Named and explained in
   [*Prompts*](#the-4-prompts-a-separate-surface-from-tools) below.
 - **9 resources** — 3 static (these are all `resources/list` returns) plus **6 URI
@@ -111,8 +117,8 @@ The same MCP server serves **two origins** with deliberately different shapes.
 |---|---|---|
 | Key model | Named per-agent keys + instance key — ask for a named key if you will write | **Single user-scoped key** — the account owner's own key, minted in Settings → Agent access (MCP). Named keys are not offered here |
 | Identity | Named keys are pinned and verified; the instance key is self-declared | Self-declared (`identityMode: "self-declared"`, `verified: false`) — you act as the account owner's MCP client |
-| Tools | All 42 | 37 — `glassy_notify` and the review-queue tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
-| Budget | No tool-call budget — the owner's hardware | Tier-rated by `mcpTierLimiter`: free accounts 120 calls/hour, paid accounts 1,200/hour |
+| Tools | All 55 | 37 — `glassy_notify`, the review-queue tools, the people tools, `glassy_upload_image` and the admin tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
+| Budget | No tool-call budget — the owner's hardware | An hourly allowance per account, larger on a paid plan. The account's welcome note states it; past it, calls answer `429` with a JSON-RPC error until the hour rolls over |
 | Search corpus | The owner's corpus, locally indexed | The owner's corpus, searched with the search model that workspace declared, or by words alone if it has none |
 
 The cloud lane exists so an agent you run while traveling can reach the same
@@ -130,7 +136,7 @@ at it. Ask the instance instead; see below.
 |---|---|---|
 | Minted by | The owner, in the panel's *Named agent keys* section — or by the Glassy Capture extension (v2.19.0+) for itself | The owner, at the top of the same panel |
 | Your identity | **Pinned and verified.** `agent: { name: "<your name>", verified: true, identityMode: "named-key" }` | Self-declared from your MCP handshake `clientInfo.name`; `verified: false`, `identityMode: "self-declared"` |
-| What that buys | Your note edits are attributed to *you*; `glassy_recall { scope: "mine" }` returns only your memories; `glassy_notify` and digests are signed with your name | Everything works, but authorship reads "MCP agent" and memory scope is coarse — one shared key, one identity for every client using it |
+| What that buys | Your note edits are attributed to *you*; `glassy_recall { scope: "mine" }` returns only your memories; `glassy_notify` and digests are signed with your name | Everything works, but authorship is the name your client declares in its handshake (unverified; `MCP agent` only if it declares none) and memory scope is per declared name, so two clients that declare the same name share one identity |
 | Availability | Self-host only (cloud answers 403 `FEATURE_NOT_AVAILABLE`) | Everywhere |
 
 **Ask for a named key if you will write anything.** Then verify what you actually
@@ -143,8 +149,9 @@ infer it from the key's prefix, which cannot distinguish the two. Read the
 ```
 
 `verified: false` means the instance is trusting a name you declared about yourself.
-That is fine for reading; it is why your writes are attributed to "MCP agent" rather
-than to you.
+That is fine for reading. Your writes are credited to the name your client declared, which
+nobody checked, so two apps declaring the same name look alike and the person can't switch off
+one without the others.
 
 **A named key may be read-only (W-2).** The operator can mint a key with scope
 `read` — it can query, search, list and recall, but every write tool answers a
@@ -157,8 +164,9 @@ into your client (`GET /api/agents/:id/config`) used to always carry the anonymo
 instance key; it now prefers the operator's named key, accepts `?agentName=` to pin a
 specific one, and reports `key: named|legacy` (plus `agentName` when named) so the
 operator can see which principal you'll actually be. If the snippet says `key: legacy`,
-ask for a named key before writing anything — your writes will otherwise be attributed
-to "MCP agent" and `glassy_recall {scope:"mine"}` will come back empty.
+ask for a named key before writing anything — your writes will otherwise carry only the
+unverified name your client declares (`MCP agent` if it declares none), and
+`glassy_recall {scope:"mine"}` will match whatever else declares that name.
 
 ### The same named key also reads the REST API
 
@@ -202,7 +210,7 @@ break all at once and fall back to re-authenticating with the owner's raw passwo
 named key is rotated deliberately, one agent at a time, and revoking it does not touch
 anyone else.
 
-Client setup — each client takes a different shape (the settings panel shows all three):
+Client setup — each client takes a different shape (the settings panel shows a setup for each app it offers; the three most used are below):
 
 - **Claude Desktop** launches local (stdio) servers only; a `url` entry in
   `claude_desktop_config.json` is ignored. Reach Glassy through the `mcp-remote` bridge
@@ -226,7 +234,7 @@ Client setup — each client takes a different shape (the settings panel shows a
 - **Cursor** reads `url` + `headers` directly:
   `{"mcpServers": {"glassy": {"url": "http://localhost:3000/mcp", "headers": {"Authorization": "Bearer gky_mcp_..."}}}}`
 
-### The 42 tools
+### The 55 tools
 
 The count and the names are the **instance's**, not this document's — read them live with
 `GET /mcp/status` (or `capabilities.mcp.tools`) and treat any number written here as
@@ -243,10 +251,122 @@ approximate. This table is checked against the tool registry on every release.
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
 | Bookmarks | `glassy_bookmark_update`, `glassy_bookmark_delete` |
-| Schedule | `glassy_get_schedule`, `glassy_create_event`, `glassy_update_event`, `glassy_delete_event`, `glassy_find_free_slots` |
+| Schedule | `glassy_get_schedule`, `glassy_create_event`, `glassy_update_event`, `glassy_delete_event`, `glassy_find_free_slots` (always on a self-host; on Glassy's cloud only for a paid plan, otherwise an error that says so) |
 | Tags / folders | `glassy_get_tags`, `glassy_get_folders` |
 | Proxy | `glassy_obsidian_proxy` |
-| Awareness & digests | `glassy_notify` (self-host only, ≤10/min), `glassy_create_digest` |
+| Awareness & digests | `glassy_notify` (self-host only, ≤10/min; with `audience`, to people), `glassy_create_digest` |
+| People (self-host only, needs reach) | `glassy_list_members`, `glassy_share`, `glassy_assign`, `glassy_checkin` |
+| Images | `glassy_upload_image` (self-host only): returns `url` for a note and `canvasUrl` for a board. On cloud, ask the person to add the picture to a note in the app. |
+| Managing people (self-host only, needs admin reach) | `glassy_admin_people`, `glassy_admin_invites`, `glassy_admin_groups`, `glassy_admin_setups`, `glassy_admin_seats`, `glassy_admin_audit`, `glassy_admin_devices`, `glassy_admin_settings` |
+
+### Choosing a tool
+
+Most mistakes are the right action through the wrong tool. Pick by what you want to happen:
+
+| You want to | Use | Not |
+|---|---|---|
+| Find what the person already knows about something | `glassy_search` (then read the hit) | `glassy_list_notes` (it browses, it doesn't rank) |
+| Pick up where you left off | `glassy_recall` with `scope: "mine"` | `glassy_search` (it mixes in everyone's work) |
+| Keep something for your next session | `glassy_remember` (your own space) | a shared note the person has to step around |
+| Give the person a short answer, a checklist or a capture | `glassy_note_create` | a document |
+| Give the person a report, plan or anything with sections | `glassy_create_document` (lands in "Agent work") | a long note |
+| Leave a record of a work session | `glassy_create_digest` | `glassy_notify` (a ping, not a record) |
+| Show something live: a dashboard, a board, a page with script | `glassy_note_create` with `type: "canvas"` and one HTML page | a text note (its renderer strips script and frames) |
+| Put a picture in a note | `glassy_upload_image`, then its `url` in the note's `images` | a base64 copy |
+| Put a picture on a board | `glassy_upload_image`, then its `canvasUrl` as `<img src>` | a `/uploads/...` path (it stays blank inside a board) |
+| Save a link | `glassy_add_capture` | a note holding only the URL |
+| Get a decision from the person | `glassy_request_review`, then `glassy_get_review` | guessing, or a notification |
+| Tell the person something that needs no answer | `glassy_notify` (self-host) | a review |
+| Tidy your own finished work | `glassy_note_update` / `glassy_update_document` with `archived: true` | delete (only the person can restore) |
+| Read or append to the person's Obsidian files | `glassy_vault_read` / `glassy_vault_append` | the note tools (those are Glassy's own notes) |
+| Put an event on the calendar | `glassy_find_free_slots`, then `glassy_create_event` (a proposal until `confirm: true`) | creating without showing the proposal |
+| Share, assign or ask several people | `glassy_list_members` for the names, then `glassy_share`, `glassy_assign`, `glassy_notify` with `audience`, `glassy_request_review` with `audience` and `rule` | one call per person |
+| Invite, change or close people's accounts | the `glassy_admin_*` tools ([Managing people, end to end](#managing-people-end-to-end)) | the People screen's REST routes (403 `AGENT_USE_TOOLS` for a key) |
+
+Every read tool is safe to call as often as you need. Every write is recorded under your name.
+
+**People (self-host).** An admin can run a Glassy with several people.
+When an admin gives your key *reach* (People → Agents), you can act
+for the people on this Glassy as yourself: `glassy_list_members` gives the names, who is an admin and the groups,
+and, for an admin's key, each person's options (`shareMode` direct, approval or off; `supervised`;
+`sharedDevice`); a member's key sees only its owner's own options, as on the People screen,
+`glassy_share` shares an item with a person, a group or everyone (read or edit),
+`glassy_assign` gives a note or checklist item to people with a reminder (under the
+sharing rules: the key's owner must own the note to open it to someone new, and when the key's
+owner shares with approval the person is asked to accept first),
+`glassy_checkin` asks a group on a schedule and gathers the answers on a
+shared board, `glassy_notify` with `audience` sends to people (each can tap Seen),
+`glassy_request_review` with `audience` and `rule` asks a group and decides by rule
+(the answer comes back on the same review), and `glassy_create_event` with `for`
+puts an event on a shared calendar for named people. Pass `onBehalfOf` with the
+member who asked; it is recorded in the activity log. Without reach these
+calls answer `NO_GROUP_REACH`. You read only what was shared with everyone,
+never a member's private notes, and you never sign in as a member.
+
+**Managing people (self-host).** An admin can let their own agent manage people with the same
+powers the admin has: in People → Agents, an admin allows it for a key that belongs to an admin
+(a member's key can never have it, and it ends when the key's owner stops being an admin). Each
+admin tool takes an `action`: `glassy_admin_people` (list, update a name, options or colour, make an
+admin a member, remove, departures, bring_back, close, reopen, export, delete_for_good),
+`glassy_admin_invites` (list, create as a member with options, groups and a starting setup, and get back `link` to send them; revoke; an agent can't invite an admin), `glassy_admin_groups` (list, create, rename,
+set_members, delete), `glassy_admin_setups` (list, save, apply, delete), `glassy_admin_seats`,
+`glassy_admin_audit`, `glassy_admin_devices` (shared devices and shared screens; a shared screen you
+add acts with the access of the admin who owns your key, on its own board only, and the activity
+log names you and that admin) and
+`glassy_admin_settings` (`get` or `set_name`, the group's name). Each action is the same function the People screen
+uses, so the answers match: the last admin always stays (409 `LAST_ADMIN`, "Someone else has to be
+an admin first."). Every change is logged as you, for the admin who owns your key. You never sign
+in as a person already here: setting a PIN is not an agent action, and an admin can't have the
+shared-device option. You can claim a member invite you made (the password is yours), but you
+can't make anyone an admin: you can only ask. `update` with `admin: true`, `export` and
+`delete_for_good` are never carried out by you. Each files a review for the admin who owns your
+key and changes nothing; `update` and `export` answer `applied: false` with the review's id and
+"An admin has to approve this. They'll see the request in People.", and asking again while that
+review is open gives the same one. The admin does it in People. `export` is only for a person
+whose account is closed (409 `CLOSE_FIRST` otherwise). Your named key on REST doesn't reach the People admin
+screens (403 `AGENT_USE_TOOLS`): use these tools. Without admin reach every admin tool answers 403 `NO_ADMIN_REACH`.
+
+#### Managing people, end to end
+
+The order an admin's agent works in, with the tool for each step. Every step is logged as you,
+for the admin who owns your key. Glassy defines no kinds of people, groups or boards: use the
+names the admin chose, and ask them when you need one that doesn't exist yet.
+
+1. **Check your reach and the seats.** `glassy_admin_seats` (`get`) tells you how many seats are
+   in use, free and held by open invites. `403 NO_ADMIN_REACH` means the admin hasn't allowed it:
+   ask them to turn it on for your key in **People → Agents** (it is only offered for a key that
+   belongs to an admin). A Glassy with one seat has no People screen; seats come from a seat pack.
+2. **Learn what is there.** `glassy_admin_people` (`list`) for everyone, with ids, options and
+   seats; `glassy_admin_groups` (`list`); `glassy_admin_setups` (`list`); `glassy_admin_settings`
+   (`get`) for the group's name, which is `null` until an admin names it.
+3. **Invite someone.** `glassy_admin_invites` with `action: "create"`, a `name`, and optionally
+   `email`, `options` (`shareMode` direct, approval or off; `supervised`; `sharedDevice`),
+   `groupIds` and a `setupId`. It returns `link`: give it to the admin to pass on, or send it
+   the way they asked. The person chooses their own password, or a PIN on a shared device. The
+   invite works once, holds a seat while it is open, and expires after 14 days; `revoke`
+   withdraws it. You can't invite an admin.
+4. **Settle them in.** After they join, `glassy_admin_people` `update` changes their name,
+   colour or options; `glassy_admin_groups` `set_members` says exactly who is in a group (send
+   everyone who should be in it, not only the newcomer); `glassy_admin_setups` `apply` gives
+   them a starting setup.
+5. **Day to day.** Share, assign, ask and notify with the people tools above, naming the member
+   who asked in `onBehalfOf`. Shared devices and screens are `glassy_admin_devices` (a device's
+   token and a screen's link come back once: hand them to the admin, never store them in a note).
+6. **When someone leaves.** `remove` takes them out of the group; they keep their account and
+   their seat. `close` closes the account: it frees the seat, keeps their things, hands what they
+   shared to an admin (`handOver`, default true) and turns off their agent keys. `reopen` undoes a
+   close for 30 days; `departures` lists who left; `bring_back` returns them to the group.
+7. **Ask, don't do.** Making someone an admin (`update` with `admin: true`), downloading a closed
+   account's things (`export`) and deleting an account for good (`delete_for_good`) each file a
+   request the admin answers in People; they answer `applied: false` with the review's id. You
+   never act as a person, set a PIN or give an agent reach.
+8. **Report.** `glassy_admin_audit` (`list`) reads the activity log as plain sentences; quote it
+   when you tell the admin what you did.
+
+What the people on this Glassy see: an invite link, a welcome note and the starting setup when
+they join; a notification when something is shared with them or assigned to them, under
+"Assigned to you" on Today; questions under Decisions. An admin never reads a member's private
+notes, and neither do you.
 
 `glassy_obsidian_query` and `glassy_obsidian_proxy` reach the operator's
 Obsidian vault through the local REST API plugin — they work even when the
@@ -313,7 +433,8 @@ project state live there. **The lifecycle facts that keep the store usable**
     state. Kept out of the person's notes, documents, search and AI assistant so it
     never crowds their work. Agents still see it (`glassy_search`, `glassy_recall`,
     your key's lists), and it is **never secret**: the person sees each agent's own
-    space in Settings → Agent access (MCP) and can move anything into their workspace.
+    space on the Agents page and in Settings → Agent access (MCP), and can move anything into
+    their workspace.
 - **Archive your working papers when their job is done** — plans, receipts,
   checklists, staging and release reports. Search and the AI assistant still find
   archived items (labelled, a little below current work that matches as well);
@@ -411,7 +532,8 @@ The intended loop when you produce an artifact the operator must LOOK at —
 a design doc, a diagnostic report, a code-review summary:
 
 1. `glassy_note_create` with `is_public: true` (same paid entitlement as the
-   app's own publish button — on this appliance it is always allowed).
+   app's own publish button — on this appliance it is always allowed). Making something public
+   changes who can see it: ask the person first.
 2. Open the browser AT the note: `#/w/<owner-slug>/<noteId>`. The signed-in
    owner lands directly on your work (beta.36 fixed the private-instance
    owner-view); an anonymous visitor is redirected to sign-in first and
@@ -474,7 +596,7 @@ not a copy.
 ### The parameterized deep links an agent needs
 
 The screen-level route map (`#/notes`, `#/today`, …) cannot express the three
-parameterized families an agent hands an owner most often. They are published
+parameterized link shapes an agent hands an owner most often. They are published
 under `capabilities.navigation.deepLinks` (read from the same map the app uses):
 
 ```bash
@@ -513,103 +635,6 @@ Two paths exist, both verified connected in beta.42:
 
 As an agent you don't need to care about the transport — call the Glassy
 tools and the server picks the path.
-
-## Write-path contract
-
-Every note create and every note content update now goes through one server
-service (`noteService`). For an agent this is not internal tidiness — it changed
-observable behaviour in four ways.
-
-### 1. Your edits are attributed
-
-`glassy_note_update` stamps `last_edited_by` with **`MCP agent`**. Before beta.41
-an agent's edit was indistinguishable from the operator's own, so a human would
-open a note and find prose they did not write with no way to tell where it came
-from. If you are asked "who changed this?", the answer is now on the row.
-
-Publishing is deliberately **not** attributed: `is_public` toggles (yours or a
-moderator's) move the flag and the sync cursor only, so a takedown never credits
-the administrator as the note's last editor.
-
-**Documents share this contract** (2.38.0). `glassy_create_document` and
-`glassy_update_document` write through `documentService`, so `created_by` /
-`last_edited_by` carry your client name exactly as they do for notes, the tag
-policy is the same 422 envelope (with `scope: "entire-write"`), the storage cap
-is checked before the write, and a content update is what re-embeds the document
-into the memory lane. Use documents for long-form work — journals, plans,
-drafts — and notes for short captures; a document you update is searchable by
-your own later `glassy_search`.
-
-### A write tells you which fields it ignored — and which values it changed
-
-`warnings` on a note write response carries **four** codes, and they mean different things:
-
-| code | what it says |
-|---|---|
-| `STRIPPED_AT_RENDER` | the content **was stored**, and the note-body renderer will remove that tag |
-| `CANVAS_ORIGIN_BLOCKED` | the content **was stored**, and the canvas renderer will refuse the page over that origin |
-| `IGNORED_FIELD` | the field **was not stored** — this endpoint does not write it |
-| `VALUE_COERCED` | the field **was stored as a default** — the value you sent was not a valid option |
-
-`IGNORED_FIELD` exists because `PATCH /api/notes/:id {"archived": true}` used to answer
-`200 {"ok":true,"warnings":[]}` and change nothing: `archived` has its own route, and the
-handler builds its patch from a fixed list, so any other key simply never existed. The
-message names the door that does work — for `archived`, both `POST /api/notes/:id/archive`
-and `glassy_note_update {archived}`. `id` in a body is exempt (it is the path parameter).
-
-`VALUE_COERCED` (2.43.0) is the same honesty rule applied to *values* instead of *keys*:
-`transparency`, `border_style` and `content_format` are enumerated, and a value outside the
-enum (e.g. `transparency: "glasss"`) is **normalized to a default** — not rejected, so old
-rows and sync upserts survive — but the response now *says so* instead of silently storing
-the default. The valid enums are published at `capabilities.notes.contentFormats` and the
-message names the allowed set.
-
-**Over MCP this is loud too now (2.43.0).** The `glassy_note_update` /
-`glassy_update_document` schemas are `.passthrough()` with `openWorldHint: true`, so an
-unknown key reaches the handler and is reported as `IGNORED_FIELD` instead of being
-stripped by zod into a confident `success: true`. The fields a tool advertises are the
-fields it writes — `GET /mcp/tools` is still the authoritative list, but a key that is
-*not* advertised now comes back as a warning rather than vanishing.
-
-### The read lane has its own honesty channel: `degraded[]`
-
-Writes carry `warnings[]` (above); **reads degrade visibly too.** When the embedding
-(semantic) lane returns less trust than it intended, the response reports it in-band
-instead of silently thinning out: `glassy_search` carries a `degraded[]` array
-(present only when something degraded; absence means the lane was healthy), and `POST /api/kb/query` returns the same shape as
-`diagnostics.degraded`. The recorded live example:
-
-```json
-"degraded": [{
-  "leg": "semantic",
-  "code": "SEMANTIC_GATE_COLLAPSE",
-  "detail": "only 3 of 56 candidate chunks survived the semantic gate at minScore 0.4 (5.4% kept).",
-  "minScore": 0.4, "requestedMinScore": 0.4, "gateAdapted": false,
-  "hint": "This is a gate problem, not a \"nothing matched\" problem. The cosine floor is
-           an absolute value and cosine ranges differ per embedding model, so a model
-           change or runtime change can move the whole distribution below a fixed
-           cutoff. Check OLLAMA_EMBEDDING_MODEL / the active embedding provider…"
-}]
-```
-
-A thin result set with a non-empty `degraded[]` is **a gate problem, not a 'nothing
-matched' problem** — read the `hint`, check `/api/monitoring/ready` →
-`embeddingHealth`, and report both facts. Never summarize a degraded search as a
-plain "no results".
-
-### Which fields an agent can write
-
-`glassy_note_update` accepts the full organisational field set REST PATCH writes — `title`,
-`content`, `tags`, `color`, `images`, `items`, `pinned`, `timestamp`, `show_border`,
-`border_style`, `transparency`, `content_format`, `is_public`, `is_hidden`,
-`reminder_at`, `background_image`, `needs_review`, `archived`. Three REST columns are
-deliberately **not** reachable over MCP, and each now surfaces as `IGNORED_FIELD` with a
-hint rather than a silent drop: `type` and `position` (PUT-only) and `is_announcement`
-(admin-gated — an owner-scoped agent lane carries no admin identity). `glassy_update_document`
-accepts `cover_image` and `transparency` in addition to its earlier fields. A new guard
-(`mcpFieldParityGuard`) fails CI if this list and the service column list ever drift apart
-again.
-
 
 ## Read what the instance can do before you write
 
@@ -650,7 +675,7 @@ anonymous visitor to `#/w/…` is redirected to sign in, so the audience is the 
 any members they added.
 
 Whichever instance you are on, your canvas keeps an **opaque origin** — no cookies, no
-`localStorage`, no access to the parent page — and its `<script>` does execute (2.40.7
+`localStorage`, no access to the page around it — and its `<script>` does execute (2.40.7
 stamps the page's CSP nonce into the sandboxed document). Measured consequence worth
 knowing: because the origin is `null`, a `fetch()` from your canvas to a Glassy API
 path is **blocked by CORS**, so canvas script cannot call the instance's API. Embed a
@@ -675,7 +700,15 @@ non-http(s) URLs are refused.
 satisfy — so a first-party image fails to decode inside a canvas. Use the
 `/widget/image/<path>` lane for the appliance's own stored images (read-only, image
 files only, `CORP: cross-origin` so the canvas can decode them) instead of base64-embedding
-a copy.
+a copy. `glassy_upload_image` returns this address as `canvasUrl`, and a `/uploads/...` path in a
+board is rewritten to it when the board renders.
+
+Since 2.66.0 uploaded files open only for people who should see them (avatars, banners and
+anything on a public item stay open; a self-host can restore the old behaviour with
+`UPLOADS_PUBLIC=true`). The board lane follows the same rule: the board adds a token for the
+signed-in viewer, and a picture shows to someone who can open that board when it was attached
+to that board by the board's owner. Upload the picture with the key of the account the board
+belongs to and put its `canvasUrl` in that board.
 
 So do not put credentials, internal hostnames, raw connection strings or unredacted
 diagnostics in a canvas you intend to publish, and check whether the instance you are
@@ -741,12 +774,12 @@ are fixed:
   `capabilities.renderers.canvas.frameableWidgets` rather than hardcoding it. A *relative* URL
   (`src="/widget/health"`) always passes the origin gate; an absolute one must be on
   `renderers.canvas.allowedOrigins`.
-- **First-party images work** — relative `/uploads/...`, absolute `http://<host>/uploads/...` and
-  `data:` URIs all render.
+- **First-party images work** through `/widget/image/...` (an upload's `canvasUrl`; a relative
+  `/uploads/...` path in the page is rewritten to it), and `data:` URIs render too.
 - **What you still cannot do:** frame an arbitrary `/api/*` endpoint (use `/widget/*`, or fetch and
   render it yourself now that script runs), and reach anything outside the canvas. The sandbox is
   unchanged, so from inside a canvas `window.parent.localStorage` throws `SecurityError` — no JWT, no
-  cookies, no parent DOM — and `postMessage` to the app is rejected, because both of the app's
+  cookies, no DOM of the page around it — and `postMessage` to the app is rejected, because both of the app's
   message listeners compare origins and an opaque origin matches neither. `capabilities.renderers.canvas.inlineScript`
   publishes all of this, including `sandboxOrigin: "opaque"`.
 
@@ -834,6 +867,104 @@ Two additions let a review carry a time dimension and close the loop in *history
   record of your tool calls already lives in `mcp_tool_activity` — but the outcome is the
   one place the *decision* and the *action it caused* are shown together.
 
+## Write-path contract
+
+Every note create and every note content update now goes through one server
+service (`noteService`). For an agent this is not internal tidiness — it changed
+observable behaviour in the numbered ways below.
+
+### 1. Your edits are attributed
+
+`glassy_note_update` stamps `last_edited_by` with **your agent name**: the name pinned to
+your named key, or, with the shared instance key, the client name you declared (and
+`MCP agent` when there is none). Before beta.41 an agent's edit was indistinguishable from
+the operator's own, so a human would open a note and find prose they did not write with no
+way to tell where it came from. If you are asked "who changed this?", the answer is now on the row.
+
+Publishing is deliberately **not** attributed: `is_public` toggles (yours or a
+moderator's) move the flag and the sync cursor only, so a takedown never credits
+the administrator as the note's last editor.
+
+**Documents share this contract** (2.38.0). `glassy_create_document` and
+`glassy_update_document` write through `documentService`, so `created_by` /
+`last_edited_by` carry your client name exactly as they do for notes, the tag
+policy is the same 422 envelope (with `scope: "entire-write"`), the storage cap
+is checked before the write, and a content update is what re-embeds the document
+into the memory lane. Use documents for long-form work — journals, plans,
+drafts — and notes for short captures; a document you update is searchable by
+your own later `glassy_search`.
+
+### A write tells you which fields it ignored — and which values it changed
+
+`warnings` on a note write response carries **four** codes, and they mean different things:
+
+| code | what it says |
+|---|---|
+| `STRIPPED_AT_RENDER` | the content **was stored**, and the note-body renderer will remove that tag |
+| `CANVAS_ORIGIN_BLOCKED` | the content **was stored**, and the canvas renderer will refuse the page over that origin |
+| `IGNORED_FIELD` | the field **was not stored** — this endpoint does not write it |
+| `VALUE_COERCED` | the field **was stored as a default** — the value you sent was not a valid option |
+
+`IGNORED_FIELD` exists because `PATCH /api/notes/:id {"archived": true}` used to answer
+`200 {"ok":true,"warnings":[]}` and change nothing: `archived` has its own route, and the
+handler builds its patch from a fixed list, so any other key simply never existed. The
+message names the door that does work — for `archived`, both `POST /api/notes/:id/archive`
+and `glassy_note_update {archived}`. `id` in a body is exempt (it is the path parameter).
+
+`VALUE_COERCED` (2.43.0) is the same honesty rule applied to *values* instead of *keys*:
+`transparency`, `border_style` and `content_format` are enumerated, and a value outside the
+enum (e.g. `transparency: "glasss"`) is **normalized to a default** — not rejected, so old
+rows and sync upserts survive — but the response now *says so* instead of silently storing
+the default. The valid enums are published at `capabilities.notes.contentFormats` and the
+message names the allowed set.
+
+**Over MCP this is loud too now (2.43.0).** The `glassy_note_update` /
+`glassy_update_document` schemas are `.passthrough()` with `openWorldHint: true`, so an
+unknown key reaches the handler and is reported as `IGNORED_FIELD` instead of being
+stripped by zod into a confident `success: true`. The fields a tool advertises are the
+fields it writes — `GET /mcp/tools` is still the authoritative list, but a key that is
+*not* advertised now comes back as a warning rather than vanishing.
+
+### The read lane has its own honesty channel: `degraded[]`
+
+Writes carry `warnings[]` (above); **reads degrade visibly too.** When the embedding
+(semantic) lane returns less trust than it intended, the response reports it in-band
+instead of silently thinning out: `glassy_search` carries a `degraded[]` array
+(present only when something degraded; absence means the lane was healthy), and `POST /api/kb/query` returns the same shape as
+`diagnostics.degraded`. The recorded live example:
+
+```json
+"degraded": [{
+  "leg": "semantic",
+  "code": "SEMANTIC_GATE_COLLAPSE",
+  "detail": "only 3 of 56 candidate chunks survived the semantic gate at minScore 0.4 (5.4% kept).",
+  "minScore": 0.4, "requestedMinScore": 0.4, "gateAdapted": false,
+  "hint": "This is a gate problem, not a \"nothing matched\" problem. The cosine floor is
+           an absolute value and cosine ranges differ per embedding model, so a model
+           change or runtime change can move the whole distribution below a fixed
+           cutoff. Check OLLAMA_EMBEDDING_MODEL / the active embedding provider…"
+}]
+```
+
+A thin result set with a non-empty `degraded[]` is **a gate problem, not a 'nothing
+matched' problem** — read the `hint`, check `/api/monitoring/ready` →
+`embeddingHealth`, and report both facts. Never summarize a degraded search as a
+plain "no results".
+
+### Which fields an agent can write
+
+`glassy_note_update` accepts the full organisational field set REST PATCH writes — `title`,
+`content`, `tags`, `color`, `images`, `items`, `pinned`, `timestamp`, `show_border`,
+`border_style`, `transparency`, `content_format`, `is_public`, `is_hidden`,
+`reminder_at`, `background_image`, `needs_review`, `archived`. Three REST columns are
+deliberately **not** reachable over MCP, and each now surfaces as `IGNORED_FIELD` with a
+hint rather than a silent drop: `type` and `position` (PUT-only) and `is_announcement`
+(admin-gated — an owner-scoped agent lane carries no admin identity). `glassy_update_document`
+accepts `cover_image` and `transparency` in addition to its earlier fields. A new guard
+(`mcpFieldParityGuard`) fails CI if this list and the service column list ever drift apart
+again.
+
+
 ### 2. `glassy_note_delete` soft-deletes
 
 The note goes to the bin; it is not destroyed, and its embeddings are cleaned up.
@@ -879,13 +1010,14 @@ READ path now re-checks every candidate's backing row and drops any whose note/d
 deleted or orphaned — the old "deleting also removes its embeddings, so nothing is left to match"
 explanation was optimistic, and field measurement proved leftovers do accumulate.)
 
-**Archived vs. search — the contract, stated once.** `glassy_search` excludes **archived**
-sources by default, consistent with `glassy_list_notes` / `glassy_get_recent` /
-`glassy_recall`, and takes `include_archived: true` as an explicit opt-in when you
-deliberately want filed-away context — the same opt-in the list tools already expose.
-Archived items keep their content, id and embeddings (readable via `glassy_read_note`),
-so the opt-in is a strong, deliberate door into them, not an accident. Deleted items are
-always excluded, on both the text leg and the semantic leg, regardless of the flag.
+**Archived vs. search — the contract, stated once.** `glassy_search` **includes archived**
+sources by default (the archive is where most of a library lives): archived hits carry
+`archived: true` and need a slightly better match to outrank current work. Pass
+`include_archived: false` to search only the working space. The list tools
+(`glassy_list_notes`, `glassy_get_recent`) work the other way round: they leave archived
+items out unless you ask for them. Archived items keep their content, id and embeddings
+(readable via `glassy_read_note`). Deleted items are always excluded, on both the text leg
+and the semantic leg, regardless of the flag.
 
 ### 3. Tags follow one canonical policy — this is the breaking one
 
@@ -1237,7 +1369,7 @@ syncing with each other with no Glassy server in between.
 
 - It is a one-time purchase, made in the store on their Glassy cloud account. A pair that is set
   up keeps running whatever happens to a membership.
-- The setup steps are in [PAIRING.md](../PAIRING.md), and in the app under Settings → Zero Reliance Pair.
+- The setup steps are in [PAIRING.md](../PAIRING.md), and in the app under Settings → Account → Zero Reliance Pair.
 - It does not change how the account is confirmed at start. One setting names the Glassy to sync
   with; a different one names where the account lives.
 - For the price, send them to the store or https://glassy.fyi/pricing. Do not quote one.

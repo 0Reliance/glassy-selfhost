@@ -30,6 +30,8 @@ Nobody else can register.
   its own notes and settings, and you switch between them without signing out.
 - **More people** come with a seat pack, a one-time purchase that lets you add accounts up to
   its size. Sizes and prices are on [glassy.fyi/pricing](https://glassy.fyi/pricing).
+  To invite them, choose what each may do and share what everyone needs, see
+  [Set up Glassy for your people](people.md).
 
 ## If you forget your password
 

@@ -3,7 +3,7 @@
 > The **Zero Reliance Pair** — *"Link your home Glassy to your own private cloud
 > instance — fully yours, no Glassy servers in the loop."*
 >
-> This is the walkthrough behind Settings → Zero Reliance Pair on the cloud.
+> This is the walkthrough behind Settings → Account → Zero Reliance Pair on the cloud.
 > Any Glassy account can do this: since D3 (2026-10-24) the **pairing token is
 > the anchor, not the membership** — no tier is checked anywhere on the sync
 > path. (The cloud Settings *pane* is shown to Pair holders, active Clear
@@ -72,7 +72,8 @@ The **home appliance presents the token; the VPS validates it.** Two ways, newes
 first (2026-10-27):
 
 - **Settings → Cloud Sync → "Pair token" on the home appliance** — paste the
-  token and choose **Save Cloud Sync settings**. It is stored **encrypted**,
+  token, then press **Enter** or click outside the box (there is no Save button;
+  the box saves itself). It is stored **encrypted**,
   resolved at every cycle, and the automated scheduler starts itself:
   **no restart, no .env.**
 - **`.env` (bootstrap/recovery)**: set `GLASSY_SYNC_TOKEN=<the token>` and

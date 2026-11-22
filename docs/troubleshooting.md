@@ -73,6 +73,14 @@ docker compose pull && docker compose up -d
 Close the tab and open Glassy again. If it still looks old, clear the site's data for your
 Glassy address in your browser's settings.
 
+## Pictures don't show
+
+Since 2.66.0 uploaded pictures and files open only for people who should see them. A picture
+that shows for you but not for someone else is working as intended unless the note or document
+it is in was shared with them. If a setup of yours needs every upload open (a page outside
+Glassy that links to an image, for example), set `UPLOADS_PUBLIC=true` in `.env` and restart
+with `docker compose up -d`. Avatars, banners and anything on a public item are always open.
+
 ## AI isn't answering
 
 Glassy uses AI you bring, so check the one you chose ([AI on your Glassy](ai.md)):

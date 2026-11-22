@@ -42,7 +42,12 @@ It is long. Open it when you need a detail, not before.
 - **Agent endpoint (MCP):** `http://localhost:3000/mcp`, with `Authorization: Bearer <your key>`.
 - **Whose it is:** a self-host has one account, the person's. More workspaces for them are
   free. More people need a seat pack, which the person buys; registration on the install is
-  closed, so do not try to create accounts.
+  closed, so do not try to create accounts. An admin invites people by code
+  ([docs/people.md](docs/people.md)); with reach on your key you can share,
+  assign, send and ask for the people on this Glassy, as yourself. With admin reach (an admin's
+  own key only) you can also invite and manage people with the `glassy_admin_*` tools, and you
+  ask an admin before making anyone an admin, downloading a closed account or deleting one for
+  good ([steps](agents/REFERENCE.md#managing-people-end-to-end)).
 - **Whose AI:** Glassy never pays for AI. It runs on the person's device, on their own Ollama
   server, or with their own key. A key can be saved for OpenAI, Google Gemini, Anthropic,
   MiniMax, or any OpenAI-compatible service. `GET /api/capabilities` lists the kinds this

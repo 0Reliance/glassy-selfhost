@@ -44,7 +44,7 @@ Safe without asking: reading logs, `docker compose restart glassy`, `docker comp
 | `port is already allocated` | Something else uses the port | Set `APP_PORT`, and set `APP_URL` and `CORS_ORIGINS` to the same port, in `.env`. Or `./install.sh --port <n>`, which does all three. Then `docker compose up -d`. | Open the new address |
 | On Windows, `Invoke-RestMethod http://localhost:<port>/…` times out, while the browser opens Glassy | Windows PowerShell tries `localhost` as IPv6 first and can wait there instead of falling back (seen with Docker Desktop on the WSL engine) | Use `http://127.0.0.1:<port>` in your own requests. Nothing is wrong with Glassy. | `Invoke-RestMethod http://127.0.0.1:3000/api/health` |
 | The page loads but sign-in fails or the page can't reach Glassy | `APP_PORT`, `APP_URL` and `CORS_ORIGINS` disagree, or the person uses an address not in `CORS_ORIGINS` | Make the three agree. Add each address they use to `CORS_ORIGINS`, comma-separated. `docker compose up -d`. | `./doctor.sh` |
-| A banner says "You are on the cloud", or Agent access, Second Brain and API keys are missing from Settings | `GLASSY_TAG` is `latest` or `main` | Set it to the version in `.env.example`. `docker compose pull && docker compose up -d`. | `curl -s localhost:3000/api/instance` shows `"instanceId":"self_hosted"` |
+| A banner says "You are on the cloud", or Agent access and Second Brain are missing from Settings | `GLASSY_TAG` is `latest` or `main` | Set it to the version in `.env.example`. `docker compose pull && docker compose up -d`. | `curl -s localhost:3000/api/instance` shows `"instanceId":"self_hosted"` |
 | Blank or old-looking page after an update | The browser tab is still running the old app | Close and reopen the tab, or hard-refresh | The version in Settings matches `/api/health` |
 | `Couldn't download Glassy` | No route to `ghcr.io` | Check the connection or proxy | `docker compose pull` |
 
@@ -67,7 +67,7 @@ Safe without asking: reading logs, `docker compose restart glassy`, `docker comp
 | `401` with a key | The key was revoked or mistyped | Ask the person for a current one |
 | `406` on `/mcp` | `Accept` lacks `text/event-stream` | `Accept: application/json, text/event-stream` |
 | `503` on `/mcp` | Agent access is off or did not start | `./doctor.sh`; remove `ENABLE_MCP_SERVER=false` from `.env` if present; check the log for the reason |
-| Your writes show as "MCP agent", and `glassy_recall` with `scope: "mine"` is empty | You are using the shared instance key | Ask for a named key ([CONFIGURE.md](CONFIGURE.md#2-get-your-own-key)) |
+| Your writes show the name your app declares (or "MCP agent"), not a verified name, and `glassy_recall` with `scope: "mine"` mixes in other apps | You are using the shared instance key | Ask for a named key ([CONFIGURE.md](CONFIGURE.md#2-get-your-own-key)) |
 | `409 AGENT_NAME_EXISTS` when making a key | A key with that name exists, or existed and was revoked. A revoked key's name stays taken. | Choose another name, for example with a number after it |
 | Claude Desktop does not show Glassy | It ignores `url` entries | Use the `mcp-remote` form in [CONFIGURE.md](CONFIGURE.md#3-connect), then restart Claude Desktop |
 | `glassy_vault_read` or `glassy_vault_append` fails | No Obsidian vault is connected | These reach Obsidian only. For Glassy's own content use search and the note tools. |
