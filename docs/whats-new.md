@@ -6,6 +6,7 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 
 | Version | Date | What changed |
 |---|---|---|
+| v2.66.1 | 2026-11-22 | After you buy a seat pack, the Store shows how to add your people |
 | v2.66.0 | 2026-11-20 | People: one way to run a Glassy with several people; every look stays readable |
 | v2.65.29 | 2026-11-18 | What you save from the web is searchable, stays signed in and lands once; search explains itself only when it should |
 | v2.65.28 | 2026-11-18 | No sign-in token in an address, tags anywhere, and words that match the app |
@@ -35,6 +36,5 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 | v2.65.4 | 2026-11-09 | Every empty page tells you what to do next |
 | v2.65.3 | 2026-11-09 | See every agent that works in your Glassy |
 | v2.65.2 | 2026-11-09 | All-day events end where they should |
-| v2.65.1 | 2026-11-09 | Your agents' space stays theirs, everywhere; all-day events on the right day |
 
 The full notes for every release are at <https://docs.glassy.fyi/changelog/>.
