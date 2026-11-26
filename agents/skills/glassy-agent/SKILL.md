@@ -59,8 +59,10 @@ and `choice_notes` (a map: choice → what it leads to). Keep working; check `gl
 after acting, `glassy_report_review_outcome`. Ask before publishing, deleting or overwriting
 their work, spending money, or sending anything outside Glassy.
 
-`glassy_notify` is for "this is ready" with no answer needed. The question tools and notify are
-self-host only; on Glassy's cloud, write a note and say where it is.
+`glassy_notify` is for "this is ready" with no answer needed. The question tools and notify work
+on Glassy's cloud too, within the plan's limits (`agentPolicy` in `/api/capabilities`); past a
+limit, write a note and say where it is. On the cloud, making something public asks the person
+first: the question appears under Decisions and their answer publishes it.
 
 ## Several people on one Glassy (self-host, seat pack)
 

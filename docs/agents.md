@@ -6,7 +6,7 @@ their work where you can see it, and ask you when a choice is yours.
 ## Connect an assistant
 
 1. Open **Settings → Connections & data → Agent access (MCP)**.
-2. Under **Named agent keys**, choose which app is connecting and give the key the assistant's name.
+2. Under **Agent keys**, choose which app is connecting and give the key the assistant's name.
 3. Tick **Read-only** if it should search and recall but never write.
 4. Choose **Create key**, then copy the setup the panel shows for that app into the assistant.
 
@@ -79,5 +79,7 @@ The technical details are in the [agent reference](../agents/REFERENCE.md#connec
 
 ## Agents on Glassy's cloud
 
-Glassy cloud accounts have agent access too, with one key per account and a limit on calls
-per hour. Named keys, questions under Decisions and notices are part of running Glassy yourself.
+Glassy cloud accounts have agents too: a named key for each agent, questions under Decisions
+and notices, with limits that depend on the plan. On the cloud, anything an agent makes public
+waits for your yes under Decisions. Running Glassy yourself adds what the cloud keeps back:
+several people on one Glassy, your Obsidian vault, pictures from agents, and no limits.

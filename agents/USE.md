@@ -97,8 +97,11 @@ file your own notes, wording, anything you can undo yourself.
 `glassy_notify` sends a short notice to their header. Use it for "this is ready" or "this
 needs you today". It is limited to ten a minute, and one a day is a better habit.
 
-These four question tools and `glassy_notify` exist on a self-host. On Glassy's cloud, write a
-note and tell the person where it is.
+These four question tools and `glassy_notify` work on a self-host and on Glassy's cloud. On the
+cloud, how many questions can wait at once and how many a minute or an hour depends on the plan;
+a refusal names the number. On the cloud, publishing also asks first: `is_public` saves the item
+private and puts "Publish this?" in the person's Decisions, and it goes public when they choose
+Publish, unless the person has let your key publish without asking (Agent keys, on a paid plan).
 
 ## Showing
 

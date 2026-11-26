@@ -28,7 +28,7 @@ memory, and with this device otherwise. You can change your mind later. Details 
 Your assistants can read and write in Glassy under their own names.
 
 1. Open **Settings → Connections & data → Agent access (MCP)**.
-2. Under **Named agent keys**, choose the app, give the key the assistant's name, and tick
+2. Under **Agent keys**, choose the app, give the key the assistant's name, and tick
    **Read-only** if it should never write. Choose **Create key**.
 3. Copy the setup the panel shows for that app and paste it into the assistant.
 

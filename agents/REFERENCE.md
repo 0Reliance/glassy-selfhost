@@ -18,9 +18,11 @@ on the running Glassy is always the final word.
 
 > **The second brain is yours too.** Glassy is one workspace for a person and their agents. You
 > get durable **memory**, your own named identity, and a way to **ask** the person a question and
-> get a click back. On a self-host you are a full participant. On Glassy's cloud some things are
-> withheld (named keys, notify, the question tools); that is by design, and `/api/capabilities`
-> tells you which you are talking to.
+> get a click back. On a self-host you are a full participant. On Glassy's cloud you get a named key,
+> memory, questions and notices too, with limits from the person's plan; a few things stay on a
+> self-host only (people, admin, picture upload, the Obsidian vault), and anything you make
+> public on cloud waits for the person's OK. `/api/capabilities` tells you which you are
+> talking to and what your limits are (`agentPolicy`).
 
 ## Start here — two things are called "vault", and five ways to be "an agent"
 
@@ -61,10 +63,10 @@ A **self-hosted Glassy instance** — a private notes / knowledge
 base / scheduling workspace with an AI integration layer. It ships its own
 **MCP server** with three surfaces, not one:
 
-- **55 tools** — 37 registered everywhere; `glassy_notify`, the four review
-  tools, the four people tools, `glassy_upload_image` and the eight admin tools are
-  self-host only, because what they terminate in (the review queue, the owner inbox,
-  several people on one Glassy) is not served on cloud. Full table below.
+- **55 tools** — 42 registered everywhere; the four people tools,
+  `glassy_upload_image` and the eight admin tools are self-host only, because what they
+  terminate in (several people on one Glassy, files on the owner's machine) is not served
+  on cloud. Full table below.
 - **4 prompts** — server-authored instruction templates. Named and explained in
   [*Prompts*](#the-4-prompts-a-separate-surface-from-tools) below.
 - **9 resources** — 3 static (these are all `resources/list` returns) plus **6 URI
@@ -115,16 +117,15 @@ The same MCP server serves **two origins** with deliberately different shapes.
 
 | | **Appliance** (`http://localhost:3000/mcp`) | **Cloud** (`https://app.glassy.fyi/mcp`, `https://clear.glassy.fyi/mcp`) |
 |---|---|---|
-| Key model | Named per-agent keys + instance key — ask for a named key if you will write | **Single user-scoped key** — the account owner's own key, minted in Settings → Agent access (MCP). Named keys are not offered here |
-| Identity | Named keys are pinned and verified; the instance key is self-declared | Self-declared (`identityMode: "self-declared"`, `verified: false`) — you act as the account owner's MCP client |
-| Tools | All 55 | 37 — `glassy_notify`, the review-queue tools, the people tools, `glassy_upload_image` and the admin tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
-| Budget | No tool-call budget — the owner's hardware | An hourly allowance per account, larger on a paid plan. The account's welcome note states it; past it, calls answer `429` with a JSON-RPC error until the hour rolls over |
+| Key model | Named per-agent keys + instance key — ask for a named key if you will write | Named per-agent keys + the account's own key. How many named keys a person can hold depends on their plan (`agentPolicy.rows.<row>.maxAgentKeys`); a key can have an end date |
+| Identity | Named keys are pinned and verified; the instance key is self-declared | The same: named keys are pinned and verified; the account's own key is self-declared |
+| Tools | All 55 | 42 — the people tools, `glassy_upload_image` and the admin tools are withheld (403 `FEATURE_NOT_AVAILABLE` if you try; the manifest names them in `cloudGatedTools`) |
+| Budget | No tool-call budget — the owner's hardware | An hourly allowance per person, shared by all of their agents and larger on a paid plan, plus limits on open questions and notices (`agentPolicy`). Past it, calls answer `429` with a JSON-RPC error until the hour rolls over |
+| Publishing | Direct | **Asks first.** Making a note or document public saves it private and puts the question "Publish …?" under Decisions; the person's answer publishes it. A paid plan can let one key publish without asking |
 | Search corpus | The owner's corpus, locally indexed | The owner's corpus, searched with the search model that workspace declared, or by words alone if it has none |
 
-The cloud lane exists so an agent you run while traveling can reach the same
-workspace from any machine — not as a second identity. One key per account,
-replacing on re-mint; if the owner rotates it, your calls fail auth until they
-hand you the new key.
+On cloud, a key that has reached its end date, or that the person turned off, fails
+auth until they hand you a new one. Turning a key off frees a place for another.
 
 ### Two kinds of key — and only one makes you a principal
 
@@ -134,10 +135,10 @@ at it. Ask the instance instead; see below.
 
 | | **Named agent key** | **Instance key** |
 |---|---|---|
-| Minted by | The owner, in the panel's *Named agent keys* section — or by the Glassy Capture extension (v2.19.0+) for itself | The owner, at the top of the same panel |
+| Minted by | The owner, in the panel's *Agent keys* section — or by the Glassy Capture extension (v2.19.0+) for itself | The owner, at the top of the same panel |
 | Your identity | **Pinned and verified.** `agent: { name: "<your name>", verified: true, identityMode: "named-key" }` | Self-declared from your MCP handshake `clientInfo.name`; `verified: false`, `identityMode: "self-declared"` |
 | What that buys | Your note edits are attributed to *you*; `glassy_recall { scope: "mine" }` returns only your memories; `glassy_notify` and digests are signed with your name | Everything works, but authorship is the name your client declares in its handshake (unverified; `MCP agent` only if it declares none) and memory scope is per declared name, so two clients that declare the same name share one identity |
-| Availability | Self-host only (cloud answers 403 `FEATURE_NOT_AVAILABLE`) | Everywhere |
+| Availability | Everywhere (on cloud, up to the plan's number of keys) | Everywhere |
 
 **Ask for a named key if you will write anything.** Then verify what you actually
 got — do not assume you are verified because you set a client name, and do not
@@ -189,9 +190,11 @@ The boundary is deliberate and narrow — learn it once and stop probing for it:
   key made read-only. Before 2.64.0 the whole lane was read-only, which pushed agents
   onto the owner's sign-in for REST writes and recorded their work as the owner's: never
   do that.
-- **Self-host only.** `GET /api/capabilities` → `agentIdentity.restReadLanes` says
-  whether this instance has the lane. On cloud it is `false` and the lane is not
-  attempted at all, so a key there gets the ordinary `401 AUTH_TOKEN_INVALID`.
+- **Everywhere, with one difference on cloud.** `GET /api/capabilities` →
+  `agentIdentity.restReadLanes` says whether this instance has the lane. On cloud a REST
+  write that would make something public answers `403 {"code":"AGENT_PUBLISH_NEEDS_OK"}`
+  (`agentIdentity.restPublish` is `false`) unless the person let this key publish without
+  asking; use the MCP tool instead, which asks the person for you.
 - **Your account is pinned.** The key resolves into the account it was minted under,
   exactly as it does on MCP, and an `X-Account-Id` header will NOT move it. You cannot
   roam accounts by editing a header.
@@ -246,7 +249,7 @@ approximate. This table is checked against the tool registry on every release.
 | Memory (durable, yours) | `glassy_remember`, `glassy_recall` |
 | Notes | `glassy_list_notes`, `glassy_read_note`, `glassy_note_create`, `glassy_note_update`, `glassy_note_delete` |
 | Documents (long-form) | `glassy_list_documents`, `glassy_read_document`, `glassy_create_document`, `glassy_update_document`, `glassy_delete_document` |
-| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review`, `glassy_report_review_outcome` (self-host only) |
+| Ask the owner | `glassy_request_review`, `glassy_get_review`, `glassy_withdraw_review`, `glassy_report_review_outcome` (on cloud, limited by plan: open questions at once and new ones an hour) |
 | Obsidian Vault (live files) | `glassy_vault_read`, `glassy_vault_append` |
 | Knowledge graph | `glassy_graph_context`, `glassy_find_paths`, `glassy_get_orphans`, `glassy_get_central_notes`, `glassy_graph_stats` |
 | Captures | `glassy_add_capture`, `glassy_capture_voice` |
@@ -254,7 +257,7 @@ approximate. This table is checked against the tool registry on every release.
 | Schedule | `glassy_get_schedule`, `glassy_create_event`, `glassy_update_event`, `glassy_delete_event`, `glassy_find_free_slots` (always on a self-host; on Glassy's cloud only for a paid plan, otherwise an error that says so) |
 | Tags / folders | `glassy_get_tags`, `glassy_get_folders` |
 | Proxy | `glassy_obsidian_proxy` |
-| Awareness & digests | `glassy_notify` (self-host only, ≤10/min; with `audience`, to people), `glassy_create_digest` |
+| Awareness & digests | `glassy_notify` (≤10 a minute on a self-host; on Glassy's cloud 3 a minute on Free and 10 on a paid plan, shared by all the person's agents; with `audience`, to people, self-host only), `glassy_create_digest` |
 | People (self-host only, needs reach) | `glassy_list_members`, `glassy_share`, `glassy_assign`, `glassy_checkin` |
 | Images | `glassy_upload_image` (self-host only): returns `url` for a note and `canvasUrl` for a board. On cloud, ask the person to add the picture to a note in the app. |
 | Managing people (self-host only, needs admin reach) | `glassy_admin_people`, `glassy_admin_invites`, `glassy_admin_groups`, `glassy_admin_setups`, `glassy_admin_seats`, `glassy_admin_audit`, `glassy_admin_devices`, `glassy_admin_settings` |
@@ -276,7 +279,7 @@ Most mistakes are the right action through the wrong tool. Pick by what you want
 | Put a picture on a board | `glassy_upload_image`, then its `canvasUrl` as `<img src>` | a `/uploads/...` path (it stays blank inside a board) |
 | Save a link | `glassy_add_capture` | a note holding only the URL |
 | Get a decision from the person | `glassy_request_review`, then `glassy_get_review` | guessing, or a notification |
-| Tell the person something that needs no answer | `glassy_notify` (self-host) | a review |
+| Tell the person something that needs no answer | `glassy_notify` | a review |
 | Tidy your own finished work | `glassy_note_update` / `glassy_update_document` with `archived: true` | delete (only the person can restore) |
 | Read or append to the person's Obsidian files | `glassy_vault_read` / `glassy_vault_append` | the note tools (those are Glassy's own notes) |
 | Put an event on the calendar | `glassy_find_free_slots`, then `glassy_create_event` (a proposal until `confirm: true`) | creating without showing the proposal |
@@ -799,10 +802,12 @@ away from what the app actually does.
 
 ## Asking the owner a question
 
-**Self-host only.** All four review tools are gated: on cloud they are absent from
-`tools/list` and answer `403 FEATURE_NOT_AVAILABLE` if called by name, because the queue
-they terminate in is not served there and an owner cannot open it. On cloud, write the note
-and tell the owner where to look instead.
+**Everywhere.** On Glassy's cloud the person's plan limits how many questions can be open at
+once and how many you can ask in an hour (`agentPolicy` in `/api/capabilities`). Past a limit
+the tool says so; write the note and tell the person where to look instead. A publish on cloud
+arrives here as a question too: the review carries the choices `Publish` and `Keep private`,
+and the person's answer does the publishing (or keeps it private). You don't publish it
+yourself afterwards.
 
 Do not guess when a decision is the owner's. Ask, and keep working elsewhere
 while you wait:

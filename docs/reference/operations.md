@@ -42,9 +42,9 @@ Addresses use `http://localhost:3000`, the default.
 | Custom themes | Purchased theme pack (add-on) | ✅ unlocked |
 | Voice Studio | Every account (D4) | ✅ unlocked |
 | Knowledge base (KB) | Every account — the `#/kb` workspace reads the same MCP lane | ✅ unlocked |
-| MCP server + Second Brain | Every account — single-key MCP lane with an hourly tool-call allowance (R4); the 18 appliance-only tools (notify, the four review tools, the four people tools, image upload, the eight admin tools) are withheld | ✅ unlocked (all 55 tools, named keys) |
+| MCP server + Second Brain | Every account — named agent keys (2 on Free, 10 on Pro), the review queue and notify, an hourly tool-call allowance, and publishing that asks the owner first; the 13 appliance-only tools (the four people tools, image upload, the eight admin tools) are withheld | ✅ unlocked (all 55 tools, unlimited named keys, publish direct) |
 | Agent harnesses — dispatch | Hosted `agents-api` only when `ENABLE_AGENT_GATEWAY` is enabled; local subprocess transports are refused | ✅ unlocked — all transports; LAN/Tailscale `baseUrl`s allowed on self-host (#37); cloud keeps the strict allowlist |
-| Agent harnesses — knowledge (MCP) | ✅ single-key lane; the appliance-only tools withheld | ✅ named keys, all tools |
+| Agent harnesses — knowledge (MCP) | ✅ named keys per plan; the appliance-only tools withheld | ✅ named keys, all tools |
 | Glassy Capture browser extension | ✅ | ✅ |
 | Capture pipeline | ✅ | ✅ |
 | Cloud Sync (pair appliance ⇄ cloud) | ✅ (cloud side) | ✅ (appliance side — token pairing, owner-scoped, single-flight scheduler) |
@@ -725,9 +725,8 @@ edits are attributed to its own verified name instead of whatever name the app d
 { scope: "mine" }` returns only its own memories, and its notifications and digests
 are signed. The two key kinds are the same `gky_mcp_…` shape, so an agent verifies
 which it holds by reading the `glassy://status` resource (`agent.verified`), not by
-looking at the key. Named keys are self-host only — `/api/mcp-keys` answers 403
-`FEATURE_NOT_AVAILABLE` on cloud, and `/api/capabilities` reports
-`agentIdentity.mode` as `named-keys` here and `single-key` there.
+looking at the key. Named keys work here without a cap and, since 2026-11-26, on
+Glassy's cloud too, capped by plan (`/api/capabilities` → `agentPolicy.rows`).
 
 **Your scripts can stop using your password (#151).** The same named key
 authenticates `GET /api/*` on this instance, so a sync probe or a status check no
@@ -791,8 +790,8 @@ MCP keys at `/api/mcp-keys` (each pinned to a verified identity — the key an
 agent uses becomes the agent's principal for authorship, memory and
 notifications). `notifications.available` means the awareness lane exists here
 (`glassy_notify`, the owner surface on the Agent Review page, and the 24h/72h
-aging-review escalation). On cloud both report `false`/`single-key`, and the
-corresponding endpoints answer 403 `FEATURE_NOT_AVAILABLE`. Clients are expected
+aging-review escalation). Since 2026-11-26 the cloud reports both too, within its
+plan rows (`agentPolicy`). Clients are expected
 to gate on this manifest — the Glassy Capture extension does exactly that (fail
 closed: any error resolves to "capability absent").
 

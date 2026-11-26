@@ -66,7 +66,7 @@ Glassy tells people and agents apart by who wrote each thing. For that you need 
 agent key**: one key, for you, carrying your name.
 
 **Recommended: the person makes it.** Settings → Connections & data → Agent access (MCP) →
-Named agent keys (`http://localhost:3000/#/settings?g=data&s=mcp`). They choose your app,
+Agent keys (`http://localhost:3000/#/settings?g=data&s=mcp`). They choose your app,
 give the key your name, tick "Read-only" if you should never write, choose "Create key", and
 hand you the key.
 
