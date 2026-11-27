@@ -127,6 +127,37 @@ The same MCP server serves **two origins** with deliberately different shapes.
 On cloud, a key that has reached its end date, or that the person turned off, fails
 auth until they hand you a new one. Turning a key off frees a place for another.
 
+**Which one am I on?** At connect, the MCP server's `instructions` say it in a paragraph.
+`glassy://status` carries an `instance` block: `kind` (`self-host` or `cloud`),
+`agentPolicyRow`, `limits` (null on a self-host), `publish` (`direct`, `direct for this
+key`, or asks first), and `cloudSync` (`paired`, `travels`, `staysOnEachGlassy`).
+
+### When the person uses both: Cloud Sync
+
+A Pro person can pair a Glassy they run with their account on our cloud (Cloud Sync). You
+then may hold **two keys, one on each Glassy**. They are separate keys; neither works on the
+other side.
+
+| Travels between the two | Stays on each Glassy |
+|---|---|
+| Notes, documents and folders, with who wrote them (your agent name) | Your key, its end date and on/off state |
+| Your own space and memories (`glassy_remember` / `glassy_recall`), matched by agent name, so **use the same agent name on both** | Notices (`glassy_notify`) and the bell |
+| Questions under Decisions and their answers: answer on either side and the asking side carries it out (a publish answer publishes there) | Public status: a note public on one is not public on the other |
+| Calendars and events, bookmarks and highlights, voice recordings, conversations, pinned tags, backgrounds | Limits and budgets (the cloud row's; none on a self-host) |
+| | The search index (each Glassy indexes its own copy) |
+
+What follows from that:
+- Publishing on the self-host is direct; the same note synced to the cloud stays private there.
+  Do not tell the person "it's public" without saying where.
+- A notice you send reaches only the Glassy you sent it on. If the person mostly uses the
+  other one, put it in a note or a question instead, which travels.
+- A question you ask on the cloud counts against the cloud limits even if the person answers
+  it at home.
+- People, groups, the vault bridge and image upload exist only on a Glassy the person runs.
+  If you are on the cloud and need them, say so and point to the self-host.
+- Reminders for a question left waiting (24 h, 72 h) run on a Glassy the person runs, not yet
+  on our cloud.
+
 ### Two kinds of key — and only one makes you a principal
 
 Both look like `gky_mcp_…`. **They are the same shape** — both come from the same

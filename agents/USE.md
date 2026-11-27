@@ -103,6 +103,11 @@ a refusal names the number. On the cloud, publishing also asks first: `is_public
 private and puts "Publish this?" in the person's Decisions, and it goes public when they choose
 Publish, unless the person has let your key publish without asking (Agent keys, on a paid plan).
 
+If the person pairs this Glassy with our cloud (Cloud Sync), notes, your memories and questions
+with their answers travel between the two; your key, notices, public status and limits do not.
+Use the same agent name on both. What that changes for you:
+[REFERENCE.md](REFERENCE.md#when-the-person-uses-both-cloud-sync).
+
 ## Showing
 
 When you have made something the person should look at, give them a link, not a description:

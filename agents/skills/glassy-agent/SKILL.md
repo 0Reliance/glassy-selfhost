@@ -64,6 +64,14 @@ on Glassy's cloud too, within the plan's limits (`agentPolicy` in `/api/capabili
 limit, write a note and say where it is. On the cloud, making something public asks the person
 first: the question appears under Decisions and their answer publishes it.
 
+## If the person uses both a Glassy they run and our cloud (Cloud Sync)
+
+You hold one key on each; use the **same agent name** on both so your memories match. Notes,
+documents, your memories, and questions with their answers travel. Your key, notices, public
+status and limits stay on each Glassy: a note public at home is private on the cloud, and a
+notice reaches only the Glassy you sent it on. `glassy://status` → `instance` says which one you
+are on. Details: [REFERENCE.md](../../REFERENCE.md#when-the-person-uses-both-cloud-sync).
+
 ## Several people on one Glassy (self-host, seat pack)
 
 - With **reach** (an admin sets it in People → Agents): `glassy_list_members` for the names, then

@@ -6,6 +6,7 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 
 | Version | Date | What changed |
 |---|---|---|
+| v2.67.1 | 2026-11-27 | Answer a publish question at home and it publishes on our cloud; agents are told which Glassy they're on |
 | v2.67.0 | 2026-11-26 | Your agents on our cloud: a key for each, questions under Decisions, nothing published without your yes |
 | v2.66.1 | 2026-11-22 | After you buy a seat pack, the Store shows how to add your people |
 | v2.66.0 | 2026-11-20 | People: one way to run a Glassy with several people; every look stays readable |
@@ -35,6 +36,5 @@ The newest releases, newest first. To get one, see [Update Glassy](upgrade.md).
 | v2.65.6 | 2026-11-09 | Your coding agents run on your own computer |
 | v2.65.5 | 2026-11-09 | The wordmark wears the cube's colors |
 | v2.65.4 | 2026-11-09 | Every empty page tells you what to do next |
-| v2.65.3 | 2026-11-09 | See every agent that works in your Glassy |
 
 The full notes for every release are at <https://docs.glassy.fyi/changelog/>.

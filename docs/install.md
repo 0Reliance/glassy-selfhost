@@ -92,7 +92,7 @@ git clone https://github.com/0Reliance/glassy-selfhost.git
 cd glassy-selfhost
 cp .env.example .env
 # Edit .env — fill in six required fields:
-#   GLASSY_TAG=v2.67.0                          (already set; leave it)
+#   GLASSY_TAG=v2.67.1                          (already set; leave it)
 #   GLASSY_MEMBER_EMAIL=you@example.com          (your Glassy account email)
 #   GLASSY_SELFHOST_TOKEN=<your pairing token>   (from step 1)
 #   GLASSY_VERIFY_CLOUD_URL=https://app.glassy.fyi   (Clear accounts: https://clear.glassy.fyi)
