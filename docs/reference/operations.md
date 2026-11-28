@@ -846,9 +846,10 @@ server mirror is compared to it **behaviourally** over a corpus of snippets
 Agents can ask you a question and wait for a click: `glassy_request_review`
 (question + 2–10 choices, optionally linked to a note or document), then poll
 `glassy_get_review`. Questions appear under **Decisions** on Today and on the
-**Agent Review** page (self-host only) with one button per choice, an optional comment box, and the
-linked item rendered next to them. Answers sync between paired seats, so a
-question asked on one machine can be answered on the other.
+**Agent Review** page with one button per choice, an optional comment box, and the
+linked item rendered next to them. This works on a self-host and on Glassy's cloud. Questions
+sync between paired Glassys: answer on either one and it is carried out where it was asked. A
+question left waiting reminds you after a day and again after three days.
 
 ### Dispatching tasks to your own agent (agent harnesses)
 

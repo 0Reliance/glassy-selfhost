@@ -101,7 +101,8 @@ edit in Glassy lands in the file. Tick a box in Glassy and it's ticked in Obsidi
 Glassy here is free with any account, and stays that way. Three things you can add when you need them:
 
 - **Our cloud for your Glassy (Pro).** Keep this Glassy and one on our cloud in step, at full speed,
-  so your notes are on your phone and in a second place. [Cloud Sync](docs/cloud-sync.md).
+  so your notes are on your phone and in a second place, and your agents can work there too, each
+  with its own key. [Cloud Sync](docs/cloud-sync.md).
 - **A pair of your own (the Zero Reliance Pair).** Link this Glassy to one on your own server, with
   no Glassy server in between. [How the Pair works](PAIRING.md).
 - **Room for your people (seat packs).** Open this Glassy to the people you invite, bought once.

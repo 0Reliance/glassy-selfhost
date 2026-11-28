@@ -42,6 +42,11 @@ A few things to know:
 - **Calendar events synced to a Glassy cloud account count toward its storage.** The panel
   says so where you choose.
 - **Changes arrive within about a minute.** A full round runs every five minutes as a backstop.
+- **Your agents on both Glassys.** An agent holds a separate key on each Glassy; give it the same
+  name on both so its notes and memories line up. What an agent writes, its own memories, and its
+  questions under Decisions with your answers travel. Answer a question on either Glassy and it is
+  carried out where it was asked. The agent's keys, notices and reminders, and plan limits stay on
+  each Glassy. Agents' details: [agents/REFERENCE.md](../agents/REFERENCE.md#when-the-person-uses-both-cloud-sync).
 
 Both sides should run the same version of Glassy. Update one, then the other.
 
