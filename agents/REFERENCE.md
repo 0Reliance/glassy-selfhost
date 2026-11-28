@@ -155,8 +155,9 @@ What follows from that:
   it at home.
 - People, groups, the vault bridge and image upload exist only on a Glassy the person runs.
   If you are on the cloud and need them, say so and point to the self-host.
-- Reminders for a question left waiting (24 h, 72 h) run on a Glassy the person runs, not yet
-  on our cloud.
+- A question left waiting reminds the person after a day and again after three days, on each
+  Glassy that holds it (reminders are notices, so they do not travel). On our cloud the check runs
+  hourly; on a Glassy the person runs, every minute.
 
 ### Two kinds of key — and only one makes you a principal
 
