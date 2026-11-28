@@ -105,9 +105,9 @@ Auth:    Authorization: Bearer <mcp-key>
 ```
 
 Both kinds of key live in **one** panel: **Settings → Connections & data → Agent
-access (MCP)**. ("Connections & data" is the group; "Agent access (MCP)" is the panel.) The
-instance key is at the top, named agent keys below it. Either can be revoked from
-there, and both are scoped to this instance only.
+access (MCP)**. ("Connections & data" is the group; "Agent access (MCP)" is the panel.) Agent
+keys are at the top, the shared key below them. Either can be revoked from
+there, and both are scoped to this Glassy only.
 
 ### Two origins — appliance (full power) and cloud (the on-the-go lane)
 

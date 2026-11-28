@@ -10,7 +10,7 @@ their work where you can see it, and ask you when a choice is yours.
 3. Tick **Read-only** if it should search and recall but never write.
 4. Choose **Create key**, then copy the setup the panel shows for that app into the assistant.
 
-<img src="../assets/agent-access.webp" alt="The Agent access settings: choose the app, name the agent, an optional read-only box, a Create key button, and below it the key made for an assistant called Juniper" width="100%">
+<img src="../assets/agent-access.webp" alt="Agent access, Agent keys: choose the app, name the agent, an optional read-only box, when the key ends, a Create key button, and below it the keys for Claude and Hermes" width="100%">
 
 The address assistants connect to is `http://localhost:3000/mcp`.
 
